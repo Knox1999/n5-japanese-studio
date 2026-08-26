@@ -1,0 +1,3 @@
+N5 Natural Japanese Studio - GitHub Pages / PWA Edition
+Version 18.0
+Static hosting + mobile-first + PWA + offline cache
