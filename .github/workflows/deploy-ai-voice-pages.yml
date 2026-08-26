@@ -1,4 +1,4 @@
-name: Deploy N5 Studio — Shadowing + Recall + Writing Fix v23
+name: Deploy N5 Studio — True Single-Voice Shadowing Fix v24
 
 on:
   push:
@@ -404,6 +404,7 @@ jobs:
 
             function stop() {
               playToken += 1;
+              try { window.speechSynthesis?.cancel?.(); } catch {}
 
               // Also cancel the original app's sequence() loop.
               // This prevents old shadowing sessions from waking up again
@@ -479,13 +480,27 @@ jobs:
                 node.playbackRate.value = Math.max(0.50, Math.min(3.20, requested / 0.94));
 
                 node.connect(ctx.destination);
-                node.onended = () => {
-                  if (source === node) source = null;
-                  try { node.disconnect(); } catch {}
-                  onend?.();
-                };
-                node.start();
-                setStatus("✓ Instant Natural Voice · no AI generation wait", "ready");
+
+                // v24: sequence() must not advance until this clip really ends.
+                await new Promise((resolve) => {
+                  let settled = false;
+                  const finish = () => {
+                    if (settled) return;
+                    settled = true;
+                    if (source === node) source = null;
+                    try { node.disconnect(); } catch {}
+                    try { onend?.(); } catch {}
+                    resolve();
+                  };
+                  node.onended = finish;
+                  try {
+                    node.start();
+                    setStatus("✓ Instant Natural Voice · true single-stream", "ready");
+                  } catch (err) {
+                    console.error("Audio source start failed:", err);
+                    finish();
+                  }
+                });
               } catch (err) {
                 console.error("Static audio playback error:", err);
                 setStatus("Audio could not play. Reload once and tap Voice Test.", "warn");
@@ -802,23 +817,23 @@ jobs:
                   card.setAttribute("role", "button");
                   card.setAttribute("tabindex", "0");
                   const h = card.querySelector("h3");
-                  if (h) h.textContent = "Shadow → Listening";
+                  if (h) h.textContent = "Listen → Vocabulary";
                   const p = card.querySelector("p");
-                  if (p) p.textContent = "ক্লিক করে সরাসরি Listening + Shadowing Lab খুলুন →";
-                  card.onclick = () => showView("listening");
+                  if (p) p.textContent = "ক্লিক করে নির্বাচিত Lesson-এর Vocabulary খুলুন →";
+                  card.onclick = () => showView("vocabulary");
                   card.onkeydown = e => {
-                    if (e.key === "Enter" || e.key === " ") showView("listening");
+                    if (e.key === "Enter" || e.key === " ") showView("vocabulary");
                   };
                 }
               }
 
-              // Lesson Roadmap: choose lesson, then open its Listening page.
+              // Lesson Roadmap: choose lesson, then open its Vocabulary page.
               document.querySelectorAll("[data-jump]").forEach(b => {
                 if (b.dataset.v23ListenJump) return;
                 b.dataset.v23ListenJump = "1";
                 b.onclick = () => {
                   setLesson(Number(b.dataset.jump));
-                  showView("listening");
+                  showView("vocabulary");
                 };
               });
             }
@@ -845,6 +860,79 @@ jobs:
           })();
           JAVASCRIPT
 
+      - name: Create v24 strict single-voice queue
+        shell: bash
+        run: |
+          cat > _build/v24-core-fix.js <<'JAVASCRIPT'
+          (() => {
+            "use strict";
+
+            let queueGeneration = 0;
+
+            function hardStopQueue() {
+              queueGeneration += 1;
+              try { window.speechSynthesis?.cancel?.(); } catch {}
+              try { window.N5_INSTANT_AUDIO?.stop?.(); } catch {}
+            }
+
+            async function serialSequence(lines, pause = 600, rate = .88, done = null) {
+              hardStopQueue();
+              const mine = queueGeneration;
+              const clean = Array.from(lines || []).map(x => String(x || "").trim()).filter(Boolean);
+
+              for (const line of clean) {
+                if (mine !== queueGeneration) return;
+
+                // v24 speak() resolves only AFTER this MP3 ends.
+                await window.N5_INSTANT_AUDIO.speak(line, rate, null, false);
+
+                if (mine !== queueGeneration) return;
+
+                if (pause > 0) {
+                  await new Promise(resolve => setTimeout(resolve, pause));
+                }
+              }
+
+              if (mine === queueGeneration) {
+                try { done?.(); } catch {}
+              }
+            }
+
+            try { sequence = serialSequence; } catch {}
+            window.sequence = serialSequence;
+
+            document.addEventListener("click", (e) => {
+              const id = e.target?.id || "";
+              if ([
+                "lb","ln","lf","l15","l2","l3",
+                "listenCore","listenShadow","listenMarathon",
+                "vstream","sstream","cp","cs","csh",
+                "rp","rs","rshadow","r2"
+              ].includes(id)) {
+                hardStopQueue();
+              }
+            }, true);
+
+            document.addEventListener("click", (e) => {
+              const id = e.target?.id || "";
+              if (["lstop","cstop","rstop"].includes(id)) {
+                hardStopQueue();
+              }
+            }, true);
+
+            const updateNotice = () => {
+              const n = document.querySelector("#singleStreamNotice");
+              if (n) {
+                n.innerHTML = "<b>✓ TRUE Single-Voice Queue</b> — একটি audio পুরো শেষ না হওয়া পর্যন্ত পরের line শুরু হবে না।";
+              }
+            };
+            new MutationObserver(updateNotice).observe(document.documentElement, {childList:true, subtree:true});
+            setTimeout(updateNotice, 0);
+
+            console.info("N5 v24 strict serial audio queue enabled.");
+          })();
+          JAVASCRIPT
+
       - name: Assemble GitHub Pages site
         shell: bash
         run: |
@@ -857,6 +945,7 @@ jobs:
           cp _build/audio-manifest.js _site/audio-manifest.js
           cp _build/instant-audio.js _site/instant-audio.js
           cp _build/v23-fixes.js _site/v23-fixes.js
+          cp _build/v24-core-fix.js _site/v24-core-fix.js
 
           # Copy only generated MP3 files — no neural model ships to the phone.
           cp _audio_cache/*.mp3 _site/audio/
@@ -872,14 +961,15 @@ jobs:
               <script src="./audio-manifest.js"></script>
               <script src="./instant-audio.js"></script>
               <script src="./v23-fixes.js"></script>
+              <script src="./v24-core-fix.js"></script>
               """
 
-              if "v23-fixes.js" not in html:
+              if "v24-core-fix.js" not in html:
                   html = html.replace("</body>", injection + "\n</body>")
 
               html = html.replace(
                   "GitHub Single File · Mobile First · Romaji→Kana",
-                  "GitHub Instant Audio v23 · Single Shadow · Recall Privacy · 3× Listening"
+                  "GitHub Instant Audio v24 · TRUE Single Voice · Roadmap→Vocabulary"
               )
 
               path.write_text(html, encoding="utf-8")
@@ -893,10 +983,15 @@ jobs:
           test -f _site/audio-manifest.js
           test -f _site/instant-audio.js
           test -f _site/v23-fixes.js
+          test -f _site/v24-core-fix.js
           test -d _site/audio
           test "$(find _site/audio -name '*.mp3' | wc -l)" -gt 1500
           grep -q "instant-audio.js" _site/index.html
           grep -q "v23-fixes.js" _site/index.html
+          grep -q "v24-core-fix.js" _site/index.html
+          grep -q "await new Promise((resolve)" _site/instant-audio.js
+          grep -q "TRUE Single-Voice Queue" _site/v24-core-fix.js
+          grep -q 'showView("vocabulary")' _site/v23-fixes.js
           grep -q "Single-Stream Audio" _site/v23-fixes.js
           grep -q "Skip →" _site/v23-fixes.js
           grep -q "▶ 3×" _site/v23-fixes.js
