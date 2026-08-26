@@ -1,4 +1,4 @@
-name: Deploy N5 Studio with GitHub-hosted Japanese AI Voice
+name: Deploy N5 Studio — Instant Pre-Generated Neural Audio v22
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: true
 
 jobs:
@@ -19,386 +19,601 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     runs-on: ubuntu-latest
+    timeout-minutes: 330
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Prepare static site
+      - name: Restore generated-audio cache
+        uses: actions/cache@v4
+        with:
+          path: _audio_cache
+          key: n5-kokoro-jf-alpha-v22-${{ hashFiles('index.html') }}
+          restore-keys: |
+            n5-kokoro-jf-alpha-v22-
+
+      - name: Restore Hugging Face model cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: kokoro-82m-japanese-v1
+          restore-keys: |
+            kokoro-82m-japanese-
+
+      - name: Install build-time Japanese neural TTS
         shell: bash
         run: |
           set -e
-          mkdir -p _site _build
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install \
+            "kokoro>=0.9.4,<1.0" \
+            "misaki[ja]>=0.9.4,<1.0" \
+            "soundfile>=0.12" \
+            "numpy>=1.26,<3"
+
+          # Misaki Japanese second-gen G2P expects the full UniDic dictionary.
+          # This happens only on the GitHub Actions builder, never on the phone.
+          python -m unidic download
+
+      - name: Extract every fixed study text that needs audio
+        shell: bash
+        run: |
+          mkdir -p _build _site _audio_cache
+
+          cat > _build/extract_audio_texts.py <<'PYTHON'
+          import hashlib, json, re, unicodedata
+          from pathlib import Path
+
+          html = Path("index.html").read_text(encoding="utf-8")
+
+          m = re.search(
+              r'window\.N5_OFFLINE_DATA\s*=\s*(\{.*?\});\s*</script>',
+              html,
+              re.S,
+          )
+          if not m:
+              raise SystemExit("Could not find embedded N5_OFFLINE_DATA in index.html")
+
+          data = json.loads(m.group(1))
+          items = {}
+
+          def norm(text):
+              text = unicodedata.normalize("NFC", str(text or ""))
+              return re.sub(r"\s+", " ", text).strip()
+
+          def add(text, lesson=0, kind="misc"):
+              text = norm(text)
+              if not text:
+                  return
+              key = hashlib.sha1(text.encode("utf-8")).hexdigest()
+              row = items.setdefault(key, {
+                  "hash": key,
+                  "text": text,
+                  "lessons": [],
+                  "kinds": [],
+              })
+              if lesson and int(lesson) not in row["lessons"]:
+                  row["lessons"].append(int(lesson))
+              if kind not in row["kinds"]:
+                  row["kinds"].append(kind)
+
+          # Vocabulary + 1,011 curated natural sentences.
+          for v in data.get("vocabulary", []):
+              lesson = int(v.get("lesson") or 0)
+              add(v.get("tts_text") or v.get("japanese"), lesson, "vocab")
+              add(v.get("spelling_text"), lesson, "spelling")
+              ex = v.get("example") or {}
+              if isinstance(ex, dict):
+                  add(ex.get("jp") or ex.get("japanese"), lesson, "sentence")
+
+          # Lesson-fixed conversation / reading / shadowing / grammar.
+          lessons = (data.get("content") or {}).get("lessons") or {}
+          for lesson_key, L in lessons.items():
+              lesson = int(lesson_key)
+
+              for name in ("dialogue", "dialogue_extended"):
+                  for turn in L.get(name) or []:
+                      if isinstance(turn, list) and len(turn) > 1:
+                          add(turn[1], lesson, "conversation")
+
+              for name in ("reading", "reading_extended"):
+                  add(L.get(name), lesson, "reading_full")
+
+              for chunk in L.get("shadowing_chunks") or []:
+                  add(chunk, lesson, "shadow")
+
+              for pair in L.get("reading_extra_pairs") or []:
+                  if isinstance(pair, list) and pair:
+                      add(pair[0], lesson, "reading_sentence")
+
+              for grammar in L.get("grammar") or []:
+                  if isinstance(grammar, list) and len(grammar) > 2:
+                      add(grammar[2], lesson, "grammar")
+
+          # Voice test.
+          add(
+              "こんにちは。きょうも いっしょに にほんごを れんしゅうしましょう。",
+              0,
+              "voice_test",
+          )
+
+          # Sentence-level splits of full readings so sentence shadowing never
+          # has to generate at runtime.
+          sentence_split = re.compile(r"(?<=[。！？])")
+          for row in list(items.values()):
+              if "reading_full" in row["kinds"]:
+                  for sentence in sentence_split.split(row["text"]):
+                      sentence = norm(sentence)
+                      if sentence:
+                          for lesson in row["lessons"] or [0]:
+                              add(sentence, lesson, "reading_sentence")
+
+          rows = sorted(items.values(), key=lambda x: x["hash"])
+          Path("_build/audio_texts.json").write_text(
+              json.dumps(rows, ensure_ascii=False, indent=2),
+              encoding="utf-8",
+          )
+
+          per_lesson = {str(i): [] for i in range(1, 26)}
+          for row in rows:
+              for lesson in row["lessons"]:
+                  if str(lesson) in per_lesson:
+                      per_lesson[str(lesson)].append(row["hash"])
+
+          Path("_build/lesson_audio.json").write_text(
+              json.dumps(per_lesson, ensure_ascii=False, indent=2),
+              encoding="utf-8",
+          )
+
+          print(f"Unique fixed Japanese audio clips: {len(rows)}")
+          for i in range(1, 26):
+              print(f"L{i:02d}: {len(per_lesson[str(i)])} clips")
+          PYTHON
+
+          python _build/extract_audio_texts.py
+
+      - name: Pre-generate natural Japanese MP3 with Kokoro
+        shell: bash
+        run: |
+          cat > _build/generate_audio.py <<'PYTHON'
+          import hashlib
+          import json
+          import os
+          import subprocess
+          import tempfile
+          import time
+          from pathlib import Path
+
+          import numpy as np
+          import soundfile as sf
+          import torch
+          from kokoro import KPipeline
+
+          VOICE = "jf_alpha"
+          SPEED = 0.94
+          SAMPLE_RATE = 24000
+
+          rows = json.loads(Path("_build/audio_texts.json").read_text(encoding="utf-8"))
+          out_dir = Path("_audio_cache")
+          out_dir.mkdir(parents=True, exist_ok=True)
+
+          # Let PyTorch use the runner CPUs efficiently.
+          cpu_count = max(1, os.cpu_count() or 2)
+          torch.set_num_threads(cpu_count)
+          print("CPU threads:", cpu_count, flush=True)
+
+          print("Loading Kokoro Japanese pipeline once...", flush=True)
+          pipeline = KPipeline(lang_code="j")
+          print("Kokoro ready.", flush=True)
+
+          generated = 0
+          reused = 0
+          failed = []
+
+          for idx, row in enumerate(rows, 1):
+              key = row["hash"]
+              text = row["text"]
+              final_mp3 = out_dir / f"{key}.mp3"
+
+              if final_mp3.exists() and final_mp3.stat().st_size > 1000:
+                  reused += 1
+                  continue
+
+              try:
+                  parts = []
+                  for _, _, audio in pipeline(
+                      text,
+                      voice=VOICE,
+                      speed=SPEED,
+                  ):
+                      if hasattr(audio, "detach"):
+                          audio = audio.detach().cpu().numpy()
+                      audio = np.asarray(audio, dtype=np.float32).reshape(-1)
+                      if audio.size:
+                          parts.append(audio)
+
+                  if not parts:
+                      raise RuntimeError("Kokoro returned no audio")
+
+                  # Kokoro may chunk long readings. Add a small natural pause
+                  # between model chunks, not between normal shadowing lines.
+                  if len(parts) == 1:
+                      merged = parts[0]
+                  else:
+                      pause = np.zeros(int(SAMPLE_RATE * 0.12), dtype=np.float32)
+                      joined = []
+                      for j, part in enumerate(parts):
+                          if j:
+                              joined.append(pause)
+                          joined.append(part)
+                      merged = np.concatenate(joined)
+
+                  with tempfile.TemporaryDirectory() as td:
+                      wav = Path(td) / "clip.wav"
+                      mp3 = Path(td) / "clip.mp3"
+                      sf.write(wav, merged, SAMPLE_RATE, subtype="PCM_16")
+                      subprocess.run([
+                          "ffmpeg", "-loglevel", "error", "-y",
+                          "-i", str(wav),
+                          "-ac", "1",
+                          "-ar", "24000",
+                          "-codec:a", "libmp3lame",
+                          "-b:a", "64k",
+                          str(mp3),
+                      ], check=True)
+                      mp3.replace(final_mp3)
+
+                  generated += 1
+
+              except Exception as exc:
+                  failed.append((key, text, repr(exc)))
+                  print(f"\nFAILED {key}: {text}\n{exc}", flush=True)
+
+              if idx % 25 == 0 or idx == len(rows):
+                  print(
+                      f"[{idx}/{len(rows)}] generated={generated} reused={reused} failed={len(failed)}",
+                      flush=True,
+                  )
+
+          if failed:
+              Path("_build/audio_failures.json").write_text(
+                  json.dumps(failed, ensure_ascii=False, indent=2),
+                  encoding="utf-8",
+              )
+              # A tiny number of unusual strings should not destroy the whole
+              # site; runtime will clearly report missing audio for those.
+              if len(failed) > 20:
+                  raise SystemExit(f"Too many TTS failures: {len(failed)}")
+
+          print("DONE", {"generated": generated, "reused": reused, "failed": len(failed)})
+          PYTHON
+
+          python _build/generate_audio.py
+
+      - name: Build instant static-audio manifest
+        shell: bash
+        run: |
+          cat > _build/build_manifest.py <<'PYTHON'
+          import json
+          from pathlib import Path
+
+          rows = json.loads(Path("_build/audio_texts.json").read_text(encoding="utf-8"))
+          per_lesson = json.loads(Path("_build/lesson_audio.json").read_text(encoding="utf-8"))
+
+          available = {
+              p.stem for p in Path("_audio_cache").glob("*.mp3")
+              if p.stat().st_size > 1000
+          }
+
+          manifest = {
+              "version": "22",
+              "voice": "jf_alpha",
+              "speed": 0.94,
+              "count": len(available),
+              "hashes": sorted(available),
+          }
+
+          Path("_build/audio-manifest.js").write_text(
+              "window.N5_STATIC_AUDIO_MANIFEST=" +
+              json.dumps(manifest, ensure_ascii=False, separators=(",", ":")) +
+              ";\n",
+              encoding="utf-8",
+          )
+
+          audio_dir = Path("_site/audio")
+          audio_dir.mkdir(parents=True, exist_ok=True)
+
+          for lesson, hashes in per_lesson.items():
+              hashes = [h for h in hashes if h in available]
+              (audio_dir / f"lesson-{int(lesson):02d}.json").write_text(
+                  json.dumps(hashes, separators=(",", ":")),
+                  encoding="utf-8",
+              )
+
+          print("Static audio manifest clips:", len(available))
+          PYTHON
+
+          python _build/build_manifest.py
+
+      - name: Build instant browser playback engine
+        shell: bash
+        run: |
+          cat > _build/instant-audio.js <<'JAVASCRIPT'
+          (() => {
+            const manifest = window.N5_STATIC_AUDIO_MANIFEST || { hashes: [] };
+            const available = new Set(manifest.hashes || []);
+            const base = new URL("./audio/", document.baseURI);
+
+            let audioCtx = null;
+            let source = null;
+            let playToken = 0;
+            const decoded = new Map();
+            const MAX_MEMORY_CACHE = 48;
+
+            const $ = (q) => document.querySelector(q);
+
+            function normalizeText(text) {
+              return String(text || "")
+                .normalize("NFC")
+                .replace(/\s+/g, " ")
+                .trim();
+            }
+
+            async function sha1(text) {
+              const bytes = new TextEncoder().encode(normalizeText(text));
+              const digest = await crypto.subtle.digest("SHA-1", bytes);
+              return [...new Uint8Array(digest)]
+                .map(b => b.toString(16).padStart(2, "0"))
+                .join("");
+            }
+
+            function getContext() {
+              if (!audioCtx) {
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new Ctx({ latencyHint: "interactive" });
+              }
+              return audioCtx;
+            }
+
+            async function unlock() {
+              const ctx = getContext();
+              if (ctx.state !== "running") await ctx.resume();
+
+              const b = ctx.createBuffer(1, 1, ctx.sampleRate);
+              const s = ctx.createBufferSource();
+              s.buffer = b;
+              s.connect(ctx.destination);
+              s.start();
+            }
+
+            function setStatus(text, cls = "") {
+              const el = $("#instantVoiceStatus");
+              if (!el) return;
+              el.textContent = text;
+              el.className = "voice-status " + cls;
+            }
+
+            function stop() {
+              playToken += 1;
+              if (source) {
+                try { source.stop(); } catch {}
+                try { source.disconnect(); } catch {}
+                source = null;
+              }
+            }
+
+            async function getBuffer(hash) {
+              if (decoded.has(hash)) return decoded.get(hash);
+
+              const ctx = getContext();
+              const response = await fetch(new URL(`${hash}.mp3`, base), {
+                cache: "force-cache",
+              });
+              if (!response.ok) throw new Error(`Audio HTTP ${response.status}`);
+
+              const bytes = await response.arrayBuffer();
+              const buffer = await ctx.decodeAudioData(bytes);
+
+              // Small in-memory LRU-like cache; HTTP cache keeps the rest.
+              if (decoded.size >= MAX_MEMORY_CACHE) {
+                const oldest = decoded.keys().next().value;
+                decoded.delete(oldest);
+              }
+              decoded.set(hash, buffer);
+              return buffer;
+            }
+
+            async function speakInstant(text, rate = null, onend = null, interrupt = true) {
+              text = normalizeText(text);
+              if (!text) {
+                onend?.();
+                return;
+              }
+
+              if (interrupt) stop();
+              const token = playToken;
+
+              // Unlock immediately on direct tap. For sequence playback the
+              // AudioContext remains unlocked after the first line.
+              try { await unlock(); } catch {}
+
+              const hash = await sha1(text);
+              if (!available.has(hash)) {
+                console.warn("No pre-generated audio for:", text);
+                setStatus("This rare line has no pre-generated audio.", "warn");
+                onend?.();
+                return;
+              }
+
+              try {
+                const buffer = await getBuffer(hash);
+                if (token !== playToken) return;
+
+                const ctx = getContext();
+                const node = ctx.createBufferSource();
+                source = node;
+                node.buffer = buffer;
+
+                // Audio itself was generated at a natural study speed.
+                // Only make small runtime adjustments to preserve quality.
+                const requested = Number(rate ?? $("#rate")?.value ?? 0.94);
+                node.playbackRate.value = Math.max(0.86, Math.min(1.08, requested / 0.94));
+
+                node.connect(ctx.destination);
+                node.onended = () => {
+                  if (source === node) source = null;
+                  try { node.disconnect(); } catch {}
+                  onend?.();
+                };
+                node.start();
+                setStatus("✓ Instant Natural Voice · no AI generation wait", "ready");
+              } catch (err) {
+                console.error("Static audio playback error:", err);
+                setStatus("Audio could not play. Reload once and tap Voice Test.", "warn");
+                onend?.();
+              }
+            }
+
+            async function prefetchLesson(lesson) {
+              lesson = Number(lesson || 1);
+              if (!lesson || lesson < 1 || lesson > 25) return;
+
+              try {
+                const listUrl = new URL(`lesson-${String(lesson).padStart(2, "0")}.json`, base);
+                const res = await fetch(listUrl, { cache: "force-cache" });
+                if (!res.ok) return;
+                const hashes = await res.json();
+
+                // Fetch in small batches so opening a lesson stays responsive.
+                let i = 0;
+                const workers = Array.from({ length: 5 }, async () => {
+                  while (i < hashes.length) {
+                    const hash = hashes[i++];
+                    try {
+                      await fetch(new URL(`${hash}.mp3`, base), { cache: "force-cache" });
+                    } catch {}
+                  }
+                });
+                await Promise.all(workers);
+                setStatus(`✓ Lesson ${lesson} Natural Audio cached`, "ready");
+              } catch (err) {
+                console.warn("Lesson audio prefetch skipped:", err);
+              }
+            }
+
+            function installUI() {
+              const panel = document.querySelector(".voice-panel");
+              if (!panel) return;
+
+              panel.innerHTML = `
+                <div class="eyebrow">INSTANT NATURAL JAPANESE VOICE</div>
+                <div class="voice-status ready" id="instantVoiceStatus">
+                  ✓ Pre-generated Kokoro · ready instantly
+                </div>
+                <div class="instant-voice-note">
+                  No AI generation during study. Current lesson audio is prefetched automatically.
+                </div>
+                <div class="rate-row">
+                  <span>Speed</span>
+                  <input type="range" id="rate" min=".80" max="1.04" step=".02" value=".94">
+                  <b id="rateValue">0.94×</b>
+                </div>
+                <button class="btn red" id="voiceTestBtn" style="width:100%;margin-top:8px">
+                  ▶ Instant Voice Test
+                </button>
+              `;
+
+              const rate = $("#rate");
+              rate?.addEventListener("input", () => {
+                const out = $("#rateValue");
+                if (out) out.textContent = `${Number(rate.value).toFixed(2)}×`;
+              });
+
+              $("#voiceTestBtn")?.addEventListener("click", () => {
+                speakInstant(
+                  "こんにちは。きょうも いっしょに にほんごを れんしゅうしましょう。",
+                  0.94
+                );
+              });
+            }
+
+            function watchLesson() {
+              const select = $("#lessonSelect");
+              if (!select) return;
+
+              prefetchLesson(select.value || 1);
+              select.addEventListener("change", () => prefetchLesson(select.value));
+
+              // Also keep the next lesson warm when the current one is cached.
+              const current = Number(select.value || 1);
+              if (current < 25) {
+                setTimeout(() => prefetchLesson(current + 1), 8000);
+              }
+            }
+
+            function addStyles() {
+              const style = document.createElement("style");
+              style.textContent = `
+                .instant-voice-note{
+                  margin-top:8px;padding:8px 9px;border-radius:10px;
+                  background:#eef8f4;border:1px solid #cde7dc;
+                  color:#326454;font-size:9px;line-height:1.45
+                }
+                @media(max-width:820px){
+                  .instant-voice-note{font-size:10px}
+                }
+              `;
+              document.head.appendChild(style);
+            }
+
+            addStyles();
+            installUI();
+
+            // In the original classic-script app, global function declarations
+            // are properties of window. Replacing these changes all existing
+            // vocabulary/conversation/reading/listening/grammar play buttons.
+            window.speak = speakInstant;
+            window.stopSpeech = stop;
+            window.N5_INSTANT_AUDIO = {
+              speak: speakInstant,
+              stop,
+              prefetchLesson,
+              manifest,
+            };
+
+            // Run after the existing app has created the lesson selector.
+            setTimeout(watchLesson, 200);
+
+            console.info(
+              `N5 Instant Neural Audio v22: ${available.size} pre-generated clips ready`
+            );
+          })();
+          JAVASCRIPT
+
+      - name: Assemble GitHub Pages site
+        shell: bash
+        run: |
+          set -e
+
           cp index.html _site/index.html
           cp index.html _site/404.html
           cp .nojekyll _site/.nojekyll 2>/dev/null || true
 
-      - name: Install browser TTS dependencies
-        shell: bash
-        run: |
-          set -e
-          npm install --no-save \
-            kokoro-js-jp@0.2.0 \
-            @huggingface/transformers@3.8.1 \
-            esbuild@0.25.9
+          cp _build/audio-manifest.js _site/audio-manifest.js
+          cp _build/instant-audio.js _site/instant-audio.js
 
-      - name: Create N5 neural TTS browser engine
-        shell: bash
-        run: |
-          cat > _build/tts-entry.js <<'JAVASCRIPT'
-          import { KokoroJP } from "kokoro-js-jp";
-          import { env } from "@huggingface/transformers";
+          # Copy only generated MP3 files — no neural model ships to the phone.
+          cp _audio_cache/*.mp3 _site/audio/
 
-          const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
-          const AUDIO_CACHE = "n5-kokoro-japanese-audio-v1";
-
-          const VOICES = [
-            ["jf_alpha", "Natural Alpha · Female"],
-            ["jf_gongitsune", "Natural Gongitsune · Female"],
-            ["jf_nezumi", "Natural Nezumi · Female"],
-            ["jf_tebukuro", "Natural Tebukuro · Female"],
-            ["jm_kumo", "Natural Kumo · Male"],
-          ];
-
-          let enginePromise = null;
-          let currentAudio = null;
-          let currentObjectUrl = null;
-          let generationId = 0;
-
-          const originalSpeak = window.speak;
-          const originalStopSpeech = window.stopSpeech;
-
-          function $(selector) {
-            return document.querySelector(selector);
-          }
-
-          function setStatus(message, type = "") {
-            const el = $("#aiVoiceStatus");
-            if (!el) return;
-            el.textContent = message;
-            el.className = "voice-status " + type;
-          }
-
-          function sitePath(relative) {
-            return new URL(relative, document.baseURI).pathname;
-          }
-
-          function configureLocalRuntime() {
-            // Everything is served from this GitHub Pages deployment.
-            env.allowLocalModels = true;
-            env.allowRemoteModels = false;
-            env.localModelPath = sitePath("./models/");
-            env.useBrowserCache = true;
-            env.backends.onnx.wasm.wasmPaths = sitePath("./ort/");
-          }
-
-          async function getEngine() {
-            if (enginePromise) return enginePromise;
-
-            enginePromise = (async () => {
-              setStatus("AI voice loading… first use may take a few minutes.", "warn");
-              configureLocalRuntime();
-
-              const tts = await KokoroJP.load({
-                modelId: MODEL_ID,
-                dtype: "q8",
-                device: "wasm",
-                japanese: {
-                  assetsUrl: new URL("./kokoro-js-jp", document.baseURI).href.replace(/\/$/, ""),
-                },
-              });
-
-              setStatus("✓ Japanese Neural Voice ready · GitHub-hosted", "ready");
-              return tts;
-            })().catch((err) => {
-              console.error("Kokoro Japanese TTS load failed:", err);
-              enginePromise = null;
-              setStatus("AI voice failed to load. Reload once and try again.", "warn");
-              throw err;
-            });
-
-            return enginePromise;
-          }
-
-          async function sha256(text) {
-            const bytes = new TextEncoder().encode(text);
-            const digest = await crypto.subtle.digest("SHA-256", bytes);
-            return [...new Uint8Array(digest)]
-              .map((b) => b.toString(16).padStart(2, "0"))
-              .join("");
-          }
-
-          async function getCachedAudio(key) {
-            if (!("caches" in window)) return null;
-            const cache = await caches.open(AUDIO_CACHE);
-            const response = await cache.match(new Request("./__tts_cache__/" + key + ".wav"));
-            return response ? await response.blob() : null;
-          }
-
-          async function putCachedAudio(key, blob) {
-            if (!("caches" in window)) return;
-            try {
-              const cache = await caches.open(AUDIO_CACHE);
-              await cache.put(
-                new Request("./__tts_cache__/" + key + ".wav"),
-                new Response(blob, { headers: { "Content-Type": "audio/wav" } })
-              );
-            } catch (err) {
-              console.warn("Audio cache write skipped:", err);
-            }
-          }
-
-          function stopAiAudio() {
-            generationId += 1;
-
-            try {
-              if (typeof originalStopSpeech === "function") {
-                originalStopSpeech();
-              }
-            } catch {}
-
-            if (currentAudio) {
-              try {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
-              } catch {}
-              currentAudio = null;
-            }
-
-            if (currentObjectUrl) {
-              try {
-                URL.revokeObjectURL(currentObjectUrl);
-              } catch {}
-              currentObjectUrl = null;
-            }
-          }
-
-          async function playBlob(blob, runId) {
-            if (runId !== generationId) return;
-
-            currentObjectUrl = URL.createObjectURL(blob);
-            currentAudio = new Audio(currentObjectUrl);
-
-            await new Promise((resolve, reject) => {
-              currentAudio.onended = resolve;
-              currentAudio.onerror = reject;
-              currentAudio.play().catch(reject);
-            }).finally(() => {
-              if (currentObjectUrl) {
-                URL.revokeObjectURL(currentObjectUrl);
-                currentObjectUrl = null;
-              }
-              currentAudio = null;
-            });
-          }
-
-          async function neuralSpeak(text, rate = null, onend = null, interrupt = true) {
-            text = String(text || "").trim();
-            if (!text) {
-              if (onend) onend();
-              return;
-            }
-
-            if (interrupt) stopAiAudio();
-            const runId = generationId;
-
-            const voice = $("#aiVoiceSelect")?.value || "jf_alpha";
-            const speed = Number(rate ?? $("#rate")?.value ?? 0.92);
-            const cacheKey = await sha256([voice, speed.toFixed(2), text].join("|"));
-
-            try {
-              let blob = await getCachedAudio(cacheKey);
-
-              if (!blob) {
-                const tts = await getEngine();
-                if (runId !== generationId) return;
-
-                setStatus("Generating natural Japanese audio…", "warn");
-                const rawAudio = await tts.speak(text, voice, speed);
-                blob = rawAudio.toBlob();
-                await putCachedAudio(cacheKey, blob);
-              }
-
-              if (runId !== generationId) return;
-              await playBlob(blob, runId);
-              setStatus("✓ Japanese Neural Voice ready · audio cached", "ready");
-              if (onend) onend();
-            } catch (err) {
-              console.error("Neural speech error:", err);
-              setStatus("Could not generate this audio. Tap Voice Test and retry.", "warn");
-              // Intentionally do NOT fall back to the robotic system voice.
-              if (onend) onend();
-            }
-          }
-
-          async function clearAudioCache() {
-            if ("caches" in window) {
-              await caches.delete(AUDIO_CACHE);
-            }
-            setStatus("Generated-audio cache cleared. Model files remain browser-cached.", "ready");
-          }
-
-          function installVoiceUI() {
-            const panel = document.querySelector(".voice-panel");
-            if (!panel) return;
-
-            panel.innerHTML = `
-              <div class="eyebrow">NATURAL JAPANESE AI VOICE</div>
-              <select id="aiVoiceSelect" class="select">
-                ${VOICES.map(([id, name]) => `<option value="${id}">${name}</option>`).join("")}
-              </select>
-              <select id="voiceSelect" hidden aria-hidden="true"></select>
-              <div class="voice-status warn" id="aiVoiceStatus">AI voice loads on first Play.</div>
-              <div class="ai-voice-note">First use downloads the GitHub-hosted neural model. Later playback is cached on this device.</div>
-              <div class="rate-row">
-                <span>Speed</span>
-                <input type="range" id="rate" min=".68" max="1.08" step=".02" value=".92">
-                <b id="rateValue">0.92×</b>
-              </div>
-              <div class="ai-voice-buttons">
-                <button class="btn red" id="voiceTestBtn">▶ Natural Voice Test</button>
-                <button class="btn soft" id="clearAiVoiceCache">Clear Audio Cache</button>
-              </div>
-            `;
-
-            const savedVoice = localStorage.getItem("n5_ai_voice") || "jf_alpha";
-            const select = $("#aiVoiceSelect");
-            if (select && VOICES.some(([id]) => id === savedVoice)) {
-              select.value = savedVoice;
-            }
-
-            select?.addEventListener("change", (event) => {
-              localStorage.setItem("n5_ai_voice", event.target.value);
-              stopAiAudio();
-            });
-
-            const rate = $("#rate");
-            const rateValue = $("#rateValue");
-            rate?.addEventListener("input", () => {
-              if (rateValue) rateValue.textContent = `${Number(rate.value).toFixed(2)}×`;
-            });
-
-            $("#voiceTestBtn")?.addEventListener("click", () => {
-              neuralSpeak("こんにちは。きょうも いっしょに にほんごを れんしゅうしましょう。", 0.92);
-            });
-
-            $("#clearAiVoiceCache")?.addEventListener("click", clearAudioCache);
-          }
-
-          function addStyles() {
-            const style = document.createElement("style");
-            style.textContent = `
-              .ai-voice-note{
-                margin-top:8px;padding:8px 9px;border-radius:10px;
-                background:#eef6fb;border:1px solid #d2e4ef;
-                color:#315d79;font-size:9px;line-height:1.45
-              }
-              .ai-voice-buttons{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
-              #aiVoiceSelect{font-size:10px}
-              @media(max-width:820px){
-                .ai-voice-note{font-size:10px}
-                #aiVoiceSelect{font-size:16px}
-                .ai-voice-buttons .btn{min-height:42px}
-              }
-            `;
-            document.head.appendChild(style);
-          }
-
-          addStyles();
-          installVoiceUI();
-
-          // Replace the old browser/system TTS globally.
-          window.speak = neuralSpeak;
-          window.stopSpeech = stopAiAudio;
-          window.N5_AI_TTS = {
-            getEngine,
-            speak: neuralSpeak,
-            stop: stopAiAudio,
-            clearAudioCache,
-            voices: VOICES,
-          };
-
-          console.info("N5 Japanese Studio: GitHub-hosted Kokoro Japanese AI Voice enabled.");
-          JAVASCRIPT
-
-          npx esbuild _build/tts-entry.js \
-            --bundle \
-            --format=esm \
-            --platform=browser \
-            --target=es2022 \
-            --minify \
-            --outfile=_site/tts-engine.js
-
-      - name: Copy Japanese Open JTalk browser assets
-        shell: bash
-        run: |
-          set -e
-          npx kokoro-js-jp-copy-assets _site/kokoro-js-jp
-          du -sh _site/kokoro-js-jp
-
-      - name: Copy ONNX Runtime Web files into GitHub Pages
-        shell: bash
-        run: |
-          set -e
-          mkdir -p _site/ort
-          find node_modules \
-            -path '*/onnxruntime-web/dist/ort-wasm*' \
-            -type f \
-            -exec cp -f {} _site/ort/ \;
-          echo "Local ONNX Runtime files:"
-          ls -lh _site/ort
-
-      - name: Download Kokoro model + Japanese voices into GitHub Pages
-        shell: bash
-        run: |
-          set -e
-          python -m pip install --quiet "huggingface_hub>=0.34,<1.0"
-
-          python - <<'PYTHON'
-          from huggingface_hub import hf_hub_download
-          from pathlib import Path
-
-          repo_id = "onnx-community/Kokoro-82M-v1.0-ONNX"
-          local_dir = Path("_site/models/onnx-community/Kokoro-82M-v1.0-ONNX")
-
-          files = [
-              "config.json",
-              "tokenizer.json",
-              "tokenizer_config.json",
-              "onnx/model_quantized.onnx",
-              "voices/jf_alpha.bin",
-              "voices/jf_gongitsune.bin",
-              "voices/jf_nezumi.bin",
-              "voices/jf_tebukuro.bin",
-              "voices/jm_kumo.bin",
-          ]
-
-          for filename in files:
-              print("Downloading:", filename, flush=True)
-              hf_hub_download(
-                  repo_id=repo_id,
-                  filename=filename,
-                  local_dir=str(local_dir),
-              )
-
-          print("Kokoro model files ready:", local_dir)
-          PYTHON
-
-      - name: Inject neural TTS module into N5 Studio
-        shell: bash
-        run: |
           python - <<'PYTHON'
           from pathlib import Path
 
@@ -406,45 +621,44 @@ jobs:
               path = Path(filename)
               html = path.read_text(encoding="utf-8")
 
-              module = '\n<script type="module" src="./tts-engine.js"></script>\n'
-              marker = "</body>"
+              injection = """
+              <script src="./audio-manifest.js"></script>
+              <script src="./instant-audio.js"></script>
+              """
 
-              if "tts-engine.js" not in html:
-                  html = html.replace(marker, module + marker)
+              if "instant-audio.js" not in html:
+                  html = html.replace("</body>", injection + "\n</body>")
 
-              # The old single-file build has no active service-worker registration;
-              # keep the GitHub Pages AI build explicit.
               html = html.replace(
                   "GitHub Single File · Mobile First · Romaji→Kana",
-                  "GitHub AI Voice · Mobile First · Romaji→Kana"
+                  "GitHub Instant Natural Audio · Mobile First · Romaji→Kana"
               )
 
               path.write_text(html, encoding="utf-8")
           PYTHON
 
-      - name: Verify deployment files
+      - name: Verify instant-audio deployment
         shell: bash
         run: |
           set -e
           test -f _site/index.html
-          test -f _site/tts-engine.js
-          test -f _site/kokoro-js-jp/open_jtalk_dic_utf_8-1.11.tar.gz
-          test -f _site/models/onnx-community/Kokoro-82M-v1.0-ONNX/onnx/model_quantized.onnx
-          test -f _site/models/onnx-community/Kokoro-82M-v1.0-ONNX/voices/jf_alpha.bin
-          grep -q 'tts-engine.js' _site/index.html
-          echo "Deployment size:"
+          test -f _site/audio-manifest.js
+          test -f _site/instant-audio.js
+          test -d _site/audio
+          test "$(find _site/audio -name '*.mp3' | wc -l)" -gt 1500
+          grep -q "instant-audio.js" _site/index.html
+          echo "MP3 clips: $(find _site/audio -name '*.mp3' | wc -l)"
+          echo "Published site size:"
           du -sh _site
-          echo "Largest files:"
-          find _site -type f -printf '%s %p\n' | sort -nr | head -15
 
-      - name: Configure GitHub Pages
+      - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload GitHub Pages artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: "_site"
 
-      - name: Deploy GitHub Pages
+      - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
