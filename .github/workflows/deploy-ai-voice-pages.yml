@@ -1,4 +1,4 @@
-name: Deploy N5 Studio — Instant Pre-Generated Neural Audio v22
+name: Deploy N5 Studio — Shadowing + Recall + Writing Fix v23
 
 on:
   push:
@@ -404,6 +404,16 @@ jobs:
 
             function stop() {
               playToken += 1;
+
+              // Also cancel the original app's sequence() loop.
+              // This prevents old shadowing sessions from waking up again
+              // and producing 5–10 simultaneous voices.
+              try {
+                if (typeof state !== "undefined") {
+                  state.sequenceToken = Number(state.sequenceToken || 0) + 1;
+                }
+              } catch {}
+
               if (source) {
                 try { source.stop(); } catch {}
                 try { source.disconnect(); } catch {}
@@ -466,7 +476,7 @@ jobs:
                 // Audio itself was generated at a natural study speed.
                 // Only make small runtime adjustments to preserve quality.
                 const requested = Number(rate ?? $("#rate")?.value ?? 0.94);
-                node.playbackRate.value = Math.max(0.86, Math.min(1.08, requested / 0.94));
+                node.playbackRate.value = Math.max(0.50, Math.min(3.20, requested / 0.94));
 
                 node.connect(ctx.destination);
                 node.onended = () => {
@@ -524,7 +534,7 @@ jobs:
                 </div>
                 <div class="rate-row">
                   <span>Speed</span>
-                  <input type="range" id="rate" min=".80" max="1.04" step=".02" value=".94">
+                  <input type="range" id="rate" min=".60" max="3.00" step=".05" value=".94">
                   <b id="rateValue">0.94×</b>
                 </div>
                 <button class="btn red" id="voiceTestBtn" style="width:100%;margin-top:8px">
@@ -599,6 +609,242 @@ jobs:
           })();
           JAVASCRIPT
 
+      - name: Create v23 runtime study fixes
+        shell: bash
+        run: |
+          cat > _build/v23-fixes.js <<'JAVASCRIPT'
+          (() => {
+            "use strict";
+
+            const $ = (q, root=document) => root.querySelector(q);
+
+            function safeState() {
+              try { return (typeof state !== "undefined") ? state : null; }
+              catch { return null; }
+            }
+
+            function cancelEverything() {
+              try {
+                const st = safeState();
+                if (st) st.sequenceToken = Number(st.sequenceToken || 0) + 1;
+              } catch {}
+              try { window.N5_INSTANT_AUDIO?.stop?.(); } catch {}
+            }
+
+            // ---- SRS / Recall: Bangla meaning + Bangla pronunciation hidden until Reveal.
+            try {
+              srsPrompt = function(card) {
+                const phase = card.srs?.phase || "learn";
+                if (phase === "use") {
+                  return {
+                    title: "USE",
+                    prompt: `「${card.japanese}」 ব্যবহার করে একটি ছোট Japanese sentence লিখুন বা বলুন।`,
+                    typed: true,
+                    use: true
+                  };
+                }
+                return {
+                  title: phase === "learn" ? "LEARN / RECALL" : (phase === "review" ? "REVIEW" : "RECALL"),
+                  prompt: `「${card.japanese}」 দেখে অর্থ ও উচ্চারণ মনে করুন। Natural Japanese sentence clue হিসেবে থাকবে। তারপর Reveal করুন।`
+                };
+              };
+
+              offlineSrsCard = function(card) {
+                const phase = card.srs?.phase || "learn";
+                const p = srsPrompt(card);
+                const r = state.srsRevealed;
+
+                return `<div class="srs-study-card">
+                  <div class="srs-card-top">
+                    <div>
+                      <span class="srs-phase phase-${phase}">${p.title}</span>
+                      <span class="srs-due">${card.preview ? "Preview · " : ""}${dueText(card.srs?.due_at)}</span>
+                    </div>
+                    <div class="srs-counter">${state.srsIndex + 1}/${state.srsSession.length}</div>
+                  </div>
+
+                  <div class="srs-prompt">${esc(p.prompt)}</div>
+
+                  <div class="srs-learn-box">
+                    <div class="jp-word">${esc(card.japanese)}</div>
+                    <div class="example" style="margin-top:12px">${esc(card.example.jp)}</div>
+                    <button class="btn soft" id="${phase === "learn" ? "sla" : "sra"}" style="margin-top:10px">🔊 Japanese Voice</button>
+                  </div>
+
+                  ${p.typed ? `<div class="srs-answer-row">
+                    <input id="srsAnswer" class="search-input" lang="ja" data-jp-input="1"
+                           placeholder="${p.use ? "নিজের Japanese sentence লিখুন…" : "Japanese answer লিখুন…"}">
+                    <button class="btn soft" id="micAnswer">🎙 Speak</button>
+                  </div>` : ""}
+
+                  ${!r ? `<button class="btn primary" id="revealSrs">Reveal বাংলা অর্থ + উচ্চারণ</button>` : ""}
+
+                  ${r ? `<div class="srs-reveal">
+                    <div class="eyebrow">ANSWER</div>
+                    <div class="jp-word">${esc(card.japanese)}</div>
+                    <div class="meaning">${esc(card.bangla_meaning)}</div>
+                    <div class="pron">উচ্চারণ: ${esc(card.pronunciation_bn)}</div>
+                    <div class="example">${esc(card.example.jp)}</div>
+                    <div class="translation">${esc(card.example.bn)}</div>
+                  </div>` : ""}
+
+                  ${r ? `<div class="srs-rating">
+                    <button data-rate="again" class="rate-again">Again<small>10 min</small></button>
+                    <button data-rate="hard" class="rate-hard">Hard<small>shorter</small></button>
+                    <button data-rate="good" class="rate-good">Good<small>normal</small></button>
+                    <button data-rate="easy" class="rate-easy">Easy<small>longer</small></button>
+                  </div>` : ""}
+                </div>`;
+              };
+            } catch (e) {
+              console.error("v23 SRS patch failed", e);
+            }
+
+            function enhanceSpelling() {
+              const tools = $(".spell-tools");
+              if (!tools || $("#skipSpell")) return;
+
+              const btn = document.createElement("button");
+              btn.className = "btn danger";
+              btn.id = "skipSpell";
+              btn.textContent = "Skip →";
+              btn.title = "Skip without marking this word wrong";
+
+              btn.onclick = () => {
+                try {
+                  state.spellingIndex++;
+                  state.spellingResult = null;
+                  state.spellingHint = false;
+
+                  if (state.spellingIndex >= state.spellingSession.length) {
+                    state.spellingSession = null;
+                    toast("Spelling session complete ✓");
+                    refresh();
+                    showView("spelling");
+                  } else {
+                    renderSpelling();
+                  }
+                } catch (e) {
+                  console.error("Skip failed", e);
+                }
+              };
+
+              tools.appendChild(btn);
+            }
+
+            function playCoreAt(speed) {
+              try {
+                cancelEverything();
+                const L = state.content;
+                const dlg = L.dialogue_extended || L.dialogue || [];
+                const core = dlg.map(x => x[1]).filter(Boolean);
+                const pause = speed >= 3 ? 120 : speed >= 2 ? 180 : speed >= 1.5 ? 260 : 430;
+                const wave = $("#wave");
+                wave?.classList.add("playing");
+
+                sequence(core, pause, speed, () => wave?.classList.remove("playing"));
+              } catch (e) {
+                console.error("High-speed listening failed", e);
+              }
+            }
+
+            function enhanceListening() {
+              const stopBtn = $("#lstop");
+              const one = $("#lf");
+              if (!stopBtn || !one) return;
+
+              const toolbar = stopBtn.parentElement;
+              if (!$("#l15")) {
+                [
+                  ["l15", "▶ 1.5×", 1.5],
+                  ["l2",  "▶ 2×",   2],
+                  ["l3",  "▶ 3×",   3],
+                ].forEach(([id, label, speed]) => {
+                  const b = document.createElement("button");
+                  b.className = "btn glass";
+                  b.id = id;
+                  b.textContent = label;
+                  b.onclick = () => playCoreAt(speed);
+                  toolbar.insertBefore(b, stopBtn);
+                });
+              }
+
+              // Ensure every new Start hard-cancels any previous sequence first.
+              ["lb","ln","lf","listenCore","listenShadow","listenMarathon","vstream","sstream"].forEach(id => {
+                const b = $("#" + id);
+                if (!b || b.dataset.v23CancelBound) return;
+                b.dataset.v23CancelBound = "1";
+                b.addEventListener("click", cancelEverything, {capture:true});
+              });
+
+              if (!$("#singleStreamNotice")) {
+                const firstStep = $(".shadow-step");
+                if (firstStep) {
+                  const notice = document.createElement("div");
+                  notice.className = "shadow-step";
+                  notice.id = "singleStreamNotice";
+                  notice.style.borderColor = "#7ac7a8";
+                  notice.style.background = "rgba(36,115,90,.18)";
+                  notice.innerHTML = "<b>✓ Single-Stream Audio</b> — নতুন Start দিলে আগের Shadowing সম্পূর্ণ cancel হবে।";
+                  firstStep.parentElement.insertBefore(notice, firstStep);
+                }
+              }
+            }
+
+            function enhanceRoadmap() {
+              // Study Flow's 3rd card becomes a direct Listening shortcut.
+              const flowCards = document.querySelectorAll("#view-overview .grid-3 .card");
+              if (flowCards.length >= 3) {
+                const card = flowCards[2];
+                if (!card.dataset.v23Listening) {
+                  card.dataset.v23Listening = "1";
+                  card.style.cursor = "pointer";
+                  card.setAttribute("role", "button");
+                  card.setAttribute("tabindex", "0");
+                  const h = card.querySelector("h3");
+                  if (h) h.textContent = "Shadow → Listening";
+                  const p = card.querySelector("p");
+                  if (p) p.textContent = "ক্লিক করে সরাসরি Listening + Shadowing Lab খুলুন →";
+                  card.onclick = () => showView("listening");
+                  card.onkeydown = e => {
+                    if (e.key === "Enter" || e.key === " ") showView("listening");
+                  };
+                }
+              }
+
+              // Lesson Roadmap: choose lesson, then open its Listening page.
+              document.querySelectorAll("[data-jump]").forEach(b => {
+                if (b.dataset.v23ListenJump) return;
+                b.dataset.v23ListenJump = "1";
+                b.onclick = () => {
+                  setLesson(Number(b.dataset.jump));
+                  showView("listening");
+                };
+              });
+            }
+
+            function enhanceAll() {
+              enhanceSpelling();
+              enhanceListening();
+              enhanceRoadmap();
+            }
+
+            const observer = new MutationObserver(() => enhanceAll());
+            observer.observe(document.documentElement, {subtree:true, childList:true});
+
+            setTimeout(enhanceAll, 0);
+
+            // Safety: clicking STOP always invalidates all sequences.
+            document.addEventListener("click", e => {
+              if (e.target?.id === "lstop" || e.target?.id === "cstop" || e.target?.id === "rstop") {
+                cancelEverything();
+              }
+            }, true);
+
+            console.info("N5 v23 fixes loaded: single shadow stream, 3× listening, recall hidden, spelling skip, roadmap listening.");
+          })();
+          JAVASCRIPT
+
       - name: Assemble GitHub Pages site
         shell: bash
         run: |
@@ -610,6 +856,7 @@ jobs:
 
           cp _build/audio-manifest.js _site/audio-manifest.js
           cp _build/instant-audio.js _site/instant-audio.js
+          cp _build/v23-fixes.js _site/v23-fixes.js
 
           # Copy only generated MP3 files — no neural model ships to the phone.
           cp _audio_cache/*.mp3 _site/audio/
@@ -624,14 +871,15 @@ jobs:
               injection = """
               <script src="./audio-manifest.js"></script>
               <script src="./instant-audio.js"></script>
+              <script src="./v23-fixes.js"></script>
               """
 
-              if "instant-audio.js" not in html:
+              if "v23-fixes.js" not in html:
                   html = html.replace("</body>", injection + "\n</body>")
 
               html = html.replace(
                   "GitHub Single File · Mobile First · Romaji→Kana",
-                  "GitHub Instant Natural Audio · Mobile First · Romaji→Kana"
+                  "GitHub Instant Audio v23 · Single Shadow · Recall Privacy · 3× Listening"
               )
 
               path.write_text(html, encoding="utf-8")
@@ -644,9 +892,14 @@ jobs:
           test -f _site/index.html
           test -f _site/audio-manifest.js
           test -f _site/instant-audio.js
+          test -f _site/v23-fixes.js
           test -d _site/audio
           test "$(find _site/audio -name '*.mp3' | wc -l)" -gt 1500
           grep -q "instant-audio.js" _site/index.html
+          grep -q "v23-fixes.js" _site/index.html
+          grep -q "Single-Stream Audio" _site/v23-fixes.js
+          grep -q "Skip →" _site/v23-fixes.js
+          grep -q "▶ 3×" _site/v23-fixes.js
           echo "MP3 clips: $(find _site/audio -name '*.mp3' | wc -l)"
           echo "Published site size:"
           du -sh _site
