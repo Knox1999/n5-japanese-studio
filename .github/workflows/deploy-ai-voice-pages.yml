@@ -1,4 +1,4 @@
-name: Deploy N5 Studio — True Single-Voice Shadowing Fix v24
+name: Deploy N5 Studio — Core Navigation + Mastery Scroll Fix v25
 
 on:
   push:
@@ -820,9 +820,9 @@ jobs:
                   if (h) h.textContent = "Listen → Vocabulary";
                   const p = card.querySelector("p");
                   if (p) p.textContent = "ক্লিক করে নির্বাচিত Lesson-এর Vocabulary খুলুন →";
-                  card.onclick = () => showView("vocabulary");
+                  card.onclick = () => showView("vocab");
                   card.onkeydown = e => {
-                    if (e.key === "Enter" || e.key === " ") showView("vocabulary");
+                    if (e.key === "Enter" || e.key === " ") showView("vocab");
                   };
                 }
               }
@@ -833,7 +833,7 @@ jobs:
                 b.dataset.v23ListenJump = "1";
                 b.onclick = () => {
                   setLesson(Number(b.dataset.jump));
-                  showView("vocabulary");
+                  showView("vocab");
                 };
               });
             }
@@ -933,6 +933,166 @@ jobs:
           })();
           JAVASCRIPT
 
+      - name: Create v25 navigation and scroll fixes
+        shell: bash
+        run: |
+          cat > _build/v25-fixes.js <<'JAVASCRIPT'
+          (() => {
+            "use strict";
+
+            const $ = (q, root=document) => root.querySelector(q);
+            const $$ = (q, root=document) => [...root.querySelectorAll(q)];
+
+            // ------------------------------------------------------------
+            // 1) LESSON ROADMAP: Lesson click MUST open that lesson's Vocab.
+            // ------------------------------------------------------------
+            function bindRoadmapToVocab() {
+              $$("[data-jump]").forEach(btn => {
+                if (btn.dataset.v25VocabBound === "1") return;
+                btn.dataset.v25VocabBound = "1";
+
+                // Capture handler wins before older handlers.
+                btn.addEventListener("click", (e) => {
+                  e.preventDefault();
+                  e.stopImmediatePropagation();
+
+                  const lesson = Number(btn.dataset.jump);
+                  if (!lesson) return;
+
+                  try { window.N5_V24_HARD_STOP?.(); } catch {}
+                  setLesson(lesson);
+                  showView("vocab");
+
+                  // Vocabulary should begin at the top for a newly selected lesson.
+                  requestAnimationFrame(() => {
+                    const view = document.querySelector("#view-vocab");
+                    if (view) view.scrollIntoView({block:"start"});
+                    else window.scrollTo({top:0, behavior:"auto"});
+                  });
+                }, true);
+              });
+
+              // Home Study Flow / "Listen" shortcut should also go to Vocabulary.
+              const flowCards = $$("#view-overview .grid-3 .card, #view-overview .grid-3 button.card");
+              if (flowCards.length >= 3) {
+                const card = flowCards[2];
+                if (card.dataset.v25VocabCard !== "1") {
+                  card.dataset.v25VocabCard = "1";
+                  card.style.cursor = "pointer";
+
+                  const h = $("h3", card);
+                  if (h) h.textContent = "Lesson Vocabulary";
+
+                  const p = $("p", card);
+                  if (p) p.textContent = "Lesson Roadmap থেকে lesson বেছে সরাসরি Vocabulary খুলুন →";
+
+                  card.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    try { window.N5_V24_HARD_STOP?.(); } catch {}
+                    showView("vocab");
+                  }, true);
+                }
+              }
+            }
+
+            // ----------------------------------------------------------------
+            // 2) MASTERY BUTTON: refresh data but KEEP exact reading position.
+            // ----------------------------------------------------------------
+            function bindMasteryWithoutJump() {
+              $$(".vocab-card .ma").forEach(btn => {
+                if (btn.dataset.v25MasteryBound === "1") return;
+                btn.dataset.v25MasteryBound = "1";
+
+                btn.addEventListener("click", (e) => {
+                  e.preventDefault();
+                  e.stopImmediatePropagation();
+
+                  const card = btn.closest(".vocab-card");
+                  if (!card) return;
+
+                  const id = Number(card.dataset.id);
+                  const v = state.vocab.find(x => x.id === id);
+                  if (!v) return;
+
+                  // Preserve the exact card's viewport offset, not merely page scrollY.
+                  // This stays stable even if card height/style changes after refresh.
+                  const beforeTop = card.getBoundingClientRect().top;
+
+                  state.progress[v.id] = !state.progress[v.id];
+                  saveProgress();
+                  refresh();
+                  showView("vocab");
+
+                  requestAnimationFrame(() => {
+                    const newCard = document.querySelector(`.vocab-card[data-id="${id}"]`);
+                    if (newCard) {
+                      const afterTop = newCard.getBoundingClientRect().top;
+                      window.scrollBy({
+                        top: afterTop - beforeTop,
+                        left: 0,
+                        behavior: "auto"
+                      });
+
+                      newCard.classList.add("v25-mastery-flash");
+                      setTimeout(() => newCard.classList.remove("v25-mastery-flash"), 550);
+                    }
+                  });
+
+                  toast(state.progress[v.id] ? "Mastered ✓" : "Learning mode");
+                }, true);
+              });
+            }
+
+            // ------------------------------------------------------------
+            // 3) SHADOWING SAFETY: one live source + one live queue only.
+            // ------------------------------------------------------------
+            let shadowClickLock = false;
+
+            function bindShadowSafety() {
+              const startIds = [
+                "listenShadow","listenMarathon","listenCore",
+                "vstream","sstream","lb","ln","lf","l15","l2","l3",
+                "cp","cs","csh","rp","rs","rshadow","r2"
+              ];
+
+              startIds.forEach(id => {
+                const btn = document.getElementById(id);
+                if (!btn || btn.dataset.v25ShadowBound === "1") return;
+                btn.dataset.v25ShadowBound = "1";
+
+                btn.addEventListener("click", () => {
+                  // Hard-kill every prior queue/source before this handler chain starts.
+                  try { window.speechSynthesis?.cancel?.(); } catch {}
+                  try { window.N5_V24_HARD_STOP?.(); } catch {}
+                }, true);
+              });
+            }
+
+            function enhance() {
+              bindRoadmapToVocab();
+              bindMasteryWithoutJump();
+              bindShadowSafety();
+            }
+
+            const style = document.createElement("style");
+            style.textContent = `
+              .v25-mastery-flash{
+                outline:3px solid rgba(36,115,90,.28);
+                box-shadow:0 0 0 6px rgba(36,115,90,.08),0 10px 28px rgba(16,39,58,.08)!important;
+              }
+            `;
+            document.head.appendChild(style);
+
+            const observer = new MutationObserver(enhance);
+            observer.observe(document.documentElement, {subtree:true, childList:true});
+
+            setTimeout(enhance, 0);
+
+            console.info("N5 v25: roadmap→vocab + mastery scroll retention + shadow hard-stop loaded.");
+          })();
+          JAVASCRIPT
+
       - name: Assemble GitHub Pages site
         shell: bash
         run: |
@@ -946,6 +1106,7 @@ jobs:
           cp _build/instant-audio.js _site/instant-audio.js
           cp _build/v23-fixes.js _site/v23-fixes.js
           cp _build/v24-core-fix.js _site/v24-core-fix.js
+          cp _build/v25-fixes.js _site/v25-fixes.js
 
           # Copy only generated MP3 files — no neural model ships to the phone.
           cp _audio_cache/*.mp3 _site/audio/
@@ -962,14 +1123,15 @@ jobs:
               <script src="./instant-audio.js"></script>
               <script src="./v23-fixes.js"></script>
               <script src="./v24-core-fix.js"></script>
+              <script src="./v25-fixes.js"></script>
               """
 
-              if "v24-core-fix.js" not in html:
+              if "v25-fixes.js" not in html:
                   html = html.replace("</body>", injection + "\n</body>")
 
               html = html.replace(
                   "GitHub Single File · Mobile First · Romaji→Kana",
-                  "GitHub Instant Audio v24 · TRUE Single Voice · Roadmap→Vocabulary"
+                  "GitHub Instant Audio v25 · Roadmap→Vocab · No Mastery Jump · Single Voice"
               )
 
               path.write_text(html, encoding="utf-8")
@@ -984,14 +1146,19 @@ jobs:
           test -f _site/instant-audio.js
           test -f _site/v23-fixes.js
           test -f _site/v24-core-fix.js
+          test -f _site/v25-fixes.js
           test -d _site/audio
           test "$(find _site/audio -name '*.mp3' | wc -l)" -gt 1500
           grep -q "instant-audio.js" _site/index.html
           grep -q "v23-fixes.js" _site/index.html
           grep -q "v24-core-fix.js" _site/index.html
+          grep -q "v25-fixes.js" _site/index.html
+          grep -q 'showView("vocab")' _site/v25-fixes.js
+          grep -q "beforeTop" _site/v25-fixes.js
+          grep -q "stopImmediatePropagation" _site/v25-fixes.js
           grep -q "await new Promise((resolve)" _site/instant-audio.js
           grep -q "TRUE Single-Voice Queue" _site/v24-core-fix.js
-          grep -q 'showView("vocabulary")' _site/v23-fixes.js
+          grep -q 'showView("vocab")' _site/v23-fixes.js
           grep -q "Single-Stream Audio" _site/v23-fixes.js
           grep -q "Skip →" _site/v23-fixes.js
           grep -q "▶ 3×" _site/v23-fixes.js
