@@ -1,4 +1,4 @@
-name: Deploy N5 Studio — Lean Learning Analytics v30
+name: Deploy N5 Studio — Mobile SRS Random Recall v32
 
 on:
   push:
@@ -35,9 +35,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: _audio_cache
-          key: n5-kokoro-jf-alpha-v22-${{ hashFiles('index.html') }}
+          key: n5-kokoro-jf-alpha-exp-v31-${{ hashFiles('index.html') }}
           restore-keys: |
-            n5-kokoro-jf-alpha-v22-
+            n5-kokoro-jf-alpha-exp-v31-
 
       - name: Restore Hugging Face model cache
         uses: actions/cache@v4
@@ -185,12 +185,10 @@ jobs:
         shell: bash
         run: |
           cat > _build/generate_audio.py <<'PYTHON'
-          import hashlib
           import json
           import os
           import subprocess
           import tempfile
-          import time
           from pathlib import Path
 
           import numpy as np
@@ -199,14 +197,13 @@ jobs:
           from kokoro import KPipeline
 
           VOICE = "jf_alpha"
-          SPEED = 0.94
+          BASE_SPEED = 0.94
           SAMPLE_RATE = 24000
 
           rows = json.loads(Path("_build/audio_texts.json").read_text(encoding="utf-8"))
           out_dir = Path("_audio_cache")
           out_dir.mkdir(parents=True, exist_ok=True)
 
-          # Let PyTorch use the runner CPUs efficiently.
           cpu_count = max(1, os.cpu_count() or 2)
           torch.set_num_threads(cpu_count)
           print("CPU threads:", cpu_count, flush=True)
@@ -219,6 +216,19 @@ jobs:
           reused = 0
           failed = []
 
+          def expressive_speed(text: str) -> float:
+              text = str(text or "")
+              speed = BASE_SPEED
+              if "？" in text or "?" in text:
+                  speed -= 0.04
+              if "！" in text or "!" in text:
+                  speed += 0.03
+              if "…" in text:
+                  speed -= 0.03
+              if any(x in text for x in ["すみません", "おねがいします", "ありがとうございます", "ありがとうございました"]):
+                  speed -= 0.02
+              return max(0.84, min(1.04, speed))
+
           for idx, row in enumerate(rows, 1):
               key = row["hash"]
               text = row["text"]
@@ -230,11 +240,8 @@ jobs:
 
               try:
                   parts = []
-                  for _, _, audio in pipeline(
-                      text,
-                      voice=VOICE,
-                      speed=SPEED,
-                  ):
+                  speed = expressive_speed(text)
+                  for _, _, audio in pipeline(text, voice=VOICE, speed=speed):
                       if hasattr(audio, "detach"):
                           audio = audio.detach().cpu().numpy()
                       audio = np.asarray(audio, dtype=np.float32).reshape(-1)
@@ -244,12 +251,10 @@ jobs:
                   if not parts:
                       raise RuntimeError("Kokoro returned no audio")
 
-                  # Kokoro may chunk long readings. Add a small natural pause
-                  # between model chunks, not between normal shadowing lines.
                   if len(parts) == 1:
                       merged = parts[0]
                   else:
-                      pause = np.zeros(int(SAMPLE_RATE * 0.12), dtype=np.float32)
+                      pause = np.zeros(int(SAMPLE_RATE * 0.14), dtype=np.float32)
                       joined = []
                       for j, part in enumerate(parts):
                           if j:
@@ -279,18 +284,10 @@ jobs:
                   print(f"\nFAILED {key}: {text}\n{exc}", flush=True)
 
               if idx % 25 == 0 or idx == len(rows):
-                  print(
-                      f"[{idx}/{len(rows)}] generated={generated} reused={reused} failed={len(failed)}",
-                      flush=True,
-                  )
+                  print(f"[{idx}/{len(rows)}] generated={generated} reused={reused} failed={len(failed)}", flush=True)
 
           if failed:
-              Path("_build/audio_failures.json").write_text(
-                  json.dumps(failed, ensure_ascii=False, indent=2),
-                  encoding="utf-8",
-              )
-              # A tiny number of unusual strings should not destroy the whole
-              # site; runtime will clearly report missing audio for those.
+              Path("_build/audio_failures.json").write_text(json.dumps(failed, ensure_ascii=False, indent=2), encoding="utf-8")
               if len(failed) > 20:
                   raise SystemExit(f"Too many TTS failures: {len(failed)}")
 
@@ -315,8 +312,8 @@ jobs:
           }
 
           manifest = {
-              "version": "30",
-              "voice": "jf_alpha",
+              "version": "32",
+              "voice": "jf_alpha_expressive",
               "speed": 0.94,
               "count": len(available),
               "hashes": sorted(available),
@@ -344,61 +341,86 @@ jobs:
 
           python _build/build_manifest.py
 
-      - name: Build clean v26 browser app
+      - name: Build expressive v32 browser app
         shell: bash
         run: |
-          cat > _build/instant-audio-v30.js <<'JAVASCRIPT'
+          cat > _build/instant-audio-v32.js <<'JAVASCRIPT'
           (() => {
             "use strict";
-
+          
             const manifest = window.N5_STATIC_AUDIO_MANIFEST || { hashes: [] };
             const available = new Set(manifest.hashes || []);
             const base = new URL("./audio/", document.baseURI);
-
+            const BASE_RENDER_SPEED = 0.94;
+            let mobilePrimed = false;
+          
             let audioCtx = null;
             let currentSource = null;
             let playToken = 0;
+            let rafId = 0;
             const decoded = new Map();
             const MAX_MEMORY_CACHE = 56;
-
+          
             const $ = (q) => document.querySelector(q);
-
+          
             function normalizeText(text) {
               return String(text || "").normalize("NFC").replace(/\s+/g, " ").trim();
             }
-
+          
             async function sha1(text) {
               const bytes = new TextEncoder().encode(normalizeText(text));
               const digest = await crypto.subtle.digest("SHA-1", bytes);
               return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
             }
-
+          
             function getContext() {
               if (!audioCtx) {
                 const Ctx = window.AudioContext || window.webkitAudioContext;
                 if (!Ctx) throw new Error("Web Audio API not supported");
-                audioCtx = new Ctx({ latencyHint: "interactive" });
+                try {
+                  audioCtx = new Ctx({ latencyHint: "interactive" });
+                } catch {
+                  audioCtx = new Ctx();
+                }
               }
               return audioCtx;
             }
-
+          
             async function unlock() {
               const ctx = getContext();
               if (ctx.state !== "running") await ctx.resume();
               const b = ctx.createBuffer(1, 1, ctx.sampleRate);
               const s = ctx.createBufferSource();
-              s.buffer = b; s.connect(ctx.destination); s.start();
+              s.buffer = b; s.connect(ctx.destination); s.start(0);
+              mobilePrimed = true;
+              return true;
             }
-
+          
+            function primeFromGesture() {
+              if (mobilePrimed && audioCtx?.state === "running") return;
+              unlock().catch(() => {});
+            }
+          
+            document.addEventListener("pointerdown", primeFromGesture, { capture: true, passive: true, once: false });
+            document.addEventListener("touchstart", primeFromGesture, { capture: true, passive: true, once: false });
+          
             function setStatus(text, cls = "") {
               const el = $("#instantVoiceStatus");
               if (!el) return;
               el.textContent = text;
               el.className = "voice-status " + cls;
             }
-
+          
+            function cancelFrame() {
+              if (rafId) {
+                try { cancelAnimationFrame(rafId); } catch {}
+                rafId = 0;
+              }
+            }
+          
             function stop() {
               playToken += 1;
+              cancelFrame();
               try { speechSynthesis.cancel(); } catch {}
               try {
                 if (typeof state !== "undefined") {
@@ -412,7 +434,7 @@ jobs:
                 try { s.disconnect(); } catch {}
               }
             }
-
+          
             async function getBuffer(hash) {
               if (decoded.has(hash)) return decoded.get(hash);
               const ctx = getContext();
@@ -424,15 +446,16 @@ jobs:
               decoded.set(hash, buffer);
               return buffer;
             }
-
-            async function speakInstant(text, rate = null, onend = null, interrupt = true) {
+          
+            async function playDetailed(text, opts = {}) {
               text = normalizeText(text);
+              const { rate = null, onstart = null, onprogress = null, onend = null, interrupt = true } = opts;
               if (!text) { try { onend?.(); } catch {} return; }
-
+          
               if (interrupt) stop();
               const token = playToken;
               try { await unlock(); } catch {}
-
+          
               const hash = await sha1(text);
               if (!available.has(hash)) {
                 console.warn("No pre-generated audio for:", text);
@@ -441,41 +464,57 @@ jobs:
                     detail: { message: "Pre-generated audio missing", text }
                   }));
                 } catch {}
-                setStatus("এই rare line-এর pre-generated audio পাওয়া যায়নি।", "warn");
+                setStatus("এই line-এর audio পাওয়া যায়নি।", "warn");
                 try { onend?.(); } catch {}
                 return;
               }
-
+          
               try {
                 const buffer = await getBuffer(hash);
                 if (token !== playToken) return;
-
+          
                 const ctx = getContext();
                 if (ctx.state !== "running") await ctx.resume();
                 if (token !== playToken) return;
-
+          
                 const node = ctx.createBufferSource();
                 currentSource = node;
                 node.buffer = buffer;
-                const requested = Number(rate ?? $("#rate")?.value ?? 0.94);
-                node.playbackRate.value = Math.max(0.50, Math.min(3.20, requested / 0.94));
+                const requested = Number(rate ?? $("#rate")?.value ?? BASE_RENDER_SPEED);
+                const effective = Math.max(0.60, Math.min(2.15, requested / BASE_RENDER_SPEED));
+                const duration = buffer.duration / effective;
+                node.playbackRate.value = effective;
                 node.connect(ctx.destination);
-
-                // Critical: resolve only after THIS clip actually ends.
+          
                 await new Promise((resolve) => {
                   let settled = false;
+                  let startedAt = 0;
+          
                   const finish = () => {
                     if (settled) return;
                     settled = true;
+                    cancelFrame();
                     if (currentSource === node) currentSource = null;
                     try { node.disconnect(); } catch {}
-                    try { onend?.(); } catch {}
+                    try { onend?.({ text, duration, playbackRate: requested }); } catch {}
                     resolve();
                   };
+          
+                  const tick = () => {
+                    if (settled || token !== playToken || currentSource !== node) return;
+                    const elapsed = Math.max(0, ctx.currentTime - startedAt);
+                    const progress = duration > 0 ? Math.min(1, elapsed / duration) : 1;
+                    try { onprogress?.({ progress, elapsed, duration, text, playbackRate: requested }); } catch {}
+                    if (progress < 1) rafId = requestAnimationFrame(tick);
+                  };
+          
                   node.onended = finish;
                   try {
                     node.start(0);
-                    setStatus("✓ Instant Natural Voice · single-stream", "ready");
+                    startedAt = ctx.currentTime;
+                    try { onstart?.({ text, duration, playbackRate: requested }); } catch {}
+                    tick();
+                    setStatus("✓ Instant Natural Voice · expressive single-stream", "ready");
                   } catch (err) {
                     console.error("Audio source start failed:", err);
                     try {
@@ -494,10 +533,14 @@ jobs:
                   }));
                 } catch {}
                 setStatus("Audio play হয়নি। Reload করে Voice Test দিন।", "warn");
-                try { onend?.(); } catch {}
+                try { onend?.({ text, error: err }); } catch {}
               }
             }
-
+          
+            async function speakInstant(text, rate = null, onend = null, interrupt = true) {
+              return playDetailed(text, { rate, onend, interrupt });
+            }
+          
             async function prefetchLesson(lesson) {
               lesson = Number(lesson || 1);
               if (lesson < 1 || lesson > 25) return;
@@ -519,47 +562,46 @@ jobs:
                 console.warn("Lesson prefetch skipped:", err);
               }
             }
-
+          
             function installUI() {
               const panel = document.querySelector(".voice-panel");
               if (!panel) return;
               try { speechSynthesis.cancel(); speechSynthesis.onvoiceschanged = null; } catch {}
               panel.innerHTML = `
                 <div class="eyebrow">NATURAL JAPANESE AUDIO</div>
-                <div class="voice-status ready" id="instantVoiceStatus">✓ Pre-generated neural audio · ready</div>
-                <div class="instant-voice-note">No live AI generation. Lesson audio is cached in the background.</div>
-                <div class="rate-row"><span>Speed</span><input type="range" id="rate" min=".60" max="3.00" step=".05" value=".94"><b id="rateValue">0.94×</b></div>
+                <div class="voice-status ready" id="instantVoiceStatus">✓ Expressive pre-generated audio · ready</div>
+                <div class="instant-voice-note">No live AI wait. Dialogue lines play in a softer, more natural rhythm.</div>
+                <div class="rate-row"><span>Speed</span><input type="range" id="rate" min=".70" max="2.00" step=".05" value=".95"><b id="rateValue">0.95×</b></div>
                 <button class="btn red" id="voiceTestBtn" style="width:100%;margin-top:8px">▶ Voice Test</button>`;
-
+          
               const rate = $("#rate"), out = $("#rateValue");
               rate?.addEventListener("input", () => { if (out) out.textContent = `${Number(rate.value).toFixed(2)}×`; });
-              $("#voiceTestBtn")?.addEventListener("click", () => speakInstant("こんにちは。きょうも いっしょに にほんごを れんしゅうしましょう。", .94));
+              $("#voiceTestBtn")?.addEventListener("click", () => speakInstant("こんにちは。きょうも いっしょに にほんごを れんしゅうしましょう。", .95));
             }
-
+          
             installUI();
             window.speak = speakInstant;
             window.stopSpeech = stop;
-            window.N5_INSTANT_AUDIO = { speak: speakInstant, stop, prefetchLesson, manifest };
-
+            window.N5_INSTANT_AUDIO = { speak: speakInstant, stop, prefetchLesson, manifest, playDetailed, unlock };
+          
             setTimeout(() => prefetchLesson($("#lessonSelect")?.value || 1), 1200);
-            console.info(`N5 Clean Instant Audio v30: ${available.size} clips`);
+            console.info(`N5 Expressive Instant Audio v32: ${available.size} clips`);
           })();
-
           JAVASCRIPT
 
-          cat > _build/app-clean-v30.js <<'JAVASCRIPT'
+          cat > _build/app-clean-v32.js <<'JAVASCRIPT'
           (() => {
             "use strict";
-
+          
             // Remove legacy PWA workers/caches from older GitHub Pages editions.
             try {
               if ("serviceWorker" in navigator) {
                 navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
               }
             } catch {}
-
-            document.documentElement.dataset.build = "clean-v30";
-
+          
+            document.documentElement.dataset.build = "clean-v32";
+          
             // ---------- Clean view navigation ----------
             showView = function(name, opts = {}) {
               state.view = name;
@@ -570,7 +612,7 @@ jobs:
               if (window.matchMedia("(max-width:820px)").matches) closeMobileMenu();
               if (!opts.keepScroll) window.scrollTo({ top: 0, behavior: opts.instant ? "auto" : "smooth" });
             };
-
+          
             // Select a lesson and optionally open its target view.
             setLesson = function(n, targetView = "overview") {
               state.lesson = n;
@@ -584,7 +626,7 @@ jobs:
               showView(targetView, { instant: true });
               try { window.N5_INSTANT_AUDIO?.prefetchLesson?.(n); } catch {}
             };
-
+          
             // ---------- Overview / Roadmap ----------
             renderOverview = function() {
               const L = state.content, rows = state.vocab;
@@ -592,7 +634,7 @@ jobs:
               const pct = rows.length ? Math.round(done / rows.length * 100) : 0;
               const avg = state.history.length ? Math.round(state.history.reduce((a, x) => a + x.score, 0) / state.history.length) : 0;
               const srs = offlineSrsSummary(state.lesson);
-
+          
               $("#view-overview").innerHTML = `
                 <div class="hero"><div class="eyebrow" style="color:#ffd879">${lessonLabel(state.lesson)} · NATURAL STUDY</div><h1>${esc(L.title)}</h1><p>${esc(L.scenario)}। Vocabulary → Recall → Use → Review → Listening flow-এ পড়ুন।</p><div class="pills"><span class="pill">Vocabulary</span><span class="pill">Active Recall</span><span class="pill">Reading + Listening</span><span class="pill">Adaptive Review</span></div></div>
                 <div class="stats"><div class="stat"><strong>${rows.length}</strong><span>Vocabulary</span></div><div class="stat"><strong>${done}</strong><span>Mastered</span></div><div class="stat"><strong>${pct}%</strong><span>Progress</span><div class="progress"><i style="width:${pct}%"></i></div></div><div class="stat"><strong>${avg}%</strong><span>Mock Average</span></div></div>
@@ -601,17 +643,17 @@ jobs:
                 <div class="grid-3 clean-flow"><div class="card"><div class="eyebrow">01</div><h3>Learn + Spell</h3><p>Vocabulary বুঝুন, তারপর kana লিখে recall করুন।</p></div><div class="card"><div class="eyebrow">02</div><h3>Read + Use</h3><p>Conversation ও reading দিয়ে context তৈরি করুন।</p></div><div class="card"><div class="eyebrow">03</div><h3>Listen + Review</h3><p>Single-stream shadowing শেষে SRS ও mock দিন।</p></div></div>
                 <div class="section-head roadmap-head"><div><h2>Lesson Vocabulary Roadmap</h2><p>যে Lesson-এ click করবেন, সরাসরি সেই Lesson-এর Vocabulary খুলবে।</p></div></div>
                 <div class="lesson-grid">${lessonSummary().map(x => `<button class="lesson-tile ${x.lesson === state.lesson ? "current" : ""}" data-jump="${x.lesson}"><b>L${String(x.lesson).padStart(2, "0")} · ${x.count} words</b><span>${esc(x.title)}</span></button>`).join("")}</div>`;
-
+          
               $$("[data-jump]").forEach(b => b.onclick = () => setLesson(Number(b.dataset.jump), "vocab"));
               $("#quickSrs").onclick = () => startSrsSession(8);
               $("#quickMock").onclick = () => { showView("mock"); startMock("lesson", state.lesson); };
             };
-
+          
             // ---------- Clean vocabulary + no scroll jump on mastery ----------
             vocabCard = function(v) {
               return `<article class="vocab-card ${v.mastered ? "mastered-card" : ""}" data-id="${v.id}"><div><div class="word-line"><div class="jp-word">${esc(v.japanese)}</div>${v.kanji ? `<span class="kanji-inline">${esc(v.kanji)}</span>` : ""}</div><div class="meaning meaning-sensitive">${esc(v.bangla_meaning)}</div><div class="english meaning-sensitive">${esc(v.english_meaning)}</div><div class="pron meaning-sensitive">উচ্চারণ: ${esc(v.pronunciation_bn)}</div><span class="type-chip">${esc(v.word_type)}</span></div><div><div class="sentence-label">NATURAL SENTENCE</div><div class="example">${esc(v.example.jp)}</div><div class="translation meaning-sensitive">${esc(v.example.bn)}</div>${v.example.grammar_zone ? `<div class="grammar-focus">${esc(v.example.grammar_zone)}</div>` : ""}<div class="meta">Word #${v.word_no}</div></div><div class="actions"><button class="icon wa" title="Word audio">🔊</button><button class="icon sa" title="Sentence audio">🎧</button><button class="icon ma ${v.mastered ? "done" : ""}" title="Toggle mastered">${v.mastered ? "✓" : "○"}</button><button class="icon mo" title="Details">↗</button></div></article>`;
             };
-
+          
             renderVocab = function(filter = "") {
               const q = filter.toLowerCase().trim();
               const rows = state.vocab.filter(v => `${v.japanese} ${v.pronunciation_bn} ${v.kanji} ${v.english_meaning} ${v.bangla_meaning}`.toLowerCase().includes(q));
@@ -619,7 +661,7 @@ jobs:
               $("#vocabSearch").value = filter;
               $("#vocabSearch").oninput = e => renderVocab(e.target.value);
               $("#playWords").onclick = () => sequence(state.vocab.map(v => v.tts_text), 380, .82);
-
+          
               $$(".vocab-card").forEach(card => {
                 const v = state.vocab.find(x => x.id === Number(card.dataset.id));
                 $(".wa", card).onclick = () => speak(v.tts_text);
@@ -640,7 +682,7 @@ jobs:
               });
               applyModes();
             };
-
+          
             // ---------- Spelling skip ----------
             const originalSpellingCardHTML = spellingCardHTML;
             spellingCardHTML = function(card) {
@@ -649,7 +691,7 @@ jobs:
                 '<button class="btn soft" id="spellShow">👁 Show</button><button class="btn danger" id="skipSpell">Skip →</button></div>'
               );
             };
-
+          
             bindSpellingCard = function(card) {
               $("#endSpell").onclick = () => { state.spellingSession = null; state.spellingIndex = 0; state.spellingResult = null; renderSpelling(); };
               activateJapaneseInputs($("#view-spelling"));
@@ -678,46 +720,364 @@ jobs:
               const r = $("#retrySpell"); if (r) r.onclick = () => { state.spellingResult = null; state.spellingHint = true; renderSpelling(); };
               const n = $("#nextSpell"); if (n) n.onclick = () => next();
             };
-
+          
+            // ---------- True randomized lesson SRS ----------
+            function srsRandom01() {
+              try {
+                const a = new Uint32Array(1);
+                crypto.getRandomValues(a);
+                return a[0] / 4294967296;
+              } catch { return Math.random(); }
+            }
+          
+            function srsShuffle(rows) {
+              const a = [...rows];
+              for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(srsRandom01() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+              }
+              return a;
+            }
+          
+            offlineSrsSession = function(lesson, newLimit = 8, limit = 20) {
+              const rows = lessonRows(lesson), now = nowMs(), due = [], fresh = [], future = [];
+              rows.forEach(v => {
+                const st = state.srs[v.id];
+                if (!st) fresh.push({ ...v, srs: srsDefault() });
+                else {
+                  const card = { ...v, srs: { ...st } };
+                  if (st.due_at && new Date(st.due_at).getTime() <= now) due.push(card);
+                  else future.push(card);
+                }
+              });
+          
+              // Due cards are kept in the session, but their presentation order is random.
+              const dueRandom = srsShuffle(due).slice(0, limit);
+              const freshRandom = srsShuffle(fresh);
+              const futureRandom = srsShuffle(future);
+              const cards = [...dueRandom];
+              const slots = Math.max(0, limit - cards.length);
+              cards.push(...freshRandom.slice(0, Math.min(slots, newLimit)));
+              if (newLimit > 0 && cards.length < limit) {
+                cards.push(...futureRandom.slice(0, limit - cards.length).map(x => ({ ...x, preview: true })));
+              }
+              return srsShuffle(cards);
+            };
+          
+            startSrsSession = function(newLimit = 8) {
+              state.srsSession = offlineSrsSession(state.lesson, newLimit, 20);
+              if (!state.srsSession.length) {
+                state.srsSession = null;
+                toast(newLimit === 0 ? 'এখন কোনো Due card নেই।' : 'Session empty।');
+                renderSRS();
+                return;
+              }
+              state.srsIndex = 0;
+              state.srsRevealed = false;
+              renderSRS();
+              showView('srs');
+              toast(`Lesson ${String(state.lesson).padStart(2,'0')} · Random recall ready`);
+            };
+          
             // ---------- SRS recall privacy ----------
             srsPrompt = function(card) {
               const phase = card.srs?.phase || "learn";
               if (phase === "use") return { title: "USE", prompt: `「${card.japanese}」 ব্যবহার করে একটি ছোট Japanese sentence লিখুন বা বলুন।`, typed: true, use: true };
               return { title: phase === "review" ? "REVIEW" : phase === "learn" ? "LEARN / RECALL" : "RECALL", prompt: `「${card.japanese}」 দেখে অর্থ ও উচ্চারণ মনে করুন। Natural sentence clue হিসেবে থাকবে। তারপর Reveal করুন।` };
             };
-
+          
             offlineSrsCard = function(card) {
               const phase = card.srs?.phase || "learn", p = srsPrompt(card), r = state.srsRevealed;
-              return `<div class="srs-study-card"><div class="srs-card-top"><div><span class="srs-phase phase-${phase}">${p.title}</span><span class="srs-due">${card.preview ? "Preview · " : ""}${dueText(card.srs?.due_at)}</span></div><div class="srs-counter">${state.srsIndex + 1}/${state.srsSession.length}</div></div><div class="srs-prompt">${esc(p.prompt)}</div>
-                <div class="srs-learn-box"><div class="jp-word">${esc(card.japanese)}</div><div class="example" style="margin-top:12px">${esc(card.example.jp)}</div><button class="btn soft" id="${phase === "learn" ? "sla" : "sra"}" style="margin-top:10px">🔊 Japanese Voice</button></div>
+              const total = Math.max(1, state.srsSession?.length || 1);
+              const pos = Math.min(total, state.srsIndex + 1);
+              const pct = Math.round((pos / total) * 100);
+              return `<div class="srs-v32-card">
+                <div class="srs-v32-top">
+                  <div><span class="srs-phase phase-${phase}">${p.title}</span><span class="srs-random-chip">⤨ Random lesson recall</span></div>
+                  <b class="srs-v32-count">${pos}/${total}</b>
+                </div>
+                <div class="srs-v32-progress"><i style="width:${pct}%"></i></div>
+                <div class="srs-v32-prompt">${esc(p.prompt)}</div>
+          
+                <div class="srs-v32-study">
+                  <div class="srs-v32-word">${esc(card.japanese)}</div>
+                  <div class="srs-v32-sentence">${esc(card.example.jp)}</div>
+                  <div class="srs-v32-audio">
+                    <button class="srs-audio-btn" id="srsWordVoice">🔊 <span>Word</span></button>
+                    <button class="srs-audio-btn" id="srsSentenceVoice">🎧 <span>Sentence</span></button>
+                  </div>
+                  <div class="srs-mobile-audio-note" id="srsAudioStatus">Tap once to hear instant Japanese audio</div>
+                </div>
+          
                 ${p.typed ? `<div class="srs-answer-row"><input id="srsAnswer" class="search-input" lang="ja" data-jp-input="1" placeholder="${p.use ? "নিজের Japanese sentence লিখুন…" : "Japanese answer লিখুন…"}"><button class="btn soft" id="micAnswer">🎙 Speak</button></div>` : ""}
-                ${!r ? `<button class="btn primary" id="revealSrs">Reveal বাংলা অর্থ + উচ্চারণ</button>` : ""}
-                ${r ? `<div class="srs-reveal"><div class="eyebrow">ANSWER</div><div class="jp-word">${esc(card.japanese)}</div><div class="meaning">${esc(card.bangla_meaning)}</div><div class="pron">উচ্চারণ: ${esc(card.pronunciation_bn)}</div><div class="example">${esc(card.example.jp)}</div><div class="translation">${esc(card.example.bn)}</div></div>` : ""}
-                ${r ? `<div class="srs-rating"><button data-rate="again" class="rate-again">Again<small>10 min</small></button><button data-rate="hard" class="rate-hard">Hard<small>shorter</small></button><button data-rate="good" class="rate-good">Good<small>normal</small></button><button data-rate="easy" class="rate-easy">Easy<small>longer</small></button></div>` : ""}</div>`;
+          
+                ${!r ? `<button class="srs-v32-reveal" id="revealSrs">Reveal বাংলা অর্থ + উচ্চারণ</button>` : ""}
+          
+                ${r ? `<div class="srs-v32-reveal-box">
+                  <div class="eyebrow">ANSWER</div>
+                  <div class="srs-answer-meaning">${esc(card.bangla_meaning)}</div>
+                  <div class="srs-answer-pron">উচ্চারণ: ${esc(card.pronunciation_bn)}</div>
+                  <div class="srs-answer-bn">${esc(card.example.bn)}</div>
+                </div>` : ""}
+          
+                ${r ? `<div class="srs-rating srs-v32-rating"><button data-rate="again" class="rate-again">Again<small>10 min</small></button><button data-rate="hard" class="rate-hard">Hard<small>shorter</small></button><button data-rate="good" class="rate-good">Good<small>normal</small></button><button data-rate="easy" class="rate-easy">Easy<small>longer</small></button></div>` : ""}
+              </div>`;
             };
-
-            // ---------- Listening up to 3×, strict serial sequence ----------
+          
+            bindSrs = function(card) {
+              activateJapaneseInputs($("#view-srs"));
+              $("#endSrs").onclick = () => { state.srsSession = null; state.srsIndex = 0; renderSRS(); };
+          
+              const prime = () => { try { window.N5_INSTANT_AUDIO?.unlock?.(); } catch {} };
+              const setAudioStatus = (msg) => { const el = $("#srsAudioStatus"); if (el) el.textContent = msg; };
+              const playWord = async () => {
+                prime();
+                setAudioStatus('Playing word…');
+                await window.N5_INSTANT_AUDIO.playDetailed(card.tts_text || card.japanese, { rate: .92, interrupt: true });
+                setAudioStatus('✓ Word audio complete');
+              };
+              const playSentence = async () => {
+                prime();
+                setAudioStatus('Playing natural sentence…');
+                await window.N5_INSTANT_AUDIO.playDetailed(card.example.jp, { rate: .94, interrupt: true });
+                setAudioStatus('✓ Sentence audio complete');
+              };
+          
+              const wb = $("#srsWordVoice"), sb = $("#srsSentenceVoice");
+              [wb, sb].forEach(b => {
+                if (!b) return;
+                b.addEventListener('pointerdown', prime, { passive: true });
+                b.addEventListener('touchstart', prime, { passive: true });
+              });
+              if (wb) wb.onclick = playWord;
+              if (sb) sb.onclick = playSentence;
+          
+              const rev = $("#revealSrs");
+              if (rev) rev.onclick = () => { state.srsRevealed = true; renderSRS(); };
+              const mic = $("#micAnswer"); if (mic) mic.onclick = () => startRecognition("srsAnswer");
+          
+              $$("[data-rate]").forEach(b => b.onclick = () => {
+                offlineReview(card.id, b.dataset.rate, card.srs?.phase || "learn");
+                state.srsIndex++;
+                state.srsRevealed = false;
+                if (state.srsIndex >= state.srsSession.length) {
+                  state.srsSession = null;
+                  toast("SRS session complete ✓");
+                  refresh();
+                  showView("srs");
+                } else renderSRS();
+              });
+            };
+          
+            // ---------- Listening transcript helpers ----------
+            function listeningTokenize(text) {
+              const s = String(text || '').trim();
+              if (!s) return [];
+              const punctuation = new Set(['。','、','？','！','…','—','・','「','」','『','』','（','）','(',')',' ', '　']);
+              const particles = new Set(['は','が','を','に','で','と','も','へ','の','か','ね','よ','な','さ','し','て']);
+              const out = [];
+              let cur = '';
+              for (const ch of [...s]) {
+                if (punctuation.has(ch)) {
+                  if (cur) { out.push(cur); cur = ''; }
+                  if (ch.trim()) out.push(ch);
+                  continue;
+                }
+                cur += ch;
+                if ((cur.length >= 2 && particles.has(ch)) || cur.length >= 4) {
+                  out.push(cur);
+                  cur = '';
+                }
+              }
+              if (cur) out.push(cur);
+              return out;
+            }
+          
+            function transcriptTokensHTML(text, lineId) {
+              return listeningTokenize(text).map((tok, i) => `<span class="ttok" data-line="${lineId}" data-token="${i}">${esc(tok)}</span>`).join('');
+            }
+          
+            function clearTranscriptHighlight() {
+              $$('.transcript-line').forEach(el => el.classList.remove('active'));
+              $$('.ttok').forEach(el => el.classList.remove('done', 'current'));
+            }
+          
+            function markTranscript(lineId, progress = 0) {
+              const line = $(`#tl-${lineId}`);
+              if (!line) return;
+              $$('.transcript-line').forEach(el => el.classList.toggle('active', el === line));
+              line.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+              const tokens = [...$$(`.ttok[data-line="${lineId}"]`)];
+              if (!tokens.length) return;
+              const idx = Math.max(0, Math.min(tokens.length - 1, Math.floor(progress * tokens.length)));
+              tokens.forEach((el, i) => {
+                el.classList.toggle('done', i < idx);
+                el.classList.toggle('current', i === idx);
+              });
+            }
+          
+            function finishTranscript(lineId) {
+              const tokens = [...$$(`.ttok[data-line="${lineId}"]`)];
+              tokens.forEach((el) => { el.classList.remove('current'); el.classList.add('done'); });
+            }
+          
+            function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+          
+            function expressiveRate(text, baseRate = .96, speaker = '') {
+              text = String(text || '');
+              let rate = Number(baseRate || .96);
+              if (/？|\?$/.test(text)) rate -= 0.04;
+              if (/！|!/.test(text)) rate += 0.03;
+              if (/…/.test(text)) rate -= 0.03;
+              if (/すみません|おねがいします|ありがとうございました|ありがとうございます/.test(text)) rate -= 0.02;
+              if (speaker === 'B') rate += 0.02;
+              return Math.max(0.72, Math.min(2.0, rate));
+            }
+          
+            function transcriptPause(text, base = 520) {
+              text = String(text || '');
+              let extra = 0;
+              if (/？|\?/.test(text)) extra += 120;
+              if (/！|!/.test(text)) extra += 60;
+              if (/…/.test(text)) extra += 120;
+              if (/、/.test(text)) extra += 80;
+              return base + extra;
+            }
+          
+            // ---------- Listening up to 2×, expressive pacing, transcript highlighting ----------
+            let listeningRunId = 0;
             renderListening = function() {
               const L = state.content, dlg = L.dialogue_extended || L.dialogue, text = L.reading_extended || L.reading;
-              const readChunks = jpSentences(text), vocabLines = state.vocab.filter(v => v.example?.jp).slice(0, 20).map(v => v.example.jp), core = dlg.map(x => x[1]);
-              const longMix = [...core, ...readChunks, ...vocabLines], shadow = [...core.flatMap(x => [x, x, x]), ...readChunks.flatMap(x => [x, x]), ...vocabLines.slice(0, 10)], marathon = [...longMix, ...longMix, ...longMix];
-
-              $("#view-listening").innerHTML = `<div class="section-head"><div><div class="eyebrow">LISTENING + SHADOWING</div><h2>Natural Japanese Listening Lab</h2><p>Pre-generated neural audio · এক সময়ে একটিই line বাজবে।</p></div></div><div class="listening-modes"><button class="listening-mode-card" id="listenCore"><b>01</b><strong>Extended Listening</strong><span>≈ 4–6 min</span><small>conversation + reading</small></button><button class="listening-mode-card" id="listenShadow"><b>02</b><strong>Shadowing Marathon</strong><span>≈ 8–10 min</span><small>strict single-stream sequence</small></button><button class="listening-mode-card featured" id="listenMarathon"><b>03</b><strong>Intensive Marathon</strong><span>≈ 12–15+ min</span><small>conversation + reading + sentences</small></button></div><div class="listen-grid"><div class="listen-stage"><h3>${esc(L.scenario)}</h3><div class="wave" id="wave">${"<i></i>".repeat(22)}</div><div class="toolbar listen-speeds"><button class="btn glass" id="lb">0.78×</button><button class="btn glass" id="ln">0.90×</button><button class="btn glass" id="lf">1×</button><button class="btn glass" id="l15">1.5×</button><button class="btn glass" id="l2">2×</button><button class="btn glass" id="l3">3×</button><button class="btn red" id="lstop">■ STOP</button></div><div class="shadow-step single-stream-note"><b>✓ Single Voice</b> — একটি line পুরো শেষ হওয়ার পরেই পরের line শুরু হবে।</div><div class="shadow-step"><b>1</b> — transcript ছাড়া শুনুন।</div><div class="shadow-step"><b>2</b> — key words ধরুন।</div><div class="shadow-step"><b>3</b> — audio-এর পরে shadow করুন।</div></div><div class="card transcript-card"><div class="eyebrow">TRANSCRIPT</div><div id="tr" style="display:none;max-height:560px;overflow:auto">${dlg.map(x => `<p><b>${x[0]}：</b><span class="jp">${esc(x[1])}</span><br><span class="meta meaning-sensitive">${esc(x[2])}</span></p>`).join("")}<hr style="border:0;border-top:1px solid var(--line)"><div class="reading-jp" style="font-size:15px">${highlight(text)}</div></div><button class="btn soft" id="tt">👁 Transcript</button><hr style="border:0;border-top:1px solid var(--line);margin:16px 0"><h3>Dictation</h3><textarea id="longDictation" rows="8" lang="ja" data-jp-input="1" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:11px" placeholder="শুনে Japanese লিখুন…"></textarea></div></div><div class="section-head"><div><h3>Quick Streams</h3></div><div class="toolbar"><button class="btn primary" id="vstream">▶ Words</button><button class="btn red" id="sstream">▶ 20 Sentences</button></div></div>`;
-
-              const wave = on => $("#wave")?.classList.toggle("playing", on);
-              const play = (lines, pause, rate) => { stopSpeech(); wave(true); sequence(lines, pause, rate, () => wave(false)); };
-              $("#lb").onclick = () => play(core, 620, .78); $("#ln").onclick = () => play(core, 520, .90); $("#lf").onclick = () => play(core, 430, 1);
-              $("#l15").onclick = () => play(core, 320, 1.5); $("#l2").onclick = () => play(core, 230, 2); $("#l3").onclick = () => play(core, 150, 3);
-              $("#listenCore").onclick = () => play([...core, ...readChunks], 520, .88); $("#listenShadow").onclick = () => play(shadow, 900, .82); $("#listenMarathon").onclick = () => play(marathon, 720, .86);
-              $("#lstop").onclick = () => { stopSpeech(); wave(false); };
-              $("#tt").onclick = () => { const t = $("#tr"), h = t.style.display === "none"; t.style.display = h ? "block" : "none"; };
-              $("#vstream").onclick = () => play(state.vocab.map(v => v.tts_text).filter(Boolean), 400, .84); $("#sstream").onclick = () => play(vocabLines, 620, .88);
-              activateJapaneseInputs($("#view-listening"));
-              const key = `n5_offline_listen_dictation_${state.lesson}`, ta = $("#longDictation");
-              ta.value = localStorage.getItem(key) || "";
-              ta.oninput = () => { if (jpInputMode() !== "native") transformJpInput(ta, false); localStorage.setItem(key, ta.value); };
+              const readChunks = jpSentences(text).filter(Boolean);
+              const vocabLines = state.vocab.filter(v => v.example?.jp).slice(0, 18).map(v => v.example.jp);
+          
+              const dialogueItems = dlg.map((x, i) => ({ id: `d-${i}`, speaker: x[0], text: x[1], bn: x[2], bucket: 'dialogue' }));
+              const readingItems = readChunks.map((line, i) => ({ id: `r-${i}`, speaker: 'R', text: line, bn: '', bucket: 'reading' }));
+              const vocabItems = vocabLines.map((line, i) => ({ id: `v-${i}`, speaker: 'S', text: line, bn: '', bucket: 'sentence' }));
+          
+              const coreItems = [...dialogueItems, ...readingItems];
+              const shadowItems = [...dialogueItems.flatMap(x => [x, x]), ...readingItems, ...vocabItems.slice(0, 8)];
+              const marathonItems = [...dialogueItems, ...readingItems, ...vocabItems, ...dialogueItems, ...readingItems];
+          
+              const transcriptHTML = `
+                <div class="transcript-group"><div class="eyebrow">DIALOGUE</div>${dialogueItems.map(item => `
+                  <div class="transcript-line" id="tl-${item.id}">
+                    <div class="transcript-line-top"><b>${esc(item.speaker)}：</b><span class="live-badge">live</span></div>
+                    <div class="transcript-jp">${transcriptTokensHTML(item.text, item.id)}</div>
+                    <div class="transcript-bn">${esc(item.bn || '')}</div>
+                  </div>`).join('')}</div>
+                <div class="transcript-group"><div class="eyebrow">READING</div>${readingItems.map(item => `
+                  <div class="transcript-line reading-line" id="tl-${item.id}">
+                    <div class="transcript-line-top"><b>R</b><span class="live-badge">reading</span></div>
+                    <div class="transcript-jp">${transcriptTokensHTML(item.text, item.id)}</div>
+                  </div>`).join('')}</div>`;
+          
+              $('#view-listening').innerHTML = `
+                <div class="section-head listening-head"><div><div class="eyebrow">LISTENING + SHADOWING</div><h2>Natural Japanese Listening Lab</h2><p>Instant pre-generated audio · softer pacing · live transcript highlight</p></div></div>
+                <div class="listening-modes clean-listen-cards">
+                  <button class="listening-mode-card" id="listenCore"><b>01</b><strong>Extended Listening</strong><span>≈ 4–6 min</span><small>conversation + reading</small></button>
+                  <button class="listening-mode-card" id="listenShadow"><b>02</b><strong>Shadowing Marathon</strong><span>≈ 7–9 min</span><small>repeat-and-shadow flow</small></button>
+                  <button class="listening-mode-card featured" id="listenMarathon"><b>03</b><strong>Intensive Marathon</strong><span>≈ 10–12 min</span><small>long practice stream</small></button>
+                </div>
+                <div class="listen-grid enhanced-listen-grid">
+                  <div class="listen-stage enhanced-stage">
+                    <div class="listen-stage-top"><div><div class="eyebrow">NOW PLAYING</div><h3>${esc(L.scenario)}</h3></div><div class="playing-pill" id="playingMode">Ready</div></div>
+                    <div class="wave refined-wave" id="wave">${'<i></i>'.repeat(18)}</div>
+                    <div class="toolbar listen-speeds clean-speeds">
+                      <button class="btn glass" id="lb">0.75×</button>
+                      <button class="btn glass" id="ln">0.90×</button>
+                      <button class="btn glass" id="lf">1×</button>
+                      <button class="btn glass" id="l125">1.25×</button>
+                      <button class="btn glass" id="l15">1.5×</button>
+                      <button class="btn glass" id="l2">2×</button>
+                      <button class="btn red" id="lstop">■ Stop</button>
+                    </div>
+                    <div class="shadow-tip success"><b>✓ Expressive single voice</b> — প্রতিটি line আলাদা করে natural pacing-এ বাজবে।</div>
+                    <div class="shadow-tip"><b>1</b> — আগে শুধু শুনুন</div>
+                    <div class="shadow-tip"><b>2</b> — highlight দেখে শব্দ ধরুন</div>
+                    <div class="shadow-tip"><b>3</b> — line শেষ হলে shadow করুন</div>
+                  </div>
+                  <div class="card transcript-card enhanced-transcript-card">
+                    <div class="transcript-card-top"><div><div class="eyebrow">LIVE TRANSCRIPT</div><h3>Audio চলার সাথে সাথে line / token highlight হবে</h3></div><span class="live-indicator">● Sync on</span></div>
+                    <div id="tr" class="transcript-scroll">${transcriptHTML}</div>
+                    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+                    <h3>Dictation</h3>
+                    <textarea id="longDictation" rows="7" lang="ja" data-jp-input="1" style="width:100%;border:1px solid var(--line);border-radius:14px;padding:12px" placeholder="শুনে Japanese লিখুন…"></textarea>
+                  </div>
+                </div>
+                <div class="section-head"><div><h3>Quick Streams</h3><p>Vocabulary sentence stream দ্রুত অনুশীলনের জন্য।</p></div><div class="toolbar"><button class="btn primary" id="vstream">▶ Words</button><button class="btn soft" id="sstream">▶ 18 Sentences</button></div></div>`;
+          
+              const wave = on => $('#wave')?.classList.toggle('playing', on);
+              const playingMode = $('#playingMode');
+              const setMode = text => { if (playingMode) playingMode.textContent = text; };
+              let currentSpeed = 1.0;
+          
+              const stopListening = () => {
+                listeningRunId += 1;
+                stopSpeech();
+                wave(false);
+                setMode('Stopped');
+                clearTranscriptHighlight();
+              };
+          
+              const playItems = async (items, label, rate = 1, gap = 520) => {
+                const runId = ++listeningRunId;
+                const startedAt = Date.now();
+                stopSpeech();
+                clearTranscriptHighlight();
+                wave(true);
+                setMode(label);
+                for (const item of items) {
+                  if (runId !== listeningRunId) break;
+                  await window.N5_INSTANT_AUDIO.playDetailed(item.text, {
+                    rate: expressiveRate(item.text, rate, item.speaker),
+                    interrupt: false,
+                    onstart: () => markTranscript(item.id, 0),
+                    onprogress: ({ progress }) => markTranscript(item.id, progress),
+                    onend: () => finishTranscript(item.id)
+                  });
+                  if (runId !== listeningRunId) break;
+                  await sleep(transcriptPause(item.text, gap));
+                }
+                if (runId === listeningRunId) {
+                  wave(false);
+                  setMode('Complete ✓');
+                  if (/shadow/i.test(label)) {
+                    try {
+                      window.dispatchEvent(new CustomEvent('n5:shadowing-complete', {
+                        detail: {
+                          shadowing_type: 'listening_shadowing',
+                          line_count: items.length,
+                          playback_speed: Number(rate || 0),
+                          duration_seconds: Math.max(0, Math.round((Date.now() - startedAt) / 1000))
+                        }
+                      }));
+                    } catch {}
+                  }
+                }
+              };
+          
+              $('#lb').onclick = () => { currentSpeed = .75; playItems(coreItems, 'Extended Listening', currentSpeed, 560); };
+              $('#ln').onclick = () => { currentSpeed = .90; playItems(coreItems, 'Extended Listening', currentSpeed, 520); };
+              $('#lf').onclick = () => { currentSpeed = 1.00; playItems(coreItems, 'Extended Listening', currentSpeed, 460); };
+              $('#l125').onclick = () => { currentSpeed = 1.25; playItems(coreItems, 'Extended Listening', currentSpeed, 420); };
+              $('#l15').onclick = () => { currentSpeed = 1.50; playItems(shadowItems, 'Shadowing Marathon', currentSpeed, 520); };
+              $('#l2').onclick = () => { currentSpeed = 2.00; playItems(shadowItems, 'Fast Shadowing', currentSpeed, 380); };
+          
+              $('#listenCore').onclick = () => playItems(coreItems, 'Extended Listening', .96, 520);
+              $('#listenShadow').onclick = () => playItems(shadowItems, 'Shadowing Marathon', .92, 760);
+              $('#listenMarathon').onclick = () => playItems(marathonItems, 'Intensive Marathon', .94, 600);
+              $('#lstop').onclick = stopListening;
+              $('#vstream').onclick = () => playItems(state.vocab.map((v, i) => ({ id: `x-${i}`, text: v.tts_text, speaker: 'S' })).filter(Boolean), 'Word Stream', .90, 340);
+              $('#sstream').onclick = () => playItems(vocabItems.slice(0, 18), 'Sentence Stream', .92, 520);
+          
+              activateJapaneseInputs($('#view-listening'));
+              const key = `n5_offline_listen_dictation_${state.lesson}`, ta = $('#longDictation');
+              ta.value = localStorage.getItem(key) || '';
+              ta.oninput = () => { if (jpInputMode() !== 'native') transformJpInput(ta, false); localStorage.setItem(key, ta.value); };
             };
-
+          
+          
             // ---------- Clean visual layer ----------
             const style = document.createElement("style");
             style.textContent = `
@@ -740,25 +1100,98 @@ jobs:
               @media(max-width:560px){.main{padding:12px 10px 88px}.hero{padding:18px}.section-head{margin:18px 0 10px}.toolbar .btn,.listening-mode-card,.btn{max-width:100%}.klc-search-panel .search-input,.klc-search-panel .btn{width:100%}.klc-page-hero{padding:16px;border-radius:18px}.klc-page-hero h2{font-size:18px;line-height:1.25}.klc-page-hero p{font-size:11px;line-height:1.55}.klc-dataset-badge{width:56px;height:56px;flex-basis:56px}.klc-dataset-badge b{font-size:17px}.klc-stats{grid-template-columns:1fr 1fr!important}.klc-lesson-strip .klc-chip{flex:0 0 104px!important;min-width:104px!important;max-width:104px!important;min-height:90px!important}.klc-detail{margin-top:14px}.klc-furigana-wrap{padding:12px;border-radius:14px}.klc-ruby>span{font-size:38px!important}.klc-ruby rt{font-size:10px!important}.klc-hero-char{width:88px!important;height:88px!important;border-radius:18px}.klc-readings span{font-size:11px;padding:9px 10px}.mobile-dock{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 4px)}}
             `;
             document.head.appendChild(style);
-
+          
+            const listenStyle = document.createElement("style");
+            listenStyle.textContent = `
+              .enhanced-listen-grid{grid-template-columns:minmax(380px,1.05fr) minmax(320px,.85fr);align-items:start}
+              .enhanced-stage{background:linear-gradient(180deg,#0f2744,#102845 78%,#0d2340);color:#fff;box-shadow:0 16px 32px rgba(16,34,56,.16)}
+              .listen-stage-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+              .playing-pill{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);font-size:12px;font-weight:700}
+              .clean-listen-cards .listening-mode-card{border-radius:20px;border:1px solid #e4e7ec;background:#fff;box-shadow:0 8px 18px rgba(16,34,56,.06)}
+              .clean-listen-cards .listening-mode-card.featured{background:#fffaf0;border-color:#e6bf74}
+              .refined-wave{margin:20px 0 14px;display:flex;justify-content:center;gap:5px;height:64px;align-items:flex-end}
+              .refined-wave i{display:block;width:5px;border-radius:999px;background:linear-gradient(180deg,#dce8ff,#fff);opacity:.55;transform-origin:center bottom;animation:none;height:18px}
+              .refined-wave.playing i{animation:waveDance 1s ease-in-out infinite}
+              .refined-wave.playing i:nth-child(3n){animation-duration:1.22s}.refined-wave.playing i:nth-child(4n){animation-duration:.92s}
+              @keyframes waveDance{0%,100%{height:18px;opacity:.42}50%{height:54px;opacity:1}}
+              .clean-speeds .btn{border-radius:12px;font-weight:700}
+              .shadow-tip{padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);margin-top:10px;color:#ebf3ff}
+              .shadow-tip.success{border-color:#74c3a6;background:rgba(41,123,96,.28)}
+              .enhanced-transcript-card{padding:16px 16px 12px;border-radius:20px;box-shadow:0 12px 28px rgba(16,34,56,.08)}
+              .transcript-card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:10px}
+              .transcript-card-top h3{font-size:15px;line-height:1.45;margin:4px 0 0}
+              .live-indicator{padding:8px 11px;border-radius:999px;background:#eef8f1;color:#1d7a52;font-size:12px;font-weight:700}
+              .transcript-scroll{max-height:600px;overflow:auto;padding-right:4px}
+              .transcript-group{margin-bottom:14px}.transcript-group .eyebrow{margin-bottom:8px}
+              .transcript-line{padding:10px 11px;border:1px solid #edf0f4;border-radius:14px;background:#fbfcfe;margin-bottom:9px;transition:.18s ease}
+              .transcript-line.active{border-color:#79a9ff;background:#f3f8ff;box-shadow:0 8px 16px rgba(76,122,230,.08)}
+              .transcript-line-top{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;margin-bottom:6px;color:#17324d}
+              .live-badge{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#d15a70;background:#fff0f3;padding:4px 7px;border-radius:999px}
+              .transcript-jp{font-size:21px;line-height:1.95;word-break:break-word}
+              .transcript-bn{font-size:12px;line-height:1.55;color:#7b8795;margin-top:4px}
+              .ttok{display:inline-block;padding:2px 4px;border-radius:8px;transition:all .08s ease;margin-right:1px}
+              .ttok.done{color:#66788d;background:transparent}
+              .ttok.current{background:#ffe9a9;color:#0f2944;box-shadow:inset 0 -2px 0 #f0bb2f;font-weight:700}
+              @media(max-width:980px){.enhanced-listen-grid{grid-template-columns:1fr}.transcript-scroll{max-height:none}.transcript-jp{font-size:19px}}
+              @media(max-width:560px){.transcript-jp{font-size:17px;line-height:1.85}.transcript-card-top{flex-direction:column}.playing-pill,.live-indicator{align-self:flex-start}}
+            `;
+            document.head.appendChild(listenStyle);
+          
+          
+            const srsV32Style = document.createElement("style");
+            srsV32Style.textContent = `
+              #view-srs>.section-head{max-width:920px;margin:20px auto 12px;align-items:center}
+              #view-srs>.section-head h2{font-size:24px;line-height:1.25;margin:4px 0 0}
+              #view-srs>.section-head .btn.danger{border-radius:12px;padding:10px 14px}
+              .srs-v32-card{max-width:920px;margin:0 auto;background:#fff;border:1px solid #e7ebf0;border-radius:24px;padding:22px;box-shadow:0 16px 36px rgba(15,39,63,.08)}
+              .srs-v32-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+              .srs-v32-top>div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+              .srs-random-chip{font-size:10px;font-weight:800;letter-spacing:.04em;color:#55697b;background:#f0f5f8;padding:6px 9px;border-radius:999px}
+              .srs-v32-count{font-size:15px;color:#17324e}
+              .srs-v32-progress{height:5px;background:#eef2f5;border-radius:99px;overflow:hidden;margin:14px 0 18px}.srs-v32-progress i{height:100%;display:block;background:linear-gradient(90deg,#d34c58,#e8b84a);border-radius:99px}
+              .srs-v32-prompt{font-size:17px;font-weight:750;line-height:1.65;color:#1b2d3e;max-width:760px;margin:0 auto 18px}
+              .srs-v32-study{background:linear-gradient(145deg,#f7fafc,#eef5f8);border:1px solid #dfe7ec;border-radius:20px;padding:20px;text-align:left}
+              .srs-v32-word{font:800 38px/1.35 "Noto Sans JP","Yu Gothic",sans-serif;color:#102c49}
+              .srs-v32-sentence{font:650 19px/1.8 "Noto Sans JP","Yu Gothic",sans-serif;color:#23394e;margin-top:10px;padding-top:12px;border-top:1px solid #d9e2e7}
+              .srs-v32-audio{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+              .srs-audio-btn{min-height:48px;border:1px solid #d7e1e7;background:#fff;color:#17324e;border-radius:14px;padding:10px 14px;font-weight:800;font-size:14px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+              .srs-audio-btn:active{transform:scale(.985);background:#eef6fb}.srs-mobile-audio-note{font-size:10px;color:#71808e;margin-top:8px;text-align:center}
+              .srs-v32-reveal{display:block;width:100%;margin-top:14px;border:0;background:#102a46;color:#fff;border-radius:15px;min-height:52px;padding:12px 18px;font-size:15px;font-weight:850;cursor:pointer}
+              .srs-v32-reveal-box{margin-top:14px;background:#fff9ed;border:1px solid #ecd79f;border-radius:17px;padding:16px}.srs-answer-meaning{font-size:20px;font-weight:850;color:#142c45;margin-top:5px}.srs-answer-pron{font-size:13px;color:#53677a;margin-top:5px}.srs-answer-bn{font-size:13px;line-height:1.55;color:#5c6570;margin-top:8px}
+              .srs-v32-rating{margin-top:14px;gap:8px}.srs-v32-rating button{border-radius:13px;min-height:58px}
+              @media(max-width:620px){
+                #view-srs>.section-head{margin:8px 2px 10px;display:grid;grid-template-columns:1fr auto;gap:8px}
+                #view-srs>.section-head .eyebrow{font-size:9px}
+                #view-srs>.section-head h2{font-size:20px;line-height:1.25}
+                #view-srs>.section-head .btn.danger{padding:9px 10px;font-size:12px}
+                .srs-v32-card{border-radius:20px;padding:15px 13px;margin:0 1px;box-shadow:0 10px 24px rgba(15,39,63,.07)}
+                .srs-random-chip{font-size:9px;padding:5px 7px}.srs-v32-count{font-size:14px}
+                .srs-v32-prompt{font-size:15px;line-height:1.55;margin-bottom:13px;font-weight:700}
+                .srs-v32-study{padding:15px 13px;border-radius:17px}
+                .srs-v32-word{font-size:32px}.srs-v32-sentence{font-size:17px;line-height:1.7}
+                .srs-v32-audio{grid-template-columns:1fr 1fr;gap:8px}.srs-audio-btn{min-height:50px;padding:9px 8px;font-size:13px}
+                .srs-v32-reveal{min-height:50px;font-size:14px}.srs-v32-rating{display:grid;grid-template-columns:1fr 1fr}
+              }
+            `;
+            document.head.appendChild(srsV32Style);
+          
             // Apply all replacements once. No MutationObserver, no stacked patch loops.
             refresh();
             showView(state.view || "overview", { keepScroll: true, instant: true });
-
-            console.info("N5 Clean App v30 loaded — Lean Analytics enabled.");
+          
+            console.info("N5 Clean App v32 loaded — mobile SRS + randomized recall enabled.");
           })();
-
           JAVASCRIPT
 
       - name: Build Lean Learning Analytics v30
         shell: bash
         run: |
-          cat > _build/analytics-events-v30.js <<'JAVASCRIPT'
+          cat > _build/analytics-events-v32.js <<'JAVASCRIPT'
           (() => {
             "use strict";
-
+          
             const MEASUREMENT_ID = "G-FG3JCWGSPR";
-            const BUILD = "v30";
+            const BUILD = "v32";
             const CUSTOM_EVENTS = new Set([
               "lesson_open",
               "section_open",
@@ -769,7 +1202,7 @@ jobs:
               "quiz_event",
               "app_error",
             ]);
-
+          
             let pendingLessonSource = "direct";
             let pendingSectionSource = "app";
             let sectionTimer = null;
@@ -778,12 +1211,12 @@ jobs:
             let lastTrackedSection = "";
             let pendingShadow = null;
             const recentErrors = new Map();
-
+          
             function clip(value, max = 95) {
               const s = String(value ?? "").replace(/\s+/g, " ").trim();
               return s.length > max ? s.slice(0, max) : s;
             }
-
+          
             function cleanParams(params = {}) {
               const out = {};
               for (const [key, value] of Object.entries(params)) {
@@ -794,7 +1227,7 @@ jobs:
               }
               return out;
             }
-
+          
             function track(eventName, params = {}) {
               if (!CUSTOM_EVENTS.has(eventName)) {
                 console.warn("[GA4] blocked non-lean custom event:", eventName);
@@ -812,15 +1245,15 @@ jobs:
                 console.warn("GA4 event skipped:", eventName, err);
               }
             }
-
+          
             function currentLesson() {
               try { return Number(state?.lesson || 0); } catch { return 0; }
             }
-
+          
             function currentView() {
               try { return String(state?.view || "overview"); } catch { return "overview"; }
             }
-
+          
             function currentVocabById(id) {
               try {
                 const numeric = Number(id);
@@ -829,31 +1262,31 @@ jobs:
                        null;
               } catch { return null; }
             }
-
+          
             function totalMastered() {
               try {
                 return Object.values(state?.progress || {}).filter(Boolean).length;
               } catch { return 0; }
             }
-
+          
             function lessonMastered() {
               try {
                 return (state?.vocab || []).filter(v => !!state?.progress?.[v.id]).length;
               } catch { return 0; }
             }
-
+          
             function wrapGlobal(name, factory) {
               const original = window[name];
               if (typeof original !== "function") return false;
               window[name] = factory(original);
               return true;
             }
-
+          
             function safePath(url) {
               try { return clip(new URL(url, document.baseURI).pathname, 110); }
               catch { return clip(url, 110); }
             }
-
+          
             function trackErrorOnce(params = {}) {
               const key = [
                 params.error_type || "unknown",
@@ -872,7 +1305,7 @@ jobs:
                 ...params,
               });
             }
-
+          
             // ------------------------------------------------------------
             // 1) lesson_open
             // ------------------------------------------------------------
@@ -890,7 +1323,7 @@ jobs:
               });
               return result;
             });
-
+          
             // ------------------------------------------------------------
             // 2) section_open
             // Only actual section changes are counted. Rapid intermediate
@@ -902,7 +1335,7 @@ jobs:
               const source = opts?.analyticsSource || pendingSectionSource || "app";
               const result = original.apply(this, arguments);
               const after = currentView();
-
+          
               if (after !== before) {
                 // Preserve the same source across rapid transitional navigation.
                 // Example: Search -> overview -> vocab should report source=search.
@@ -926,7 +1359,7 @@ jobs:
               }
               return result;
             });
-
+          
             // ------------------------------------------------------------
             // 7) quiz_event
             // quiz_action=start/complete keeps GA4 clean without two event names.
@@ -946,7 +1379,7 @@ jobs:
               } catch {}
               return result;
             });
-
+          
             wrapGlobal("submitMock", original => function() {
               const quizType = state?.mock?.mode || "";
               const before = {
@@ -969,7 +1402,7 @@ jobs:
               } catch {}
               return result;
             });
-
+          
             // ------------------------------------------------------------
             // 6) shadowing_complete
             // audio_play is the "started/attempted" denominator.
@@ -980,9 +1413,9 @@ jobs:
                 ? pendingShadow
                 : null;
               pendingShadow = null;
-
+          
               if (!shadow) return original.apply(this, arguments);
-
+          
               const startedAt = Date.now();
               const lineCount = Array.isArray(lines) ? lines.filter(Boolean).length : 0;
               const wrappedDone = () => {
@@ -997,12 +1430,24 @@ jobs:
               };
               return original.call(this, lines, pause, rate, wrappedDone);
             });
-
+          
+          
+            window.addEventListener("n5:shadowing-complete", event => {
+              const d = event?.detail || {};
+              track("shadowing_complete", {
+                lesson_number: currentLesson(),
+                shadowing_type: d.shadowing_type || "listening_shadowing",
+                line_count: Number(d.line_count || 0),
+                playback_speed: Number(d.playback_speed || 0),
+                duration_seconds: Number(d.duration_seconds || 0),
+              });
+            });
+          
             function audioEventFromClick(target) {
               const el = target?.closest?.("button");
               if (!el) return null;
               const lesson = currentLesson();
-
+          
               const card = el.closest(".vocab-card");
               if (card && (el.classList.contains("wa") || el.classList.contains("sa"))) {
                 const v = currentVocabById(card.dataset.id);
@@ -1015,7 +1460,7 @@ jobs:
                   word_number: Number(v.word_no || 0),
                 };
               }
-
+          
               if (el.classList.contains("lp")) {
                 const i = Number(el.dataset.i || 0);
                 const dlg = state?.content?.dialogue_extended || state?.content?.dialogue || [];
@@ -1026,7 +1471,7 @@ jobs:
                   line_number: i + 1,
                 };
               }
-
+          
               if (el.classList.contains("mp")) {
                 const v = currentVocabById(el.dataset.id);
                 return {
@@ -1036,7 +1481,7 @@ jobs:
                   word_id: Number(v?.id || 0),
                 };
               }
-
+          
               if (el.classList.contains("qa")) {
                 return {
                   audio_type: "quiz_question",
@@ -1044,7 +1489,7 @@ jobs:
                   lesson_number: lesson,
                 };
               }
-
+          
               const map = {
                 playWords: ["vocabulary_stream", "Vocabulary Word Stream"],
                 cp: ["conversation_full", "Full Conversation"],
@@ -1070,48 +1515,51 @@ jobs:
                 spellAudio: ["spelling_prompt", "Spelling Audio Prompt"],
                 sla: ["srs_word", "SRS Learn Audio"],
                 sra: ["srs_word", "SRS Recall Audio"],
+                srsWordVoice: ["srs_word", "SRS Word Audio"],
+                srsSentenceVoice: ["srs_sentence", "SRS Sentence Audio"],
                 klcSpeak: ["kanji", "KLC Kanji Audio"],
                 voiceTestBtn: ["voice_test", "Natural Voice Test"],
               };
-
+          
               const hit = map[el.id];
               if (!hit) return null;
-
+          
               const out = {
                 audio_type: hit[0],
                 audio_label: hit[1],
                 lesson_number: lesson,
               };
-
-              const speeds = { lb:.78, ln:.90, lf:1, l15:1.5, l2:2, l3:3 };
+          
+              const speeds = { lb:.75, ln:.90, lf:1, l125:1.25, l15:1.5, l2:2 };
               if (speeds[el.id]) out.playback_speed = speeds[el.id];
-
+          
               if (el.id === "klcSpeak") {
                 out.audio_label = state?.klcSelected?.kanji || hit[1];
                 out.klc_number = Number(state?.klcSelected?.klc_no || 0);
               }
-
+          
               if (el.id === "spellWordAudio" || el.id === "spellAudio") {
                 const c = state?.spellingSession?.[state?.spellingIndex || 0];
                 out.audio_label = c?.japanese || c?.spelling_text || hit[1];
                 out.word_id = Number(c?.id || 0);
               }
-
-              if (el.id === "sla" || el.id === "sra") {
+          
+              if (["sla","sra","srsWordVoice","srsSentenceVoice"].includes(el.id)) {
                 const c = state?.srsSession?.[state?.srsIndex || 0];
-                out.audio_label = c?.japanese || hit[1];
+                out.audio_label = el.id === "srsSentenceVoice" ? (c?.example?.jp || hit[1]) : (c?.japanese || hit[1]);
                 out.word_id = Number(c?.id || 0);
+                out.word_number = Number(c?.word_no || 0);
               }
               return out;
             }
-
+          
             // ------------------------------------------------------------
             // Delegated listener: dynamic cards/buttons need no MutationObserver.
             // ------------------------------------------------------------
             document.addEventListener("click", event => {
               const button = event.target?.closest?.("button");
               if (!button) return;
-
+          
               // Sources for lesson_open / section_open, no separate roadmap event.
               if (button.closest?.("[data-jump]")) {
                 pendingLessonSource = "roadmap";
@@ -1122,7 +1570,7 @@ jobs:
               } else if (button.dataset?.view) {
                 pendingSectionSource = "navigation";
               }
-
+          
               // 3) vocabulary_mastered
               if (button.classList.contains("ma")) {
                 const card = button.closest(".vocab-card");
@@ -1141,7 +1589,7 @@ jobs:
                   });
                 }, 0);
               }
-
+          
               // 4) practice_result — SRS
               if (button.matches("[data-rate]")) {
                 try {
@@ -1158,7 +1606,7 @@ jobs:
                   });
                 } catch {}
               }
-
+          
               // 4) practice_result — Spelling checked.
               if (button.id === "checkSpell") {
                 try {
@@ -1184,7 +1632,7 @@ jobs:
                   }
                 } catch {}
               }
-
+          
               // 4) practice_result — Spelling skipped (skip is neutral, not wrong).
               if (button.id === "skipSpell") {
                 try {
@@ -1200,7 +1648,7 @@ jobs:
                   });
                 } catch {}
               }
-
+          
               // Arm the only three explicit Shadowing flows.
               const shadowMap = {
                 csh: "conversation_shadowing",
@@ -1213,19 +1661,19 @@ jobs:
                   armedAt: Date.now(),
                 };
               }
-
+          
               // 5) audio_play
               const audioParams = audioEventFromClick(event.target);
               if (audioParams) track("audio_play", audioParams);
             }, true);
-
+          
             document.addEventListener("change", event => {
               if (event.target?.id === "lessonSelect") {
                 pendingLessonSource = "lesson_selector";
                 pendingSectionSource = "lesson_selector";
               }
             }, true);
-
+          
             // ------------------------------------------------------------
             // 8) app_error
             // JavaScript, Promise, resource and audio failures all use one event.
@@ -1241,7 +1689,7 @@ jobs:
                 });
                 return;
               }
-
+          
               trackErrorOnce({
                 error_type: "javascript",
                 error_message: clip(event.message || "JavaScript error", 120),
@@ -1249,14 +1697,14 @@ jobs:
                 line_number: Number(event.lineno || 0),
               });
             }, true);
-
+          
             window.addEventListener("unhandledrejection", event => {
               trackErrorOnce({
                 error_type: "promise",
                 error_message: clip(event.reason?.message || event.reason || "Unhandled promise rejection", 120),
               });
             });
-
+          
             window.addEventListener("n5:audio-error", event => {
               trackErrorOnce({
                 error_type: "audio",
@@ -1264,7 +1712,7 @@ jobs:
                 audio_label: clip(event.detail?.text || "", 80),
               });
             });
-
+          
             // Initial page state.
             setTimeout(() => {
               const lesson = currentLesson();
@@ -1285,14 +1733,14 @@ jobs:
                 lastTrackedSection = view;
               }
             }, 400);
-
+          
             window.N5_ANALYTICS = {
               track,
               measurementId: MEASUREMENT_ID,
               customEvents: [...CUSTOM_EVENTS],
             };
-
-            console.info("N5 Lean Learning Analytics v30 enabled: exactly 8 custom events.");
+          
+            console.info("N5 Lean Learning Analytics v32 enabled: exactly 8 custom events.");
           })();
           JAVASCRIPT
 
@@ -1306,9 +1754,9 @@ jobs:
           cp .nojekyll _site/.nojekyll 2>/dev/null || true
 
           cp _build/audio-manifest.js _site/audio-manifest-v30.js
-          cp _build/instant-audio-v30.js _site/instant-audio-v30.js
-          cp _build/app-clean-v30.js _site/app-clean-v30.js
-          cp _build/analytics-events-v30.js _site/analytics-events-v30.js
+          cp _build/instant-audio-v32.js _site/instant-audio-v32.js
+          cp _build/app-clean-v32.js _site/app-clean-v32.js
+          cp _build/analytics-events-v32.js _site/analytics-events-v32.js
 
           # Copy only generated MP3 files — no neural model ships to the phone.
           cp _audio_cache/*.mp3 _site/audio/
@@ -1322,12 +1770,12 @@ jobs:
 
               injection = """
               <script src="./audio-manifest-v30.js"></script>
-              <script src="./instant-audio-v30.js"></script>
-              <script src="./app-clean-v30.js"></script>
-              <script src="./analytics-events-v30.js"></script>
+              <script src="./instant-audio-v32.js"></script>
+              <script src="./app-clean-v32.js"></script>
+              <script src="./analytics-events-v32.js"></script>
               """
 
-              if "analytics-events-v30.js" not in html:
+              if "analytics-events-v32.js" not in html or "instant-audio-v32.js" not in html or "app-clean-v32.js" not in html:
                   html = html.replace("</body>", injection + "\n</body>")
 
               ga_tag = """
@@ -1345,7 +1793,7 @@ jobs:
 
               html = html.replace(
                   "GitHub Single File · Mobile First · Romaji→Kana",
-                  "Clean v30 · Lean Analytics · Instant Audio · Mobile First"
+                  "Clean v32 · Random SRS · Mobile Audio · Lean Analytics"
               )
               html = html.replace(
                   "<title>N5 Natural Japanese Studio — GitHub Single File</title>",
@@ -1361,40 +1809,47 @@ jobs:
           set -e
           test -f _site/index.html
           test -f _site/audio-manifest-v30.js
-          test -f _site/instant-audio-v30.js
-          test -f _site/app-clean-v30.js
-          test -f _site/analytics-events-v30.js
+          test -f _site/instant-audio-v32.js
+          test -f _site/app-clean-v32.js
+          test -f _site/analytics-events-v32.js
           test -d _site/audio
           test "$(find _site/audio -name '*.mp3' | wc -l)" -gt 1500
           test "$(find _site/audio -name 'lesson-*.json' | wc -l)" -eq 25
-          grep -q "app-clean-v30.js" _site/index.html
-          grep -q "analytics-events-v30.js" _site/index.html
-          grep -q '"lesson_open"' _site/analytics-events-v30.js
-          grep -q '"section_open"' _site/analytics-events-v30.js
-          grep -q '"vocabulary_mastered"' _site/analytics-events-v30.js
-          grep -q '"practice_result"' _site/analytics-events-v30.js
-          grep -q '"audio_play"' _site/analytics-events-v30.js
-          grep -q '"shadowing_complete"' _site/analytics-events-v30.js
-          grep -q '"quiz_event"' _site/analytics-events-v30.js
-          grep -q '"app_error"' _site/analytics-events-v30.js
-          if grep -q '"vocabulary_open"' _site/analytics-events-v30.js; then echo "ERROR: vocabulary_open must be removed"; exit 1; fi
-          if grep -q '"roadmap_click"' _site/analytics-events-v30.js; then echo "ERROR: roadmap_click must be removed"; exit 1; fi
-          if grep -q '"quiz_start"' _site/analytics-events-v30.js; then echo "ERROR: quiz_start must be merged into quiz_event"; exit 1; fi
-          if grep -q '"quiz_complete"' _site/analytics-events-v30.js; then echo "ERROR: quiz_complete must be merged into quiz_event"; exit 1; fi
+          grep -q "app-clean-v32.js" _site/index.html
+          grep -q "analytics-events-v32.js" _site/index.html
+          grep -q '"lesson_open"' _site/analytics-events-v32.js
+          grep -q '"section_open"' _site/analytics-events-v32.js
+          grep -q '"vocabulary_mastered"' _site/analytics-events-v32.js
+          grep -q '"practice_result"' _site/analytics-events-v32.js
+          grep -q '"audio_play"' _site/analytics-events-v32.js
+          grep -q '"shadowing_complete"' _site/analytics-events-v32.js
+          grep -q '"quiz_event"' _site/analytics-events-v32.js
+          grep -q '"app_error"' _site/analytics-events-v32.js
+          if grep -q '"vocabulary_open"' _site/analytics-events-v32.js; then echo "ERROR: vocabulary_open must be removed"; exit 1; fi
+          if grep -q '"roadmap_click"' _site/analytics-events-v32.js; then echo "ERROR: roadmap_click must be removed"; exit 1; fi
+          if grep -q '"quiz_start"' _site/analytics-events-v32.js; then echo "ERROR: quiz_start must be merged into quiz_event"; exit 1; fi
+          if grep -q '"quiz_complete"' _site/analytics-events-v32.js; then echo "ERROR: quiz_complete must be merged into quiz_event"; exit 1; fi
           grep -q "G-FG3JCWGSPR" _site/index.html
           grep -q "googletagmanager.com/gtag/js" _site/index.html
-          grep -q "Critical: resolve only after THIS clip actually ends" _site/instant-audio-v30.js
-          grep -q 'setLesson(Number(b.dataset.jump), "vocab")' _site/app-clean-v30.js
-          grep -q 'id="skipSpell"' _site/app-clean-v30.js
-          grep -q 'id="l3"' _site/app-clean-v30.js
-          grep -q 'Reveal বাংলা অর্থ + উচ্চারণ' _site/app-clean-v30.js
-          if grep -q 'new MutationObserver' _site/app-clean-v30.js; then
+          grep -q "expressive single-stream" _site/instant-audio-v32.js
+          grep -q 'setLesson(Number(b.dataset.jump), "vocab")' _site/app-clean-v32.js
+          grep -q 'id="skipSpell"' _site/app-clean-v32.js
+          grep -q 'id="l2"' _site/app-clean-v32.js
+          grep -q 'LIVE TRANSCRIPT' _site/app-clean-v32.js
+          grep -q 'Random lesson recall' _site/app-clean-v32.js
+          grep -q 'srsWordVoice' _site/app-clean-v32.js
+          grep -q 'srsSentenceVoice' _site/app-clean-v32.js
+          grep -q 'n5:shadowing-complete' _site/app-clean-v32.js
+          grep -q 'srsWordVoice' _site/analytics-events-v32.js
+          grep -q 'crypto.getRandomValues' _site/app-clean-v32.js
+          grep -q 'pointerdown' _site/instant-audio-v32.js
+          if grep -q 'new MutationObserver' _site/app-clean-v32.js; then
             echo "ERROR: v30 clean app must not create MutationObserver patches"
             exit 1
           fi
-          node --check _site/instant-audio-v30.js
-          node --check _site/app-clean-v30.js
-          node --check _site/analytics-events-v30.js
+          node --check _site/instant-audio-v32.js
+          node --check _site/app-clean-v32.js
+          node --check _site/analytics-events-v32.js
           echo "v30 QA PASS"
           echo "MP3 clips: $(find _site/audio -name '*.mp3' | wc -l)"
           echo "Published site size:"
