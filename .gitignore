@@ -5,3 +5,5 @@ _build/
 _audio_cache/
 _kanjivg/
 .DS_Store
+.github/workflows/deploy-ai-voice-pages.yml
+*.yml
