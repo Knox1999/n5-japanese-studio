@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, BookOpen, PenLine, Brain, MessageCircle, BookOpenText, Headphones, Languages,
-  TreePine, ClipboardCheck, History, Menu, X, Search, Sparkles, ChevronDown
+  TreePine, ClipboardCheck, History, Menu, X, Search, Sparkles, ChevronDown, Command, Radio
 } from 'lucide-react';
 import type { StudioMeta, ViewName } from '@/lib/types';
 import { loadSearchIndex } from '@/lib/data';
@@ -12,14 +12,14 @@ type NavItem={view:ViewName;label:string;short:string;icon:any};
 const NAV:NavItem[]=[
  {view:'dashboard',label:'Home',short:'Home',icon:LayoutDashboard},
  {view:'vocabulary',label:'Vocabulary',short:'Vocab',icon:BookOpen},
- {view:'srs',label:'Smart Recall',short:'Recall',icon:Brain},
+ {view:'srs',label:'Recall',short:'Recall',icon:Brain},
  {view:'spelling',label:'Spelling',short:'Spell',icon:PenLine},
  {view:'conversation',label:'Conversation',short:'Talk',icon:MessageCircle},
  {view:'reading',label:'Reading',short:'Read',icon:BookOpenText},
  {view:'listening',label:'Listening',short:'Listen',icon:Headphones},
  {view:'grammar',label:'Grammar',short:'Grammar',icon:Languages},
- {view:'kanji',label:'Kanji Tree',short:'Kanji',icon:TreePine},
- {view:'mock',label:'Mock Test',short:'Mock',icon:ClipboardCheck},
+ {view:'kanji',label:'Kanji Matrix',short:'Kanji',icon:TreePine},
+ {view:'mock',label:'Mock',short:'Mock',icon:ClipboardCheck},
  {view:'history',label:'History',short:'History',icon:History},
 ];
 
@@ -35,57 +35,52 @@ export default function Shell({meta,lesson,view,onLesson,onView,children}:{meta:
  const shown=q.trim()?results.filter(x=>[x.j,x.k,x.bn,x.en,x.p].some((v:any)=>String(v||'').toLowerCase().includes(q.toLowerCase()))).slice(0,30):results.slice(0,12);
  const go=(v:ViewName)=>{onView(v);setDrawer(false)};
 
- const Brand=()=> <button className="academy-brand" onClick={()=>go('dashboard')}>
-   <span className="academy-brand-seal font-jp">日</span>
-   <span><b>N5 Natural Japanese</b><small>STUDY STUDIO</small></span>
+ const Brand=()=> <button className="future-brand" onClick={()=>go('dashboard')}>
+   <span className="future-brand-mark"><i/><b className="font-jp">日</b></span>
+   <span><strong>N5 Natural Japanese</strong><small>FUTURE LEARNING OS</small></span>
  </button>;
 
- const MobileMenu=()=> <aside className="academy-mobile-menu">
-   <div className="mobile-menu-top"><Brand/><button onClick={()=>setDrawer(false)} aria-label="Close menu"><X/></button></div>
-   <div className="academy-mobile-lesson">
-     <label>Current lesson</label>
-     <div><select value={lesson} onChange={e=>{onLesson(Number(e.target.value),'dashboard');setDrawer(false)}}>{meta.lessons.map(L=><option value={L.lesson} key={L.lesson}>Lesson {String(L.lesson).padStart(2,'0')} · {L.title}</option>)}</select><ChevronDown size={15}/></div>
-   </div>
+ const Drawer=()=> <aside className="future-drawer">
+   <div className="future-drawer-head"><Brand/><button onClick={()=>setDrawer(false)} aria-label="Close menu"><X/></button></div>
+   <div className="future-drawer-status"><i/><span>SYSTEM ONLINE</span><b>LESSON {String(lesson).padStart(2,'0')}</b></div>
+   <div className="future-drawer-lesson"><label>CURRENT LESSON</label><div><select value={lesson} onChange={e=>{onLesson(Number(e.target.value),'dashboard');setDrawer(false)}}>{meta.lessons.map(L=><option value={L.lesson} key={L.lesson}>Lesson {String(L.lesson).padStart(2,'0')} · {L.title}</option>)}</select><ChevronDown size={15}/></div></div>
    <nav>{NAV.map(x=>{const I=x.icon;return <button key={x.view} className={view===x.view?'active':''} onClick={()=>go(x.view)}><I size={18}/><span>{x.label}</span>{x.view==='kanji'&&<small>2300</small>}</button>})}</nav>
-   <div className="academy-mobile-foot"><Sparkles size={16}/><span>Learn → Listen → Recall → Use → Review</span></div>
+   <div className="future-drawer-foot"><Sparkles size={16}/><span>Learn → Listen → Recall → Use → Review</span></div>
  </aside>;
 
- return <div className="academy-shell">
-   <header className="academy-header">
+ return <div className="future-shell">
+   <header className="future-header">
      <Brand/>
-     <nav className="academy-primary-nav">
+     <nav className="future-primary-nav">
        {NAV.slice(0,8).map(x=><button key={x.view} className={view===x.view?'active':''} onClick={()=>go(x.view)}>{x.label}</button>)}
-       <button className={['kanji','mock','history'].includes(view)?'active more-active':''} onClick={()=>setDrawer(true)}>More <ChevronDown size={13}/></button>
+       <button className={['kanji','mock','history'].includes(view)?'active':''} onClick={()=>setDrawer(true)}>More <ChevronDown size={13}/></button>
      </nav>
-     <div className="academy-header-tools">
-       <button className="academy-search-trigger" onClick={openSearch} aria-label="Search"><Search size={17}/><span>Search</span><kbd>⌘K</kbd></button>
-       <div className="academy-lesson-select"><span>L{String(lesson).padStart(2,'0')}</span><select value={lesson} onChange={e=>onLesson(Number(e.target.value),'dashboard')} aria-label="Current lesson">{meta.lessons.map(L=><option value={L.lesson} key={L.lesson}>Lesson {String(L.lesson).padStart(2,'0')} · {L.title}</option>)}</select><ChevronDown size={14}/></div>
-       <button className="academy-menu-trigger" onClick={()=>setDrawer(true)} aria-label="Open menu"><Menu/></button>
+     <div className="future-header-tools">
+       <button className="future-search-trigger" onClick={openSearch}><Search size={16}/><span>Search</span><kbd>⌘K</kbd></button>
+       <div className="future-header-node"><Radio size={13}/><span>L{String(lesson).padStart(2,'0')}</span><select value={lesson} onChange={e=>onLesson(Number(e.target.value),'dashboard')} aria-label="Current lesson">{meta.lessons.map(L=><option value={L.lesson} key={L.lesson}>Lesson {String(L.lesson).padStart(2,'0')} · {L.title}</option>)}</select><ChevronDown size={13}/></div>
+       <button className="future-menu-trigger" onClick={()=>setDrawer(true)} aria-label="Open menu"><Menu/></button>
      </div>
    </header>
 
-   <div className="academy-subnav">
-     <span className="subnav-label">PRACTICE</span>
+   <div className="future-subnav">
+     <span><Command size={13}/> QUICK ACCESS</span>
      {NAV.slice(1).map(x=>{const I=x.icon;return <button key={x.view} className={view===x.view?'active':''} onClick={()=>go(x.view)}><I size={14}/>{x.short}</button>})}
    </div>
 
-   <main className="academy-main">{children}</main>
+   <main className="future-main">{children}</main>
 
-   <nav className="academy-mobile-dock">
+   <nav className="future-mobile-dock">
      {([NAV[0],NAV[1],NAV[2],NAV[6]] as NavItem[]).map(x=>{const I=x.icon;return <button key={x.view} onClick={()=>go(x.view)} className={view===x.view?'active':''}><I/><span>{x.short}</span></button>})}
      <button onClick={()=>setDrawer(true)}><Menu/><span>Menu</span></button>
    </nav>
 
-   {drawer&&<div className="academy-drawer-layer" role="dialog" aria-modal="true">
-     <button className="academy-drawer-backdrop" onClick={()=>setDrawer(false)} aria-label="Close menu"/>
-     <MobileMenu/>
-   </div>}
+   {drawer&&<div className="future-drawer-layer" role="dialog" aria-modal="true"><button className="future-layer-backdrop" onClick={()=>setDrawer(false)} aria-label="Close menu"/><Drawer/></div>}
 
-   {search&&<div className="academy-search-layer" role="dialog" aria-modal="true">
-     <button className="academy-search-backdrop" onClick={()=>setSearch(false)} aria-label="Close search"/>
-     <section className="academy-search-dialog">
-       <div className="academy-search-head"><Search/><input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Japanese / Kanji / বাংলা / English…"/><button onClick={()=>setSearch(false)}><X/></button></div>
-       <div className="academy-search-results">{loading?<p>Loading search index…</p>:shown.map(x=><button key={x.id} onClick={()=>{onLesson(x.lesson,'vocabulary');setSearch(false)}}><span className="font-jp">{x.k||x.j}</span><div><b className="font-bn">{x.bn}</b><small>Lesson {x.lesson} · {x.p}</small></div></button>)}</div>
+   {search&&<div className="future-search-layer" role="dialog" aria-modal="true">
+     <button className="future-layer-backdrop" onClick={()=>setSearch(false)} aria-label="Close search"/>
+     <section className="future-search-dialog">
+       <div className="future-search-head"><Search/><input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Japanese / Kanji / বাংলা / English…"/><button onClick={()=>setSearch(false)}><X/></button></div>
+       <div className="future-search-results">{loading?<p>Indexing learning data…</p>:shown.map(x=><button key={x.id} onClick={()=>{onLesson(x.lesson,'vocabulary');setSearch(false)}}><span className="font-jp">{x.k||x.j}</span><div><b className="font-bn">{x.bn}</b><small>Lesson {x.lesson} · {x.p}</small></div></button>)}</div>
      </section>
    </div>}
  </div>

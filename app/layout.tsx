@@ -3,11 +3,11 @@ import Script from 'next/script';
 import './globals.css';
 import '@/styles/premium.scss';
 import '@/styles/v44-editorial.scss';
-import '@/styles/v45-academy.scss';
+import '@/styles/v46-futuristic.scss';
 
 export const metadata: Metadata = {
   title: 'N5 Natural Japanese Studio',
-  description: 'Premium JLPT N5 Japanese learning studio with vocabulary, SRS, listening, reading, grammar, Kanji KLC and mock tests.',
+  description: 'Futuristic JLPT N5 Japanese learning studio with vocabulary, SRS, listening, reading, grammar, Kanji KLC and mock tests.',
   applicationName: 'N5 Natural Japanese Studio',
   manifest: './manifest.webmanifest',
   icons: { icon: './assets/app-icon.svg', apple: './assets/app-icon.svg' },
@@ -17,7 +17,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0E1715',
+  themeColor: '#071311',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
