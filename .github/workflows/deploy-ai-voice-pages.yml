@@ -1,4 +1,4 @@
-name: Deploy N5 Studio — Japanese Calm Premium UI v34
+name: Deploy N5 Studio — Preview-Matched Structural UI v35
 
 on:
   push:
@@ -2191,6 +2191,269 @@ jobs:
           })();
           JAVASCRIPT
 
+
+      - name: Build preview-matched structural UI v35
+        shell: bash
+        run: |
+          cat > _build/preview-match-ui-v35.js <<'JAVASCRIPT'
+          (() => {
+            "use strict";
+          
+            document.documentElement.dataset.ui = "preview-match-v35";
+          
+            const q = (s, r = document) => r.querySelector(s);
+            const qa = (s, r = document) => [...r.querySelectorAll(s)];
+          
+            function safeEsc(value) {
+              try { return typeof esc === "function" ? esc(String(value ?? "")) : String(value ?? "").replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+              catch { return String(value ?? ""); }
+            }
+          
+            function installShell() {
+              const sidebar = q("#studySidebar");
+              const topbar = q(".topbar");
+              const nav = q("#nav");
+              const dock = q("#mobileDock");
+              if (!sidebar || !topbar || !nav) return;
+          
+              if (!q("#v35SideBrand")) {
+                sidebar.insertAdjacentHTML("afterbegin", `
+                  <div class="v35-side-brand" id="v35SideBrand">
+                    <div class="v35-torii" aria-hidden="true">⛩</div>
+                    <div><strong>N5 Natural Japanese Studio</strong><span>日本語を たのしく まなぶ</span></div>
+                  </div>`);
+              }
+          
+              if (!q("#v35TopSearch")) {
+                const actions = q(".top-actions", topbar);
+                const search = document.createElement("button");
+                search.type = "button";
+                search.id = "v35TopSearch";
+                search.className = "v35-top-search";
+                search.innerHTML = `<span class="v35-search-icon">⌕</span><span class="v35-search-copy">Search vocabulary, grammar, kanji…</span><kbd>Ctrl K</kbd>`;
+                search.addEventListener("click", () => q("#searchBtn")?.click());
+                topbar.insertBefore(search, actions || null);
+              }
+          
+              if (!q("#v35LessonChip")) {
+                const actions = q(".top-actions", topbar);
+                actions?.insertAdjacentHTML("afterbegin", `<div class="v35-lesson-chip" id="v35LessonChip"><span>Current</span><b>Lesson</b></div>`);
+              }
+          
+              const navLabels = {
+                overview:["⌂","Dashboard"], vocab:["あ","Vocabulary"], spelling:["✎","Spelling"], srs:["↻","SRS (Recall)"],
+                conversation:["◌","Conversation"], reading:["▤","Reading"], listening:["◖","Listening"], grammar:["◇","Grammar"],
+                kanji:["木","Kanji Tree (KLC)"], mock:["✓","Mock Test"], history:["↺","Test History"]
+              };
+              qa("button[data-view]", nav).forEach(btn => {
+                const view = btn.dataset.view;
+                if (!navLabels[view] || btn.dataset.v35Labelled === "1") return;
+                const oldBadge = q(".nav-badge", btn)?.textContent || "0";
+                const badge = view === "spelling" ? `<b id="spellingWrongBadge" class="nav-badge">${safeEsc(oldBadge)}</b>` : view === "srs" ? `<b id="srsDueBadge" class="nav-badge">${safeEsc(oldBadge)}</b>` : "";
+                btn.innerHTML = `<span class="v35-nav-icon">${navLabels[view][0]}</span><span class="v35-nav-label">${navLabels[view][1]}</span>${badge}`;
+                btn.dataset.v35Labelled = "1";
+              });
+          
+              if (!q("#v35DailyFocus")) {
+                sidebar.insertAdjacentHTML("beforeend", `
+                  <div class="v35-daily-focus" id="v35DailyFocus">
+                    <div class="v35-focus-top"><span>今日のフォーカス</span><b id="v35FocusLesson">Lesson</b></div>
+                    <p>Recall → Listen → Review</p>
+                    <div class="v35-focus-bar"><i></i></div>
+                  </div>`);
+              }
+          
+              if (dock) {
+                const spell = q('[data-mobile-view="spelling"]', dock);
+                if (spell) {
+                  spell.dataset.mobileView = "srs";
+                  spell.innerHTML = `<span>↻</span><b>SRS</b>`;
+                }
+              }
+          
+              updateShell();
+            }
+          
+            function updateShell() {
+              try {
+                const lesson = Number(state?.lesson || q("#lessonSelect")?.value || 1);
+                const chip = q("#v35LessonChip");
+                if (chip) chip.innerHTML = `<span>Current</span><b>Lesson ${String(lesson).padStart(2,"0")}</b>`;
+                const focus = q("#v35FocusLesson");
+                if (focus) focus.textContent = `L${String(lesson).padStart(2,"0")}`;
+                const rows = Array.isArray(state?.vocab) ? state.vocab : [];
+                const done = rows.filter(v => v.mastered).length;
+                const pct = rows.length ? Math.round(done / rows.length * 100) : 0;
+                const bar = q("#v35DailyFocus .v35-focus-bar i");
+                if (bar) bar.style.width = `${pct}%`;
+              } catch {}
+            }
+          
+            function blossomMarkup() {
+              return `<div class="v35-sakura" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><b></b></div>`;
+            }
+          
+            function installOverview() {
+              if (typeof renderOverview !== "function") return;
+          
+              renderOverview = function() {
+                const L = state.content;
+                const rows = state.vocab || [];
+                const done = rows.filter(v => v.mastered).length;
+                const pct = rows.length ? Math.round(done / rows.length * 100) : 0;
+                const avg = state.history?.length ? Math.round(state.history.reduce((a, x) => a + Number(x.score || 0), 0) / state.history.length) : 0;
+                const srs = typeof offlineSrsSummary === "function" ? offlineSrsSummary(state.lesson) : { due:0, new:0 };
+                const lessons = typeof lessonSummary === "function" ? lessonSummary() : [];
+                const title = L?.title || `Lesson ${state.lesson}`;
+                const scenario = L?.scenario || "Natural Japanese study";
+          
+                q("#view-overview").innerHTML = `
+                  <section class="v35-dashboard-hero">
+                    <div class="v35-hero-copy">
+                      <span class="v35-kicker">N5 STUDY DASHBOARD</span>
+                      <h1>今日も、少しずつ。</h1>
+                      <p><strong>${safeEsc(title)}</strong> · ${safeEsc(scenario)}</p>
+                      <div class="v35-hero-actions">
+                        <button class="v35-primary" id="v35ContinueVocab">Continue Lesson <span>→</span></button>
+                        <button class="v35-secondary" id="v35StartSrs">Start Recall</button>
+                      </div>
+                    </div>
+                    ${blossomMarkup()}
+                  </section>
+          
+                  <section class="v35-stat-grid" aria-label="Study statistics">
+                    <article class="v35-stat-card"><span class="v35-stat-icon blue">▤</span><div><small>Lesson Progress</small><strong>${pct}%</strong><div class="v35-mini-bar"><i style="width:${pct}%"></i></div></div></article>
+                    <article class="v35-stat-card"><span class="v35-stat-icon red">✓</span><div><small>Vocabulary Mastered</small><strong>${done} / ${rows.length}</strong></div></article>
+                    <article class="v35-stat-card"><span class="v35-stat-icon purple">↻</span><div><small>Review Due</small><strong>${Number(srs.due || 0)}</strong><em>${Number(srs.new || 0)} new cards</em></div></article>
+                    <article class="v35-stat-card"><span class="v35-stat-icon gold">◆</span><div><small>Current Lesson</small><strong>L${String(state.lesson).padStart(2,"0")}</strong></div></article>
+                    <article class="v35-stat-card"><span class="v35-stat-icon green">↗</span><div><small>Mock Test Avg.</small><strong>${avg}%</strong></div></article>
+                  </section>
+          
+                  <div class="v35-section-title"><div><span>CONTINUE LEARNING</span><h2>Pick up where you left off</h2></div></div>
+                  <section class="v35-continue-grid">
+                    <article class="v35-continue-card lesson"><span class="v35-card-tag">LESSON ${String(state.lesson).padStart(2,"0")}</span><h3>${safeEsc(title)}</h3><p>${done}/${rows.length} words mastered</p><div class="v35-card-bottom"><button id="v35LessonCard">Continue <span>▶</span></button><div class="v35-line"><i style="width:${pct}%"></i></div></div></article>
+                    <article class="v35-continue-card srs"><div class="v35-round-icon">↻</div><span class="v35-card-tag">SRS · RECALL</span><h3>Review Session</h3><p>${Number(srs.due || 0)} due · ${Number(srs.new || 0)} new</p><button id="v35SrsCard">Start Review</button></article>
+                    <article class="v35-continue-card listen"><div class="v35-round-icon">◖</div><span class="v35-card-tag">LISTENING</span><h3>Natural Japanese</h3><p>Expressive audio + live transcript</p><button id="v35ListenCard">Study Now</button><div class="v35-wave-mini">||||||||||||||||</div></article>
+                    <article class="v35-continue-card kanji"><div class="v35-round-icon">木</div><span class="v35-card-tag">KANJI TREE</span><h3>KLC Visual Memory</h3><p>Build recognition through components</p><button id="v35KanjiCard">Explore</button></article>
+                  </section>
+          
+                  <div class="v35-section-title lesson-title"><div><span>LESSON ROADMAP</span><h2>All lessons</h2><p>Lesson card চাপলে সরাসরি Vocabulary খুলবে।</p></div></div>
+                  <section class="v35-lesson-roadmap">
+                    ${lessons.map(x => `<button class="v35-lesson-card ${Number(x.lesson) === Number(state.lesson) ? "current" : ""}" data-v35-lesson="${x.lesson}"><span>L${String(x.lesson).padStart(2,"0")}</span><strong>${safeEsc(x.title)}</strong><small>${x.count} words</small><i>→</i></button>`).join("")}
+                  </section>`;
+          
+                q("#v35ContinueVocab")?.addEventListener("click", () => showView("vocab"));
+                q("#v35StartSrs")?.addEventListener("click", () => startSrsSession(8));
+                q("#v35LessonCard")?.addEventListener("click", () => showView("vocab"));
+                q("#v35SrsCard")?.addEventListener("click", () => startSrsSession(8));
+                q("#v35ListenCard")?.addEventListener("click", () => showView("listening"));
+                q("#v35KanjiCard")?.addEventListener("click", () => showView("kanji"));
+                qa("[data-v35-lesson]").forEach(btn => btn.addEventListener("click", () => setLesson(Number(btn.dataset.v35Lesson), "vocab")));
+                updateShell();
+              };
+          
+              renderOverview();
+            }
+          
+            function bindKeyboardSearch() {
+              document.addEventListener("keydown", (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+                  e.preventDefault();
+                  q("#searchBtn")?.click();
+                  setTimeout(() => q("#globalSearch")?.focus(), 30);
+                }
+              });
+            }
+          
+            function wrapLessonUpdates() {
+              try {
+                const original = setLesson;
+                setLesson = function(...args) {
+                  const out = original.apply(this, args);
+                  setTimeout(updateShell, 0);
+                  return out;
+                };
+              } catch {}
+              q("#lessonSelect")?.addEventListener("change", () => setTimeout(updateShell, 0));
+            }
+          
+            const style = document.createElement("style");
+            style.id = "n5-preview-match-ui-v35";
+            style.textContent = `
+              :root{
+                --v35-navy:#10283f;--v35-navy2:#173752;--v35-paper:#f7f5ef;--v35-card:#fffdf9;--v35-ink:#172735;--v35-muted:#71808d;
+                --v35-red:#c84b4e;--v35-red-soft:#fff0ef;--v35-blue:#2d68a5;--v35-purple:#62569a;--v35-green:#347760;--v35-gold:#b8862e;
+                --v35-line:#e6e8e5;--v35-shadow:0 14px 34px rgba(20,42,60,.075);--v35-radius:18px;
+              }
+              body{background:#f7f6f1!important;color:var(--v35-ink)!important}
+              .layout{max-width:none!important;grid-template-columns:256px minmax(0,1fr)!important}
+              .main{max-width:1440px!important;padding:30px 34px 72px!important}
+          
+              /* shell now matches the preview structure rather than only recoloring the old shell */
+              .topbar{min-height:72px!important;background:rgba(255,255,255,.95)!important;border-bottom:1px solid var(--v35-line)!important;box-shadow:0 6px 18px rgba(18,39,57,.035)!important;color:var(--v35-ink)!important;gap:20px!important}
+              .topbar>.brand{display:none!important}
+              .topbar .top-actions{margin-left:auto!important}
+              .topbar .top-actions .btn{background:#fff!important;color:#30485a!important;border:1px solid var(--v35-line)!important;box-shadow:none!important}
+              .topbar #searchBtn{display:none!important}
+              .v35-top-search{margin-left:276px;flex:1;max-width:520px;min-height:44px;border:1px solid #e8e9e7;background:#fbfbfa;border-radius:14px;padding:0 12px 0 14px;display:flex;align-items:center;gap:10px;color:#7b8792;box-shadow:0 3px 10px rgba(18,39,57,.025);cursor:pointer}
+              .v35-top-search:hover{background:#fff;border-color:#d9dedb}.v35-search-icon{font-size:22px;color:#263d50}.v35-search-copy{font-size:13px;flex:1;text-align:left}.v35-top-search kbd{font:600 10px/1 system-ui;padding:5px 7px;border-radius:7px;background:#f1f2f1;color:#8a939b;border:1px solid #e3e5e3}
+              .v35-lesson-chip{display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:13px;background:#fff7e8;border:1px solid #f0dfbd;color:#856426;white-space:nowrap}.v35-lesson-chip span{font-size:9px;text-transform:uppercase;letter-spacing:.12em}.v35-lesson-chip b{font-size:12px}
+          
+              .sidebar{top:0!important;height:100vh!important;padding:18px 14px 18px!important;background:linear-gradient(180deg,#0d2236 0%,#102a42 65%,#132f49 100%)!important;border-right:0!important;color:#fff!important;z-index:60!important}
+              .v35-side-brand{display:flex;gap:11px;align-items:center;padding:3px 7px 19px;margin-bottom:9px;border-bottom:1px solid rgba(255,255,255,.08)}
+              .v35-torii{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,#d45255,#b73d42);font-size:22px;box-shadow:0 8px 18px rgba(0,0,0,.16)}
+              .v35-side-brand strong{display:block;color:#fff;font-size:13px;line-height:1.3}.v35-side-brand span{display:block;color:#aabccc;font-size:9px;margin-top:4px}
+              .sidebar .side-section{border-color:rgba(255,255,255,.08)!important}.sidebar .side-section .eyebrow{color:#8298aa!important}.sidebar .select{background:rgba(255,255,255,.08)!important;border-color:rgba(255,255,255,.12)!important;color:#fff!important}
+              .sidebar .select option{color:#172735;background:#fff}
+              .nav{gap:4px!important}.nav button{display:grid!important;grid-template-columns:26px 1fr auto;align-items:center;min-height:42px!important;padding:8px 10px!important;color:#d3dee6!important;border:0!important;background:transparent!important;border-radius:12px!important;font-weight:600!important;text-align:left!important}
+              .nav button:hover{background:rgba(255,255,255,.06)!important;color:#fff!important}.nav button.active{background:rgba(255,255,255,.11)!important;color:#fff!important;box-shadow:inset 3px 0 0 #f1a24a!important}.v35-nav-icon{font-size:15px;opacity:.95}.v35-nav-label{font-size:12px}.nav-badge{justify-self:end;background:rgba(255,255,255,.11)!important;color:#fff!important}
+              .sidebar .toggle{color:#c9d5de!important}.sidebar .voice-panel,.sidebar .jp-input-panel{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07)!important;border-radius:14px;padding:11px!important;margin-top:8px}.sidebar .instant-voice-note,.sidebar .jp-input-status{color:#9db0bf!important}.sidebar .side-stats{display:none!important}
+              .v35-daily-focus{margin-top:auto;padding:14px;border-radius:16px;background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.08)}.v35-focus-top{display:flex;justify-content:space-between;gap:8px;color:#fff}.v35-focus-top span{font-size:10px}.v35-focus-top b{font-size:11px}.v35-daily-focus p{font-size:10px;color:#9fb1bf;margin:6px 0 10px}.v35-focus-bar{height:5px;border-radius:99px;background:rgba(255,255,255,.11);overflow:hidden}.v35-focus-bar i{display:block;height:100%;background:#f2a048;border-radius:99px;transition:width .25s ease}
+          
+              /* dashboard structure */
+              .v35-dashboard-hero{position:relative;overflow:hidden;min-height:210px;border-radius:26px;background:linear-gradient(120deg,#fffdfa 0%,#fffaf3 62%,#f8efe7 100%);border:1px solid #eee7de;box-shadow:var(--v35-shadow);padding:34px 38px;display:flex;align-items:center;margin-bottom:16px}
+              .v35-hero-copy{position:relative;z-index:2;max-width:650px}.v35-kicker{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--v35-red);margin-bottom:8px}.v35-dashboard-hero h1{font-size:clamp(30px,3vw,44px)!important;margin:0 0 8px!important;color:#172735!important;letter-spacing:-.035em!important}.v35-dashboard-hero p{font-size:14px;color:#667683;margin:0;line-height:1.7}.v35-dashboard-hero p strong{color:#2a4051}.v35-hero-actions{display:flex;gap:9px;margin-top:20px;flex-wrap:wrap}.v35-primary,.v35-secondary{min-height:42px;padding:0 15px;border-radius:12px;border:0;font-weight:750;font-size:12px;cursor:pointer}.v35-primary{background:var(--v35-red);color:#fff;box-shadow:0 8px 16px rgba(200,75,78,.18)}.v35-secondary{background:#fff;color:#2e4455;border:1px solid var(--v35-line)}
+              .v35-sakura{position:absolute;right:26px;top:15px;width:310px;height:170px;opacity:.9}.v35-sakura:before{content:"";position:absolute;right:-20px;top:76px;width:285px;height:9px;background:#5a3d2d;border-radius:99px;transform:rotate(-13deg);box-shadow:-70px 12px 0 -2px #674535,-130px 4px 0 -3px #674535}.v35-sakura b{position:absolute;right:44px;top:48px;width:105px;height:4px;background:#684837;transform:rotate(-34deg);border-radius:99px}.v35-sakura i{position:absolute;width:18px;height:18px;border-radius:65% 35% 65% 35%;background:#f4a3aa;box-shadow:8px 3px 0 -3px #f6b5ba,-6px 6px 0 -3px #ec8f98}.v35-sakura i:nth-child(1){right:35px;top:47px}.v35-sakura i:nth-child(2){right:85px;top:74px}.v35-sakura i:nth-child(3){right:132px;top:47px}.v35-sakura i:nth-child(4){right:173px;top:89px}.v35-sakura i:nth-child(5){right:214px;top:67px}.v35-sakura i:nth-child(6){right:245px;top:107px}.v35-sakura i:nth-child(7){right:119px;top:103px}.v35-sakura i:nth-child(8){right:60px;top:115px}
+          
+              .v35-stat-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:14px 0 26px}.v35-stat-card{min-height:104px;background:#fff;border:1px solid var(--v35-line);border-radius:17px;padding:15px;display:flex;gap:11px;align-items:flex-start;box-shadow:0 8px 18px rgba(18,39,57,.035)}.v35-stat-icon{flex:0 0 34px;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-weight:900}.v35-stat-icon.blue{background:#eaf1fb;color:var(--v35-blue)}.v35-stat-icon.red{background:#ffefef;color:var(--v35-red)}.v35-stat-icon.purple{background:#f0eef9;color:var(--v35-purple)}.v35-stat-icon.gold{background:#fff3dd;color:var(--v35-gold)}.v35-stat-icon.green{background:#e9f5f0;color:var(--v35-green)}.v35-stat-card div{min-width:0}.v35-stat-card small{display:block;color:#798691;font-size:10px;line-height:1.25;margin-bottom:5px}.v35-stat-card strong{display:block;color:#1b2e3e;font-size:20px;letter-spacing:-.03em}.v35-stat-card em{display:block;font-style:normal;color:#87939d;font-size:9px;margin-top:2px}.v35-mini-bar{height:4px;background:#edf0f0;border-radius:99px;margin-top:9px;overflow:hidden}.v35-mini-bar i{display:block;height:100%;background:var(--v35-blue);border-radius:99px}
+              .v35-section-title{display:flex;justify-content:space-between;align-items:end;margin:24px 0 11px}.v35-section-title span{font-size:9px;letter-spacing:.15em;font-weight:850;color:#8c979f}.v35-section-title h2{font-size:21px!important;margin:3px 0 0!important;color:#1b2d3d!important}.v35-section-title p{font-size:11px;color:#87929b;margin:4px 0 0}
+              .v35-continue-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.v35-continue-card{position:relative;overflow:hidden;min-height:190px;border-radius:19px;padding:18px;background:#fff;border:1px solid var(--v35-line);box-shadow:0 9px 22px rgba(18,39,57,.045)}.v35-continue-card.lesson{background:linear-gradient(145deg,#fff8f5,#fff)}.v35-continue-card.srs{background:linear-gradient(145deg,#f6f3ff,#fff)}.v35-continue-card.listen{background:linear-gradient(145deg,#f2f7ff,#fff)}.v35-continue-card.kanji{background:linear-gradient(145deg,#eff9f4,#fff)}.v35-card-tag{display:block;font-size:9px;font-weight:850;letter-spacing:.12em;color:#9c7070;margin-bottom:8px}.v35-continue-card h3{font-size:17px!important;margin:0 0 6px!important;color:#1d3040!important}.v35-continue-card p{font-size:11px;color:#7c8993;margin:0 0 18px;line-height:1.55}.v35-continue-card button{min-height:38px;border:0;border-radius:10px;padding:0 12px;color:#fff;font-weight:750;font-size:11px;cursor:pointer}.v35-continue-card.lesson button{background:var(--v35-red)}.v35-continue-card.srs button{background:var(--v35-purple)}.v35-continue-card.listen button{background:var(--v35-blue)}.v35-continue-card.kanji button{background:var(--v35-green)}.v35-round-icon{position:absolute;right:16px;top:15px;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:19px;background:rgba(255,255,255,.75);border:1px solid rgba(25,55,75,.07)}.v35-card-bottom{position:absolute;left:18px;right:18px;bottom:16px}.v35-line{height:4px;border-radius:99px;background:#ecefee;margin-top:11px}.v35-line i{display:block;height:100%;border-radius:99px;background:var(--v35-red)}.v35-wave-mini{position:absolute;right:14px;bottom:20px;color:#78a8d8;letter-spacing:-2px;transform:scaleY(1.5);font-size:10px}
+              .v35-lesson-roadmap{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.v35-lesson-card{position:relative;min-height:88px;padding:12px 13px;border-radius:15px;border:1px solid var(--v35-line);background:#fff;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:3px;box-shadow:0 5px 12px rgba(18,39,57,.025)}.v35-lesson-card:hover{transform:translateY(-1px);box-shadow:0 9px 18px rgba(18,39,57,.055)}.v35-lesson-card.current{background:#fff5f2;border-color:#eccac5}.v35-lesson-card>span{font-size:9px;color:var(--v35-red);font-weight:850;letter-spacing:.08em}.v35-lesson-card strong{font-size:11px;color:#2b4050;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v35-lesson-card small{font-size:9px;color:#8a959e}.v35-lesson-card>i{position:absolute;right:11px;bottom:10px;font-style:normal;color:#9aa5ad}
+          
+              /* all study screens brought into same preview language */
+              .view:not(#view-overview)>.section-head:first-child{padding:18px 20px!important;border-radius:18px!important;background:#fff!important;border:1px solid var(--v35-line)!important;box-shadow:0 6px 16px rgba(18,39,57,.035)!important;margin-top:0!important}.view:not(#view-overview)>.section-head:first-child h2{font-size:23px!important}.view:not(#view-overview)>.section-head:first-child p{margin-bottom:0!important}
+              .card,.vocab-card,.srs-v32-card,.spell-study-card,.transcript-card,.klc-detail,.q-card{border-color:var(--v35-line)!important;box-shadow:0 8px 20px rgba(18,39,57,.04)!important}
+              .vocab-card{background:#fff!important;border-radius:17px!important}.vocab-card:hover{border-color:#d7dcda!important}.jp-word{color:#162c3d!important}.meaning{color:#263d4e!important}.translation,.pron,.english,.meta{color:#7a8791!important}
+              .srs-v32-card{background:#fff!important;border-radius:22px!important}.srs-v32-shell{max-width:920px!important}.srs-v32-wordbox{background:linear-gradient(145deg,#fbfcfd,#f3f7f9)!important;border-color:#dfe5e7!important}.srs-v32-reveal{background:var(--v35-navy)!important;color:#fff!important;border-radius:13px!important}.srs-v32-audio .btn{background:#f5f7f8!important;color:#294052!important;border-color:#dce2e5!important}
+              .listening-mode-card{border-radius:17px!important;background:#fff!important}.enhanced-stage{background:linear-gradient(165deg,#102941,#153954)!important;border-radius:21px!important}.enhanced-transcript-card{background:#fff!important}.transcript-line.active{background:#f0f6ff!important}
+              .reading-card,.reading-page,.bubble,.grammar-card{background:#fff!important;border-color:var(--v35-line)!important}.reading-jp{max-width:72ch;margin-inline:auto;line-height:2!important}
+              .klc-page-hero{background:linear-gradient(145deg,#fff,#f7f6f1)!important;border:1px solid var(--v35-line)!important}.klc-chip{background:#fff!important}.klc-chip.active{background:#fff2ef!important;border-color:#e7beb9!important}
+              .q-card{background:#fff!important}.option{border-radius:12px!important}.option:hover{background:#f8f9f8!important}
+          
+              .mobile-dock{background:#10283f!important;border:1px solid rgba(255,255,255,.08)!important;box-shadow:0 16px 34px rgba(13,34,54,.22)!important}.mobile-dock button{color:#c8d5df!important}.mobile-dock button.active{background:#c94c50!important;color:#fff!important}
+          
+              @media(max-width:1180px){.v35-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.v35-continue-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v35-lesson-roadmap{grid-template-columns:repeat(4,minmax(0,1fr))}.v35-top-search{margin-left:255px}}
+              @media(max-width:820px){
+                .layout{display:block!important}.main{padding:18px 12px 94px!important;max-width:none!important}.sidebar{top:0!important;height:100dvh!important;background:#10283f!important}.topbar{min-height:60px!important;padding:8px 10px!important;background:rgba(255,255,255,.96)!important}.topbar>.brand{display:flex!important}.topbar .brand-copy strong{color:#203545!important}.topbar .brand-copy span{display:none!important}.topbar .seal{width:38px!important;height:38px!important}.v35-top-search,.v35-lesson-chip{display:none!important}.topbar #searchBtn{display:inline-flex!important}.topbar .top-actions .action-label{display:none!important}.topbar .top-actions .btn{width:40px!important;height:40px!important;padding:0!important;justify-content:center!important}.v35-side-brand{display:flex}.v35-daily-focus{margin-bottom:14px}
+                .v35-dashboard-hero{min-height:175px;padding:23px 20px;border-radius:21px}.v35-dashboard-hero h1{font-size:28px!important}.v35-dashboard-hero p{max-width:72%}.v35-sakura{right:-85px;top:11px;transform:scale(.82);opacity:.55}.v35-hero-actions{margin-top:16px}.v35-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:20px}.v35-stat-card{min-height:92px;padding:12px}.v35-stat-card:nth-child(5){grid-column:1/-1}.v35-continue-grid{grid-template-columns:1fr 1fr;gap:9px}.v35-continue-card{min-height:172px;padding:15px}.v35-card-bottom{left:15px;right:15px}.v35-lesson-roadmap{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.v35-section-title{margin-top:22px}.v35-section-title h2{font-size:19px!important}
+                .view:not(#view-overview)>.section-head:first-child{padding:15px!important;border-radius:16px!important}.view:not(#view-overview)>.section-head:first-child h2{font-size:20px!important}.vocab-card,.srs-v32-card,.spell-study-card,.q-card{border-radius:16px!important}
+              }
+              @media(max-width:520px){
+                .main{padding-inline:9px!important}.v35-dashboard-hero{padding:21px 16px;min-height:185px}.v35-dashboard-hero h1{font-size:25px!important;max-width:82%}.v35-dashboard-hero p{max-width:82%;font-size:12px}.v35-sakura{right:-115px;top:20px;opacity:.42}.v35-primary,.v35-secondary{min-height:40px;padding:0 12px}.v35-stat-grid{grid-template-columns:1fr 1fr}.v35-stat-card{display:block;min-height:98px}.v35-stat-icon{margin-bottom:7px}.v35-stat-card strong{font-size:18px}.v35-continue-grid{grid-template-columns:1fr}.v35-continue-card{min-height:150px}.v35-continue-card.lesson{min-height:170px}.v35-wave-mini{display:none}.v35-lesson-roadmap{grid-template-columns:1fr 1fr}.v35-lesson-card{min-height:82px;padding:11px}.v35-section-title p{font-size:10px}
+              }
+              @media(prefers-reduced-motion:reduce){.v35-lesson-card:hover{transform:none}.v35-focus-bar i{transition:none}}
+            `;
+            document.head.appendChild(style);
+          
+            installShell();
+            bindKeyboardSearch();
+            wrapLessonUpdates();
+            installOverview();
+          
+            console.info("N5 Preview-Matched Structural UI v35 enabled — real layout redesign, not a concept-only skin.");
+          })();
+          JAVASCRIPT
+
       - name: Assemble GitHub Pages site
         shell: bash
         run: |
@@ -2205,6 +2468,7 @@ jobs:
           cp _build/app-clean-v32.js _site/app-clean-v32.js
           cp _build/analytics-events-v32.js _site/analytics-events-v32.js
           cp _build/calm-premium-ui-v34.js _site/calm-premium-ui-v34.js
+          cp _build/preview-match-ui-v35.js _site/preview-match-ui-v35.js
 
           # Copy only generated MP3 files — no neural model ships to the phone.
           cp _audio_cache/*.mp3 _site/audio/
@@ -2222,9 +2486,10 @@ jobs:
               <script src="./app-clean-v32.js"></script>
               <script src="./analytics-events-v32.js"></script>
               <script src="./calm-premium-ui-v34.js"></script>
+              <script src="./preview-match-ui-v35.js"></script>
               """
 
-              if "calm-premium-ui-v34.js" not in html or "analytics-events-v32.js" not in html or "instant-audio-v32.js" not in html or "app-clean-v32.js" not in html:
+              if "preview-match-ui-v35.js" not in html or "calm-premium-ui-v34.js" not in html or "analytics-events-v32.js" not in html or "instant-audio-v32.js" not in html or "app-clean-v32.js" not in html:
                   html = html.replace("</body>", injection + "\n</body>")
 
               ga_tag = """
@@ -2262,12 +2527,20 @@ jobs:
           test -f _site/app-clean-v32.js
           test -f _site/analytics-events-v32.js
           test -f _site/calm-premium-ui-v34.js
+          test -f _site/preview-match-ui-v35.js
           test -d _site/audio
           test "$(find _site/audio -name '*.mp3' | wc -l)" -gt 1500
           test "$(find _site/audio -name 'lesson-*.json' | wc -l)" -eq 25
           grep -q "app-clean-v32.js" _site/index.html
           grep -q "analytics-events-v32.js" _site/index.html
           grep -q "calm-premium-ui-v34.js" _site/index.html
+          grep -q "preview-match-ui-v35.js" _site/index.html
+          grep -q "Preview-Matched Structural UI v35" _site/preview-match-ui-v35.js
+          grep -q "v35-dashboard-hero" _site/preview-match-ui-v35.js
+          grep -q "v35-stat-grid" _site/preview-match-ui-v35.js
+          grep -q "v35-continue-grid" _site/preview-match-ui-v35.js
+          grep -q "v35-lesson-roadmap" _site/preview-match-ui-v35.js
+          grep -q "SRS (Recall)" _site/preview-match-ui-v35.js
           grep -q "N5 Japanese Calm Premium UI v34 enabled" _site/calm-premium-ui-v34.js
           grep -q "mobile-dock" _site/calm-premium-ui-v34.js
           grep -q "klc-lesson-strip" _site/calm-premium-ui-v34.js
@@ -2312,7 +2585,8 @@ jobs:
           node --check _site/app-clean-v32.js
           node --check _site/analytics-events-v32.js
           node --check _site/calm-premium-ui-v34.js
-          echo "v30 QA PASS"
+          node --check _site/preview-match-ui-v35.js
+          echo "v35 structural UI QA PASS"
           echo "MP3 clips: $(find _site/audio -name '*.mp3' | wc -l)"
           echo "Published site size:"
           du -sh _site
