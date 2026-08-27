@@ -1,0 +1,111 @@
+name: Deploy N5 Studio — Premium Next.js v41
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build and validate study data
+        run: |
+          python scripts/build_data.py
+          python scripts/qa_v41.py --prebuild
+
+      - name: Restore Japanese audio cache
+        uses: actions/cache@v4
+        with:
+          path: _audio_cache
+          key: n5-v41-kokoro-${{ hashFiles('source/data/studio.json') }}
+          restore-keys: |
+            n5-v41-kokoro-
+            n5-kokoro-jf-alpha-
+
+      - name: Restore model cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: kokoro-82m-japanese-v41
+          restore-keys: |
+            kokoro-82m-japanese-
+
+      - name: Install Japanese neural TTS toolchain
+        shell: bash
+        run: |
+          set -e
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install \
+            "kokoro>=0.9.4,<1.0" \
+            "misaki[ja]>=0.9.4,<1.0" \
+            "soundfile>=0.12" \
+            "numpy>=1.26,<3"
+          python -m unidic download
+
+      - name: Generate cached natural Japanese audio
+        run: |
+          python scripts/extract_audio_texts.py
+          python scripts/generate_audio.py
+          python scripts/build_audio_manifest.py
+
+      - name: Build KanjiVG stroke-order library
+        shell: bash
+        run: |
+          rm -rf _kanjivg
+          git clone --depth 1 https://github.com/KanjiVG/kanjivg.git _kanjivg
+          python scripts/build_strokes.py
+
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build static Next.js site
+        env:
+          GITHUB_PAGES: "true"
+        run: npm run build
+
+      - name: Final production QA
+        run: |
+          touch out/.nojekyll
+          python scripts/qa_v41.py --postbuild
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./out
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
