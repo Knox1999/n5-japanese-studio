@@ -1,4 +1,4 @@
-name: Deploy N5 Studio — Clean Stable Instant Audio v26
+name: Deploy N5 Studio — Clean Stable Instant Audio v27
 
 on:
   push:
@@ -315,7 +315,7 @@ jobs:
           }
 
           manifest = {
-              "version": "22",
+              "version": "27",
               "voice": "jf_alpha",
               "speed": 0.94,
               "count": len(available),
@@ -347,7 +347,7 @@ jobs:
       - name: Build clean v26 browser app
         shell: bash
         run: |
-          cat > _build/instant-audio-v26.js <<'JAVASCRIPT'
+          cat > _build/instant-audio-v27.js <<'JAVASCRIPT'
           (() => {
             "use strict";
 
@@ -527,12 +527,12 @@ jobs:
             window.N5_INSTANT_AUDIO = { speak: speakInstant, stop, prefetchLesson, manifest };
 
             setTimeout(() => prefetchLesson($("#lessonSelect")?.value || 1), 1200);
-            console.info(`N5 Clean Instant Audio v26: ${available.size} clips`);
+            console.info(`N5 Clean Instant Audio v27: ${available.size} clips`);
           })();
 
           JAVASCRIPT
 
-          cat > _build/app-clean-v26.js <<'JAVASCRIPT'
+          cat > _build/app-clean-v27.js <<'JAVASCRIPT'
           (() => {
             "use strict";
 
@@ -543,7 +543,7 @@ jobs:
               }
             } catch {}
 
-            document.documentElement.dataset.build = "clean-v26";
+            document.documentElement.dataset.build = "clean-v27";
 
             // ---------- Clean view navigation ----------
             showView = function(name, opts = {}) {
@@ -721,7 +721,8 @@ jobs:
               .listen-speeds{gap:5px}.listen-speeds .btn{padding:8px 10px}.single-stream-note{border-color:#7ac7a8!important;background:rgba(36,115,90,.18)!important}
               .instant-voice-note{font-size:9px;line-height:1.45;color:#42665a;margin-top:6px}
               @media(max-width:1100px){.lesson-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.vocab-card{grid-template-columns:1fr 1.35fr auto}}
-              @media(max-width:820px){.main{padding:15px 12px 86px}.hero{padding:20px;border-radius:20px}.hero h1{font-size:25px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.lesson-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3,.grid-2,.listen-grid{grid-template-columns:1fr}.vocab-card{grid-template-columns:1fr;padding:14px}.actions{justify-content:flex-start}.listening-modes{grid-template-columns:1fr}.listen-speeds{display:flex;overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}.listen-speeds .btn{flex:0 0 auto}}
+              @media(max-width:820px){.main{padding:15px 12px 86px}.hero{padding:20px;border-radius:20px}.hero h1{font-size:25px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.lesson-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3,.grid-2,.listen-grid{grid-template-columns:1fr}.vocab-card{grid-template-columns:1fr;padding:14px}.actions{justify-content:flex-start}.listening-modes{grid-template-columns:1fr}.listen-speeds{display:flex;overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}.listen-speeds .btn{flex:0 0 auto}.section-head{gap:10px;align-items:flex-start}.section-head .toolbar{width:100%;justify-content:flex-start;flex-wrap:wrap}.klc-search-row .btn{width:100%}.klc-lesson-strip{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:10px;padding:6px 2px 12px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}.klc-lesson-strip .klc-chip{flex:0 0 110px!important;min-width:110px!important;max-width:110px!important;min-height:92px!important;padding:10px 8px;scroll-snap-align:start}.klc-lesson-strip .klc-chip>b{font-size:28px!important}.klc-lesson-strip .klc-chip>span{font-size:10px!important}.klc-lesson-strip .klc-chip>small{font-size:8px!important;line-height:1.28}.klc-detail-head{grid-template-columns:1fr!important;gap:12px!important}.klc-hero-char{margin-inline:auto}.klc-hero-copy h2{font-size:20px;line-height:1.2}.klc-readings{display:grid;grid-template-columns:1fr;align-items:stretch}.klc-readings span,.klc-readings .btn{width:100%}.klc-nav-arrows{justify-content:center}.klc-one-level,.klc-recursive-panel,.klc-search-panel{padding:14px;border-radius:16px}.klc-component-grid,.klc-build-grid,.klc-search-grid{grid-template-columns:1fr!important}.klc-token-row{gap:5px}.klc-token{font-size:11px}.klc-legend{grid-template-columns:1fr 1fr!important}.klc-mnemonic-card{grid-template-columns:42px 1fr!important;gap:10px;padding:14px}.klc-mnemonic-card p{font-size:13px;line-height:1.6}}
+              @media(max-width:560px){.main{padding:12px 10px 88px}.hero{padding:18px}.section-head{margin:18px 0 10px}.toolbar .btn,.listening-mode-card,.btn{max-width:100%}.klc-search-panel .search-input,.klc-search-panel .btn{width:100%}.klc-page-hero{padding:16px;border-radius:18px}.klc-page-hero h2{font-size:18px;line-height:1.25}.klc-page-hero p{font-size:11px;line-height:1.55}.klc-dataset-badge{width:56px;height:56px;flex-basis:56px}.klc-dataset-badge b{font-size:17px}.klc-stats{grid-template-columns:1fr 1fr!important}.klc-lesson-strip .klc-chip{flex:0 0 104px!important;min-width:104px!important;max-width:104px!important;min-height:90px!important}.klc-detail{margin-top:14px}.klc-furigana-wrap{padding:12px;border-radius:14px}.klc-ruby>span{font-size:38px!important}.klc-ruby rt{font-size:10px!important}.klc-hero-char{width:88px!important;height:88px!important;border-radius:18px}.klc-readings span{font-size:11px;padding:9px 10px}.mobile-dock{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 4px)}}
             `;
             document.head.appendChild(style);
 
@@ -729,7 +730,7 @@ jobs:
             refresh();
             showView(state.view || "overview", { keepScroll: true, instant: true });
 
-            console.info("N5 Clean App v26 loaded — no MutationObserver patches.");
+            console.info("N5 Clean App v27 loaded — no MutationObserver patches.");
           })();
 
           JAVASCRIPT
@@ -743,9 +744,9 @@ jobs:
           cp index.html _site/404.html
           cp .nojekyll _site/.nojekyll 2>/dev/null || true
 
-          cp _build/audio-manifest.js _site/audio-manifest-v26.js
-          cp _build/instant-audio-v26.js _site/instant-audio-v26.js
-          cp _build/app-clean-v26.js _site/app-clean-v26.js
+          cp _build/audio-manifest.js _site/audio-manifest-v27.js
+          cp _build/instant-audio-v27.js _site/instant-audio-v27.js
+          cp _build/app-clean-v27.js _site/app-clean-v27.js
 
           # Copy only generated MP3 files — no neural model ships to the phone.
           cp _audio_cache/*.mp3 _site/audio/
@@ -758,21 +759,21 @@ jobs:
               html = path.read_text(encoding="utf-8")
 
               injection = """
-              <script src="./audio-manifest-v26.js"></script>
-              <script src="./instant-audio-v26.js"></script>
-              <script src="./app-clean-v26.js"></script>
+              <script src="./audio-manifest-v27.js"></script>
+              <script src="./instant-audio-v27.js"></script>
+              <script src="./app-clean-v27.js"></script>
               """
 
-              if "app-clean-v26.js" not in html:
+              if "app-clean-v27.js" not in html:
                   html = html.replace("</body>", injection + "\n</body>")
 
               html = html.replace(
                   "GitHub Single File · Mobile First · Romaji→Kana",
-                  "Clean v26 · Instant Audio · Mobile First"
+                  "Clean v27 · Instant Audio · Mobile First"
               )
               html = html.replace(
                   "<title>N5 Natural Japanese Studio — GitHub Single File</title>",
-                  "<title>N5 Natural Japanese Studio — Clean v26</title>"
+                  "<title>N5 Natural Japanese Studio — Clean v27</title>"
               )
 
               path.write_text(html, encoding="utf-8")
@@ -783,25 +784,25 @@ jobs:
         run: |
           set -e
           test -f _site/index.html
-          test -f _site/audio-manifest-v26.js
-          test -f _site/instant-audio-v26.js
-          test -f _site/app-clean-v26.js
+          test -f _site/audio-manifest-v27.js
+          test -f _site/instant-audio-v27.js
+          test -f _site/app-clean-v27.js
           test -d _site/audio
           test "$(find _site/audio -name '*.mp3' | wc -l)" -gt 1500
           test "$(find _site/audio -name 'lesson-*.json' | wc -l)" -eq 25
-          grep -q "app-clean-v26.js" _site/index.html
-          grep -q "Critical: resolve only after THIS clip actually ends" _site/instant-audio-v26.js
-          grep -q 'setLesson(Number(b.dataset.jump), "vocab")' _site/app-clean-v26.js
-          grep -q 'id="skipSpell"' _site/app-clean-v26.js
-          grep -q 'id="l3"' _site/app-clean-v26.js
-          grep -q 'Reveal বাংলা অর্থ + উচ্চারণ' _site/app-clean-v26.js
-          if grep -q 'new MutationObserver' _site/app-clean-v26.js; then
-            echo "ERROR: v26 clean app must not create MutationObserver patches"
+          grep -q "app-clean-v27.js" _site/index.html
+          grep -q "Critical: resolve only after THIS clip actually ends" _site/instant-audio-v27.js
+          grep -q 'setLesson(Number(b.dataset.jump), "vocab")' _site/app-clean-v27.js
+          grep -q 'id="skipSpell"' _site/app-clean-v27.js
+          grep -q 'id="l3"' _site/app-clean-v27.js
+          grep -q 'Reveal বাংলা অর্থ + উচ্চারণ' _site/app-clean-v27.js
+          if grep -q 'new MutationObserver' _site/app-clean-v27.js; then
+            echo "ERROR: v27 clean app must not create MutationObserver patches"
             exit 1
           fi
-          node --check _site/instant-audio-v26.js
-          node --check _site/app-clean-v26.js
-          echo "v26 QA PASS"
+          node --check _site/instant-audio-v27.js
+          node --check _site/app-clean-v27.js
+          echo "v27 QA PASS"
           echo "MP3 clips: $(find _site/audio -name '*.mp3' | wc -l)"
           echo "Published site size:"
           du -sh _site
