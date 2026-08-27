@@ -13,7 +13,17 @@ export default function FutureBackdrop() {
       <div className="future-glyph glyph-b font-jp">語</div>
       <div className="future-glyph glyph-c font-jp">聴</div>
       <div className="future-dots">
-        {Array.from({length:18},(_,i)=><i key={i} style={{'--i': i} as React.CSSProperties}/>)}
+        {Array.from({length:18},(_,i)=>(
+          <i
+            key={i}
+            style={{
+              left: `${8 + i * 4.8}%`,
+              top: `${17 + (i % 6) * 12}%`,
+              animationDelay: `${i * 0.18}s`,
+              animationDuration: `${5 + i * 0.18}s`,
+            }}
+          />
+        ))}
       </div>
     </div>
   );

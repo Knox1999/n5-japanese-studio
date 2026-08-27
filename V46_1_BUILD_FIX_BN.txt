@@ -1,0 +1,33 @@
+N5 Natural Japanese Studio — v46.1 BUILD FIX
+==============================================
+
+GitHub Actions failure found:
+- Job: build-and-deploy
+- Failed step: Build static Next.js site
+- File: styles/v46-futuristic.scss
+- Error: This operation can't be used in a calculation.
+
+Root cause:
+The original future-dot CSS used:
+  top: calc(17% + ((var(--i) % 6) * 12%))
+
+Sass tried to parse `%` as a calculation/modulo operation.
+
+v46.1 fix:
+- `left`, `top`, `animationDelay`, and `animationDuration`
+  are now calculated safely in React (FutureBackdrop.tsx).
+- SCSS no longer contains the invalid modulo/custom-property calculation.
+
+IF v46 IS ALREADY IN YOUR REPOSITORY
+------------------------------------
+Only replace these two files:
+1. components/FutureBackdrop.tsx
+2. styles/v46-futuristic.scss
+
+Commit message:
+Fix v46 futuristic SCSS build
+
+Then wait for GitHub Actions.
+The build should continue past the SCSS compilation step.
+
+All existing learning features and GA4 remain unchanged.
