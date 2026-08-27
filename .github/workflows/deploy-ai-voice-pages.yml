@@ -1,4 +1,4 @@
-name: Deploy N5 Studio — Production Premium UI v36
+name: Deploy N5 Studio — Top Notch Product UI v40
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 360
 
     steps:
       - name: Checkout
@@ -2481,6 +2481,800 @@ jobs:
           })();
           JAVASCRIPT
 
+      - name: Build KanjiVG stroke-order assets for KLC
+        shell: bash
+        run: |
+          set -e
+          rm -rf _kanjivg
+          git clone --depth 1 https://github.com/KanjiVG/kanjivg.git _kanjivg
+          mkdir -p _site/assets/strokes
+
+          python - <<'PYTHON'
+          import json, re, shutil
+          from pathlib import Path
+
+          html = Path("index.html").read_text(encoding="utf-8")
+          m = re.search(r'window\.KLC_TREE_DATA\s*=\s*(\{.*?\});\s*</script>', html, re.S)
+          if not m:
+              raise SystemExit("Could not find KLC_TREE_DATA")
+          data = json.loads(m.group(1))
+          nodes = data.get("nodes") or []
+          src_dir = Path("_kanjivg/kanji")
+          out_dir = Path("_site/assets/strokes")
+          index = {}
+          missing = []
+
+          for node in nodes:
+              if not isinstance(node, list) or len(node) < 2:
+                  continue
+              ch = str(node[1] or "").strip()
+              if len(ch) != 1:
+                  continue
+              cp = ord(ch)
+              if not (0x3400 <= cp <= 0x9FFF):
+                  continue
+              filename = f"{cp:05x}.svg"
+              src = src_dir / filename
+              if src.exists():
+                  shutil.copy2(src, out_dir / filename)
+                  index[ch] = filename
+              else:
+                  missing.append(ch)
+
+          (out_dir / "index.json").write_text(
+              json.dumps(index, ensure_ascii=False, separators=(",", ":")),
+              encoding="utf-8",
+          )
+          copying = Path("_kanjivg/COPYING")
+          if copying.exists():
+              shutil.copy2(copying, out_dir / "KANJIVG_LICENSE.txt")
+          (out_dir / "ATTRIBUTION.txt").write_text(
+              "KanjiVG vector graphics — copyright Ulrich Apel and contributors. "
+              "Licensed under CC BY-SA 3.0. https://github.com/KanjiVG/kanjivg\n",
+              encoding="utf-8",
+          )
+          print("KanjiVG copied:", len(index), "missing:", len(missing))
+          if len(index) < 1800:
+              raise SystemExit(f"Too few KanjiVG assets copied: {len(index)}")
+          PYTHON
+
+          rm -rf _kanjivg
+
+      - name: Build Top Notch Product UI v40
+        shell: bash
+        run: |
+          mkdir -p _build/v40
+          cat > _build/v40/top-notch-v40.css <<'CSS'
+          /* N5 Natural Japanese Studio — Top Notch Product UI v40
+             Production visual system: Japanese calm premium + learning intelligence. */
+          
+          :root{
+            --v40-ink:#142638;
+            --v40-ink-2:#20384b;
+            --v40-navy:#10283f;
+            --v40-navy-2:#183b56;
+            --v40-paper:#f6f3ed;
+            --v40-paper-2:#fbf9f5;
+            --v40-card:#fffdfa;
+            --v40-line:#e7e2da;
+            --v40-muted:#687887;
+            --v40-muted-2:#8a969f;
+            --v40-red:#b9474d;
+            --v40-red-dark:#9d343b;
+            --v40-sakura:#d97f90;
+            --v40-sakura-soft:#fff1f3;
+            --v40-green:#557866;
+            --v40-green-soft:#edf5f0;
+            --v40-blue:#557a9f;
+            --v40-blue-soft:#edf4fa;
+            --v40-gold:#a77c32;
+            --v40-gold-soft:#fbf3e2;
+            --v40-purple:#6f6290;
+            --v40-purple-soft:#f2eff8;
+            --v40-shadow-1:0 6px 18px rgba(20,38,56,.045);
+            --v40-shadow-2:0 14px 34px rgba(20,38,56,.075);
+            --v40-shadow-3:0 24px 64px rgba(20,38,56,.11);
+            --v40-r-sm:12px;
+            --v40-r-md:18px;
+            --v40-r-lg:24px;
+            --v40-r-xl:32px;
+            --v40-ease:cubic-bezier(.2,.8,.2,1);
+          }
+          
+          html{background:var(--v40-paper);scroll-behavior:smooth}
+          html,body{max-width:100%;overflow-x:clip}
+          body{background:
+            radial-gradient(circle at 15% 0%,rgba(217,127,144,.055),transparent 26rem),
+            radial-gradient(circle at 95% 14%,rgba(85,122,159,.055),transparent 30rem),
+            var(--v40-paper)!important;color:var(--v40-ink)!important;
+            text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+          img,svg,video,canvas,iframe{max-inline-size:100%;block-size:auto}
+          button,input,select,textarea{font:inherit}
+          button,.btn,.icon,.option,.v40-action-card,.v40-heat-cell{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+          .main,.view,.card,.vocab-card,.listen-grid,.enhanced-listen-grid,.klc-detail,.exam-shell>*{min-width:0}
+          
+          .v40-skip{position:absolute;left:12px;top:-80px;z-index:99999;padding:10px 14px;background:var(--v40-navy);color:#fff;border-radius:10px;text-decoration:none;transition:top .15s ease}
+          .v40-skip:focus{top:12px}
+          
+          /* ---------- Global product shell ---------- */
+          .layout{grid-template-columns:256px minmax(0,1fr)!important;max-width:none!important;background:transparent!important}
+          .main{width:100%;max-width:1480px!important;padding:30px 34px 84px!important;margin:0 auto!important}
+          .topbar{min-height:68px!important;background:rgba(255,253,250,.93)!important;border-bottom:1px solid rgba(218,214,206,.9)!important;box-shadow:0 4px 18px rgba(20,38,56,.035)!important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+          .sidebar{background:linear-gradient(180deg,#0d2236 0%,#102b43 52%,#173a54 100%)!important;box-shadow:12px 0 30px rgba(16,40,63,.065)!important;border-right:0!important}
+          .sidebar:after{content:"";position:absolute;inset:auto 0 0 0;height:180px;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(255,255,255,.025))}
+          .sidebar .nav button{border-radius:12px!important;min-height:44px!important;transition:background .18s var(--v40-ease),color .18s var(--v40-ease),transform .18s var(--v40-ease)!important}
+          .sidebar .nav button:hover{transform:translateX(2px)}
+          .sidebar .nav button.active{box-shadow:inset 3px 0 0 #e2a64e!important;background:rgba(255,255,255,.105)!important}
+          .sidebar .side-section{border-color:rgba(255,255,255,.075)!important}
+          .sidebar .select{min-height:44px!important}
+          
+          /* ---------- Hero ---------- */
+          .v40-hero{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,.92fr) minmax(390px,1.08fr);min-height:360px;overflow:hidden;border:1px solid #e8e0d7;border-radius:var(--v40-r-xl);background:linear-gradient(135deg,#fffdfa 0%,#fcf8f1 58%,#f2eee7 100%);box-shadow:var(--v40-shadow-2);margin-bottom:18px}
+          .v40-hero:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.16;background-image:radial-gradient(#5c4b43 .45px,transparent .45px);background-size:8px 8px;mix-blend-mode:multiply}
+          .v40-hero-copy{position:relative;z-index:3;padding:42px 0 40px 42px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+          .v40-brand-line{display:flex;align-items:center;gap:10px;margin-bottom:16px;color:#8b655d;font-size:10px;font-weight:800;letter-spacing:.13em}
+          .v40-seal{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;background:var(--v40-red);color:#fff;font-size:16px;line-height:1;box-shadow:0 7px 18px rgba(185,71,77,.19);letter-spacing:0}
+          .v40-hero h1{margin:0!important;color:var(--v40-ink)!important;font-size:clamp(36px,4.2vw,62px)!important;line-height:1.02!important;font-weight:760!important;letter-spacing:-.055em!important}
+          .v40-hero p{max-width:620px;margin:15px 0 0;color:var(--v40-muted);font-size:14px;line-height:1.75}
+          .v40-hero p strong{color:var(--v40-ink-2);font-weight:750}.v40-hero p span{color:var(--v40-muted)}
+          .v40-hero-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:24px}
+          .v40-btn{min-height:46px;border-radius:13px;padding:0 16px;border:1px solid transparent;font-size:12px;font-weight:780;cursor:pointer;transition:transform .16s var(--v40-ease),box-shadow .16s var(--v40-ease),background .16s ease}
+          .v40-btn:hover{transform:translateY(-1px)}.v40-btn:active{transform:translateY(0) scale(.985)}
+          .v40-btn.primary{background:linear-gradient(180deg,#c55257,#ad3f45);color:#fff;box-shadow:0 10px 22px rgba(185,71,77,.2)}
+          .v40-btn.primary:hover{box-shadow:0 13px 28px rgba(185,71,77,.25)}
+          .v40-btn.secondary{background:#fff;color:var(--v40-ink);border-color:var(--v40-line);box-shadow:var(--v40-shadow-1)}
+          .v40-btn.ghost{background:transparent;color:var(--v40-blue);border-color:#d8e3eb}
+          .v40-hero-meta{display:flex;flex-wrap:wrap;gap:8px 15px;margin-top:20px;color:#81909b;font-size:10px}.v40-hero-meta b{color:#40596b;font-size:11px}
+          .v40-hero-visual{position:relative;min-width:0;display:flex;align-items:stretch;justify-content:flex-end;overflow:hidden}
+          .v40-hero-art{width:100%;height:100%;min-height:360px;object-fit:cover;display:block;filter:saturate(.94) contrast(.99)}
+          
+          /* ---------- Section language ---------- */
+          .v40-section{margin-top:28px}
+          .v40-section-head,.v40-panel-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px}
+          .v40-section-head{margin-bottom:12px}.v40-section-head>div:first-child,.v40-panel-head>div:first-child{min-width:0}
+          .v40-section-head span,.v40-panel-head span{display:block;color:#8a7772;font-size:9px;font-weight:850;letter-spacing:.14em;text-transform:uppercase}
+          .v40-section-head h2,.v40-panel-head h2,.v40-panel-head h3{color:var(--v40-ink)!important;margin:4px 0 0!important;letter-spacing:-.025em!important}
+          .v40-section-head h2{font-size:22px!important}.v40-section-head p{margin:5px 0 0;color:var(--v40-muted);font-size:11px;line-height:1.55}
+          .v40-panel-head h2{font-size:18px!important}.v40-panel-head h3{font-size:15px!important}.v40-panel-head em{font-style:normal;font-size:9px;color:#87939c;background:#f4f4f1;border:1px solid #e8e6df;padding:5px 8px;border-radius:999px;white-space:nowrap}
+          .v40-link{border:0;background:transparent;color:var(--v40-red);font-size:11px;font-weight:800;cursor:pointer;min-height:40px;padding:0 2px}
+          
+          /* ---------- Learning intelligence ---------- */
+          .v40-intelligence-grid{display:grid;grid-template-columns:1.15fr .95fr .95fr;gap:12px;margin-top:12px}
+          .v40-panel{background:rgba(255,253,250,.96);border:1px solid var(--v40-line);border-radius:21px;padding:18px;box-shadow:var(--v40-shadow-1);min-width:0}
+          .v40-overall-body{display:grid;grid-template-columns:150px minmax(0,1fr);gap:18px;align-items:center;margin-top:13px}
+          .v40-ring{width:142px;height:142px;overflow:visible}.v40-ring-track,.v40-ring-value{fill:none;stroke-width:10}.v40-ring-track{stroke:#edf0ed}.v40-ring-value{stroke:var(--v40-red);stroke-linecap:round;transform:rotate(-90deg);transform-origin:66px 66px;filter:drop-shadow(0 3px 5px rgba(185,71,77,.14));transition:stroke-dasharray .6s var(--v40-ease)}
+          .v40-ring-number{font-size:23px;font-weight:820;fill:var(--v40-ink)}.v40-ring-label{font-size:8px;font-weight:720;letter-spacing:.1em;text-transform:uppercase;fill:#81909a}
+          .v40-metric-stack{display:grid;gap:0}.v40-metric-stack>div{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid #efede8;align-items:center}.v40-metric-stack>div:last-child{border-bottom:0}.v40-metric-stack span{font-size:10px;color:var(--v40-muted)}.v40-metric-stack b{font-size:12px;color:var(--v40-ink);white-space:nowrap}
+          .v40-health-bars{display:grid;gap:9px;margin-top:17px}.v40-health-row>div:first-child{display:flex;justify-content:space-between;gap:12px;align-items:center}.v40-health-row span{font-size:10px;color:var(--v40-muted)}.v40-health-row b{font-size:10px;color:var(--v40-ink)}.v40-health-track{height:6px;border-radius:99px;background:#edf0ed;overflow:hidden;margin-top:5px}.v40-health-track i{display:block;height:100%;border-radius:99px;min-width:0;transition:width .45s var(--v40-ease)}.v40-health-track .danger{background:#bd5559}.v40-health-track .learning{background:#8a79a5}.v40-health-track .growing{background:#6f91b0}.v40-health-track .mature{background:#5c826d}.v40-health-track .fresh{background:#c9c6bd}
+          .v40-spark{display:block;width:100%;height:98px;margin-top:15px;overflow:visible}.v40-spark-line{fill:none;stroke:var(--v40-blue);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.v40-spark circle{fill:#fff;stroke:var(--v40-blue);stroke-width:2}.v40-spark-guide{stroke:#dfe6e9;stroke-width:1;stroke-dasharray:4 5}.v40-trend-foot{display:flex;gap:18px;margin-top:2px;font-size:10px;color:var(--v40-muted)}.v40-trend-foot b{color:var(--v40-ink)}.v40-no-data{margin-top:17px;border:1px dashed #dfe1dc;border-radius:13px;padding:18px;color:#8a969e;font-size:10px;text-align:center;background:#fbfbf8}
+          
+          /* ---------- Mastery heatmap ---------- */
+          .v40-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:8px;color:#7d898f}.v40-legend i{width:10px;height:10px;border-radius:3px;border:1px solid rgba(50,60,65,.08)}.v40-legend .l0{background:#f0efeb}.v40-legend .l1{background:#f7e2e4}.v40-legend .l2{background:#eab5bc}.v40-legend .l3{background:#cd7a86}.v40-legend .l4{background:#a9444b}
+          .v40-heatmap{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+          .v40-heat-cell{position:relative;overflow:hidden;min-height:82px;padding:12px;border:1px solid var(--v40-line);border-radius:15px;text-align:left;cursor:pointer;box-shadow:0 4px 12px rgba(20,38,56,.025);transition:transform .16s var(--v40-ease),box-shadow .16s var(--v40-ease),border-color .16s ease;background:#fff}
+          .v40-heat-cell:hover{transform:translateY(-1px);box-shadow:var(--v40-shadow-1)}.v40-heat-cell.current{box-shadow:0 0 0 2px rgba(185,71,77,.12),var(--v40-shadow-1);border-color:#dba6a9}
+          .v40-heat-cell span{display:block;color:#7e8a92;font-size:8px;font-weight:850;letter-spacing:.08em}.v40-heat-cell b{display:block;margin-top:7px;color:var(--v40-ink);font-size:17px}.v40-heat-cell i{position:absolute;left:12px;right:12px;bottom:10px;height:4px;border-radius:99px;background:linear-gradient(90deg,var(--cell-accent) var(--p),#e9ebe7 var(--p));box-shadow:inset 0 0 0 1px rgba(20,38,56,.02)}
+          .v40-heat-cell.level-0{--cell-accent:#c9c7c0;background:#fff}.v40-heat-cell.level-1{--cell-accent:#dc9da5;background:#fffafb}.v40-heat-cell.level-2{--cell-accent:#cc7682;background:#fff7f8}.v40-heat-cell.level-3{--cell-accent:#b8565e;background:#fff4f4}.v40-heat-cell.level-4{--cell-accent:#974048;background:#fff1f1}
+          
+          /* ---------- Continue cards ---------- */
+          .v40-action-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+          .v40-action-card{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;min-height:210px;padding:18px;border:1px solid var(--v40-line);border-radius:20px;background:#fff;text-align:left;cursor:pointer;box-shadow:var(--v40-shadow-1);transition:transform .18s var(--v40-ease),box-shadow .18s var(--v40-ease),border-color .18s ease;color:var(--v40-ink)}
+          .v40-action-card:after{content:"";position:absolute;width:120px;height:120px;border-radius:50%;right:-36px;top:-40px;background:var(--card-halo);opacity:.65;pointer-events:none}
+          .v40-action-card:hover{transform:translateY(-2px);box-shadow:var(--v40-shadow-2);border-color:#d9d5cd}.v40-action-card:active{transform:translateY(0)}
+          .v40-action-card.lesson{--card-halo:#f8dfe2;background:linear-gradient(145deg,#fff8f7,#fff)}.v40-action-card.recall{--card-halo:#e7e0f4;background:linear-gradient(145deg,#faf8ff,#fff)}.v40-action-card.listening{--card-halo:#dcebf4;background:linear-gradient(145deg,#f7fbff,#fff)}.v40-action-card.kanji{--card-halo:#dfeee6;background:linear-gradient(145deg,#f6fbf8,#fff)}
+          .v40-action-icon{position:relative;z-index:1;display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.82);border:1px solid rgba(20,38,56,.07);font-size:20px;box-shadow:0 7px 16px rgba(20,38,56,.045)}
+          .v40-action-card>div{position:relative;z-index:1;margin-top:15px;min-width:0}.v40-action-card small{display:block;color:#8b7570;font-size:8px;font-weight:850;letter-spacing:.13em}.v40-action-card h3{margin:5px 0 5px!important;color:var(--v40-ink)!important;font-size:17px!important;letter-spacing:-.02em}.v40-action-card p{margin:0;color:var(--v40-muted);font-size:10px;line-height:1.55}.v40-action-card>b{position:relative;z-index:1;margin-top:auto;padding-top:16px;color:#596f7e;font-size:10px}.v40-progress{height:5px;background:#eceeeb;border-radius:999px;margin-top:12px;overflow:hidden}.v40-progress i{display:block;height:100%;background:var(--v40-red);border-radius:999px}
+          .v40-mini-wave{display:flex;gap:3px;height:22px;align-items:center;margin-top:11px}.v40-mini-wave i{width:3px;border-radius:3px;background:#79a3ba;height:8px}.v40-mini-wave i:nth-child(2n){height:14px}.v40-mini-wave i:nth-child(3n){height:20px}.v40-mini-wave i:nth-child(5n){height:11px}
+          
+          /* ---------- Achievements ---------- */
+          .v40-achievement-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+          .v40-achievement{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:82px;padding:13px 14px;border:1px solid var(--v40-line);border-radius:17px;background:#fff;box-shadow:0 4px 12px rgba(20,38,56,.025)}
+          .v40-achievement-mark{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;border:1px solid #e1ddd4;background:#f7f4ed;color:#928477;font-size:13px;font-weight:850}.v40-achievement h3{margin:0!important;font-size:13px!important;color:var(--v40-ink)!important}.v40-achievement p{margin:4px 0 0;color:var(--v40-muted);font-size:9px}.v40-achievement>span{font-size:8px;font-weight:850;padding:5px 7px;border-radius:999px;background:#f0f0ed;color:#8c969b}
+          .v40-achievement.unlocked{background:linear-gradient(145deg,#fffdf8,#fbf6e9);border-color:#e8d8b7}.v40-achievement.unlocked .v40-achievement-mark{background:#b9474d;color:#fff;border-color:#b9474d;box-shadow:0 7px 16px rgba(185,71,77,.15)}.v40-achievement.unlocked>span{background:#f3ead5;color:#8b6828}
+          
+          /* ---------- SRS ---------- */
+          .v40-srs-insight{display:flex;justify-content:space-between;align-items:center;gap:18px;margin:12px 0 18px;padding:18px;border:1px solid #ddd7e7;border-radius:20px;background:linear-gradient(135deg,#f8f6fc,#fff);box-shadow:var(--v40-shadow-1)}.v40-srs-insight>div:first-child span{color:#7c6c98;font-size:9px;font-weight:850;letter-spacing:.12em}.v40-srs-insight h3{margin:5px 0 0!important;font-size:16px!important;color:var(--v40-ink)!important}.v40-srs-mini-grid{display:grid;grid-template-columns:repeat(4,minmax(78px,1fr));gap:7px}.v40-srs-mini-grid div{padding:9px 11px;border-radius:12px;background:#fff;border:1px solid #ebe7f0;min-width:0}.v40-srs-mini-grid b{display:block;font-size:16px;color:#63577f}.v40-srs-mini-grid span{display:block;margin-top:2px;font-size:8px;color:#7e8790;white-space:nowrap}
+          .srs-v32-card,.srs-study-card{box-shadow:var(--v40-shadow-2)!important;border:1px solid var(--v40-line)!important;background:#fff!important}.srs-v32-wordbox,.srs-learn-box{background:linear-gradient(145deg,#fbfcfd,#f3f7f8)!important;border-color:#dde5e7!important}.srs-v32-reveal,#revealSrs{min-height:48px!important}.srs-rating button{min-height:58px!important}
+          
+          /* ---------- Listening ---------- */
+          #view-listening{--listen-bg:#102942;--listen-bg2:#183a54}
+          #view-listening .enhanced-stage,#view-listening .listen-stage{position:relative;overflow:hidden;background:linear-gradient(160deg,var(--listen-bg),var(--listen-bg2))!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:24px!important;box-shadow:0 20px 46px rgba(16,41,66,.18)!important}
+          #view-listening .enhanced-stage:after,#view-listening .listen-stage:after{content:"";position:absolute;right:-80px;bottom:-85px;width:260px;height:160px;opacity:.18;background:repeating-radial-gradient(ellipse at bottom,#b9d8df 0 2px,transparent 3px 15px);pointer-events:none}
+          .v40-player-badge{position:relative;z-index:2;display:inline-flex;align-items:center;gap:7px;margin-bottom:9px;padding:6px 9px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.06);color:#d8e6ee;font-size:9px;font-weight:700;letter-spacing:.02em}.v40-player-badge .dot{width:7px;height:7px;border-radius:50%;background:#7bd1a6;box-shadow:0 0 0 4px rgba(123,209,166,.11)}
+          #view-listening .wave{position:relative;z-index:1;border-radius:16px;padding:4px;background:linear-gradient(180deg,rgba(255,255,255,.02),transparent)}
+          #view-listening .wave i{background:linear-gradient(180deg,#e2eff5,#86b6ca)!important;box-shadow:0 0 10px rgba(134,182,202,.08)}
+          #view-listening .listen-speeds{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important;overflow:visible!important}
+          #view-listening .listen-speeds .btn{min-width:0!important;width:100%!important;min-height:44px!important;border-radius:12px!important}
+          .v40-speed-cap{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:8px;padding:9px 11px;border-radius:12px;background:rgba(255,255,255,.065);border:1px solid rgba(255,255,255,.08);color:#c6d5df;font-size:9px}.v40-speed-cap b{font-size:10px;color:#fff}
+          #view-listening .enhanced-transcript-card,#view-listening .transcript-card{border-radius:22px!important;background:#fff!important;border-color:var(--v40-line)!important;box-shadow:var(--v40-shadow-2)!important}
+          #view-listening .transcript-line{border-radius:13px!important;border-color:#eceeea!important;background:#fdfdfb!important}.transcript-line.active{background:#f2f7ff!important;border-color:#c8daeb!important;box-shadow:0 8px 20px rgba(85,122,159,.07)!important}.ttok.current{background:#ffe6a7!important;color:#182e40!important;box-shadow:inset 0 -2px 0 #d8a72a!important}.ttok.done{color:#526b7b!important}
+          
+          /* ---------- Kanji ---------- */
+          .v40-kanji-hero{position:relative;overflow:hidden!important;background:linear-gradient(135deg,#10283f,#1d455e)!important;color:#fff!important;border:0!important;box-shadow:var(--v40-shadow-3)!important}.v40-kanji-hero:after{content:"木";position:absolute;right:24px;top:-20px;font-size:150px;line-height:1;color:rgba(255,255,255,.045);font-family:serif;pointer-events:none}.v40-tree-grid{position:relative}.v40-tree-grid:before{content:"";position:absolute;left:50%;top:-10px;width:1px;height:10px;background:#d6d8d2}.klc-component-card,.klc-build-grid>*{border-radius:16px!important;box-shadow:0 6px 16px rgba(20,38,56,.04)!important}.klc-hero-char{background:linear-gradient(145deg,#fff,#f4f0e9)!important;box-shadow:inset 0 0 0 1px #e1ddd5,var(--v40-shadow-1)!important}.klc-mnemonic-card{border-radius:18px!important;background:linear-gradient(145deg,#fbf5e7,#fffaf0)!important}
+          
+          /* ---------- Mock analytics ---------- */
+          .v40-mock-analytics{display:grid;grid-template-columns:.9fr 1.2fr 1fr;gap:10px;margin:12px 0 18px}.v40-mock-analytics>article{border:1px solid var(--v40-line);border-radius:20px;background:#fff;padding:16px;box-shadow:var(--v40-shadow-1);min-width:0}.v40-mock-score{display:grid;grid-template-columns:130px 1fr;align-items:center;gap:10px}.v40-mock-score .v40-ring{width:122px;height:122px}.v40-mock-score>div:last-child span{display:block;color:#8a7772;font-size:8px;font-weight:850;letter-spacing:.12em}.v40-mock-score>div:last-child b{display:block;margin-top:5px;font-size:22px;color:var(--v40-ink)}.v40-mock-score small{display:block;margin-top:4px;color:var(--v40-muted);font-size:9px}
+          .v40-break-row{margin-top:9px}.v40-break-row>div:first-child{display:flex;justify-content:space-between;gap:10px}.v40-break-row span,.v40-break-row b{font-size:9px}.v40-break-row span{color:var(--v40-muted)}.v40-break-row b{color:var(--v40-ink)}.v40-break-row>div:last-child{height:5px;background:#edf0ed;border-radius:99px;margin-top:4px;overflow:hidden}.v40-break-row i{display:block;height:100%;background:linear-gradient(90deg,var(--v40-blue),#7ca4ba);border-radius:99px}.v40-history-trend{display:flex;justify-content:space-between;align-items:center;gap:22px;padding:16px 18px;margin-bottom:14px;background:#fff;border:1px solid var(--v40-line);border-radius:20px;box-shadow:var(--v40-shadow-1)}.v40-history-trend>div:first-child span{font-size:9px;color:#8a7772;font-weight:850;letter-spacing:.12em}.v40-history-trend h3{margin:4px 0 0!important;font-size:15px!important}.v40-history-trend .v40-spark{max-width:420px;margin:0}
+          
+          /* ---------- Existing pages unified ---------- */
+          .view:not(#view-overview)>.section-head:first-child{background:rgba(255,253,250,.96)!important;border:1px solid var(--v40-line)!important;border-radius:20px!important;box-shadow:var(--v40-shadow-1)!important;padding:18px 20px!important;margin-top:0!important}
+          .view:not(#view-overview)>.section-head:first-child h2{letter-spacing:-.025em!important;color:var(--v40-ink)!important}
+          .card,.vocab-card,.spell-study-card,.q-card,.bubble,.reading-card,.reading-page,.grammar-card,.klc-search-panel,.klc-detail{border-color:var(--v40-line)!important;box-shadow:var(--v40-shadow-1)!important;background:#fff!important}
+          .vocab-card{border-radius:18px!important;padding:15px!important}.vocab-card:hover{box-shadow:var(--v40-shadow-2)!important;border-color:#dad6ce!important}.jp-word{color:var(--v40-ink)!important}.meaning{color:#293f50!important}.translation,.pron,.english,.meta{color:#73818c!important}
+          .actions .icon{min-width:44px!important;min-height:44px!important;border-radius:12px!important}.option{min-height:48px!important;border-radius:13px!important}.option.selected{box-shadow:0 0 0 2px rgba(85,122,159,.12)!important}.reading-jp{max-width:72ch!important;margin-inline:auto!important;line-height:2.05!important}
+          .search-input,.select,textarea,input[type="text"]{border-radius:13px!important;border-color:#dfe1dc!important;background:#fff!important}.search-input:focus,.select:focus,textarea:focus,input[type="text"]:focus{outline:3px solid rgba(85,122,159,.12)!important;border-color:#8aa6ba!important}
+          .btn{border-radius:12px!important}.btn.red,.btn.danger{background:var(--v40-red)!important;color:#fff!important}.btn.primary{background:var(--v40-navy)!important;color:#fff!important}.btn.gold{background:var(--v40-gold)!important;color:#fff!important}.btn.soft{background:#f5f6f3!important;color:#334a5a!important;border-color:#e1e3dd!important}
+          .empty,.compact-empty{border-radius:18px!important;background:linear-gradient(145deg,#fbfaf7,#fff)!important;border:1px dashed #ddd9d1!important;color:#7d898f!important}
+          
+          /* ---------- Mobile dock ---------- */
+          .mobile-dock{background:rgba(16,40,63,.96)!important;border:1px solid rgba(255,255,255,.08)!important;box-shadow:0 18px 38px rgba(16,40,63,.24)!important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+          .mobile-dock button{min-height:48px!important;color:#c6d3dd!important}.mobile-dock button.active{background:var(--v40-red)!important;color:#fff!important}
+          
+          /* ---------- Responsive architecture ---------- */
+          @media(max-width:1240px){
+            .v40-intelligence-grid{grid-template-columns:1fr 1fr}.v40-trend-panel{grid-column:1/-1}.v40-trend-panel .v40-spark{height:110px}.v40-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v40-achievement-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+          }
+          
+          @media(max-width:980px){
+            .v40-hero{grid-template-columns:1fr minmax(320px,.8fr)}.v40-hero-copy{padding-left:28px}.v40-hero h1{font-size:38px!important}.v40-heatmap{grid-template-columns:repeat(5,minmax(0,1fr))}
+            .v40-mock-analytics{grid-template-columns:1fr 1fr}.v40-mock-history{grid-column:1/-1}.v40-srs-insight{align-items:flex-start;flex-direction:column}.v40-srs-mini-grid{width:100%}
+          }
+          
+          @media(max-width:820px){
+            html,body{overflow-x:hidden!important}.layout{display:block!important}.main{max-width:none!important;padding:14px 10px calc(92px + env(safe-area-inset-bottom,0px))!important}.topbar{min-height:58px!important;padding:7px 9px!important}.sidebar{height:100dvh!important;max-width:min(88vw,340px)!important}.sidebar .nav button{min-height:48px!important}.topbar .top-actions .btn{min-width:42px!important;min-height:42px!important}
+            .v40-hero{display:block;min-height:0;border-radius:22px;margin-top:2px}.v40-hero-copy{padding:22px 18px 18px}.v40-brand-line{margin-bottom:10px}.v40-hero h1{font-size:32px!important;line-height:1.08!important}.v40-hero p{font-size:12px;line-height:1.65}.v40-hero-actions{margin-top:17px}.v40-btn{min-height:48px}.v40-hero-meta{margin-top:15px}.v40-hero-visual{height:190px}.v40-hero-art{width:100%;height:190px;min-height:0;object-fit:cover;object-position:55% 56%}
+            .v40-intelligence-grid{grid-template-columns:1fr;gap:9px}.v40-trend-panel{grid-column:auto}.v40-panel{padding:14px;border-radius:17px}.v40-overall-body{grid-template-columns:124px minmax(0,1fr);gap:12px}.v40-ring{width:118px;height:118px}.v40-metric-stack>div{padding:7px 0}.v40-section{margin-top:22px}.v40-section-head{align-items:flex-start;flex-direction:column;gap:7px}.v40-section-head h2{font-size:19px!important}.v40-legend{width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:3px;white-space:nowrap}
+            .v40-heatmap{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.v40-heat-cell{min-height:76px;padding:11px}.v40-action-grid{grid-template-columns:1fr;gap:8px}.v40-action-card{min-height:174px;padding:15px}.v40-achievement-grid{grid-template-columns:1fr}.v40-achievement{grid-template-columns:44px minmax(0,1fr) auto;padding:12px}
+            .v40-srs-insight{padding:14px;border-radius:17px}.v40-srs-mini-grid{grid-template-columns:1fr 1fr}.v40-srs-mini-grid div{min-width:0}.v40-srs-mini-grid span{white-space:normal}
+            #view-listening .listening-modes{grid-template-columns:1fr!important}.enhanced-listen-grid,.listen-grid{display:grid!important;grid-template-columns:1fr!important;gap:9px!important}.enhanced-stage,.enhanced-transcript-card,.listen-stage,.transcript-card{width:100%!important;max-width:100%!important;min-width:0!important}.transcript-scroll{max-height:52vh!important;overflow:auto!important}.transcript-jp{font-size:18px!important;line-height:1.9!important;overflow-wrap:anywhere}.ttok{max-width:100%}
+            #view-listening .listen-speeds{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important}.v40-speed-cap{flex-direction:column;align-items:flex-start;gap:3px}.vocab-card{grid-template-columns:1fr!important}.vocab-card .actions{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important}.vocab-card .actions .icon{width:100%!important;min-width:0!important}.srs-v32-audio{display:grid!important;grid-template-columns:1fr 1fr!important;gap:7px!important}
+            .klc-lesson-strip{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;gap:8px!important}.klc-lesson-strip .klc-chip{flex:0 0 108px!important;min-width:108px!important;max-width:108px!important;scroll-snap-align:start}.klc-detail-head,.klc-component-grid,.klc-build-grid,.klc-search-grid{grid-template-columns:1fr!important}.klc-readings{grid-template-columns:1fr!important}.klc-readings span,.klc-readings .btn{width:100%!important}
+            .v40-mock-analytics{grid-template-columns:1fr}.v40-mock-history{grid-column:auto}.v40-mock-score{grid-template-columns:112px minmax(0,1fr)}.v40-mock-score .v40-ring{width:106px;height:106px}.exam-shell{grid-template-columns:1fr!important}.exam-side{position:static!important;max-height:none!important}.history-table{min-width:640px}.v40-history-trend{flex-direction:column;align-items:flex-start}.v40-history-trend .v40-spark{width:100%;max-width:none}
+            dialog .dialog-card{width:min(94vw,680px)!important;max-height:88dvh!important;overflow:auto!important}.kana-float{max-width:calc(100% - 16px)!important;left:8px!important;right:8px!important}
+          }
+          
+          @media(max-width:520px){
+            .main{padding-inline:8px!important}.v40-hero{border-radius:19px}.v40-hero-copy{padding:19px 15px 15px}.v40-brand-line{font-size:8px}.v40-seal{width:28px;height:28px}.v40-hero h1{font-size:29px!important}.v40-hero-actions{display:grid;grid-template-columns:1fr 1fr}.v40-btn{width:100%;padding:0 11px}.v40-btn.primary{grid-column:1/-1}.v40-hero-visual{height:155px}.v40-hero-art{height:155px;object-position:58% 58%}
+            .v40-overall-body{grid-template-columns:1fr}.v40-ring{margin:auto}.v40-panel-head{align-items:flex-start}.v40-panel-head em{display:none}.v40-heatmap{grid-template-columns:repeat(2,minmax(0,1fr))}.v40-heat-cell{min-height:70px}.v40-action-card{min-height:168px}.v40-achievement{grid-template-columns:42px minmax(0,1fr)}.v40-achievement>span{grid-column:2;justify-self:start}.v40-achievement-mark{width:42px;height:42px}
+            #view-listening .listen-speeds{grid-template-columns:repeat(3,minmax(0,1fr))!important}.vocab-card .actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}.srs-v32-audio{grid-template-columns:1fr!important}.srs-rating{grid-template-columns:1fr 1fr!important}.v40-mock-score{grid-template-columns:1fr;text-align:center}.v40-mock-score .v40-ring{margin:auto}.v40-srs-mini-grid{grid-template-columns:1fr 1fr}
+          }
+          
+          @media(max-width:360px){
+            .main{padding-inline:6px!important}.v40-hero-copy{padding-inline:13px}.v40-hero h1{font-size:27px!important}.v40-hero-meta{gap:6px 10px}.v40-hero-visual{height:138px}.v40-hero-art{height:138px}.v40-heatmap{gap:6px}.v40-heat-cell{padding:9px}.v40-panel{padding:12px}.v40-srs-mini-grid{grid-template-columns:1fr 1fr}.v40-section-head h2{font-size:18px!important}
+          }
+          
+          @media(hover:hover) and (pointer:fine){
+            .v40-action-card:hover,.v40-heat-cell:hover{will-change:transform}
+          }
+          
+          @media(prefers-reduced-motion:reduce){
+            *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+            .v40-action-card:hover,.v40-heat-cell:hover,.v40-btn:hover{transform:none!important}
+          }
+          
+          @media(prefers-contrast:more){
+            :root{--v40-muted:#4f5f6d;--v40-line:#cfcac1}
+            .v40-panel,.v40-action-card,.v40-heat-cell,.vocab-card,.q-card{border-width:2px!important}
+          }
+          
+          /* ---------- KanjiVG stroke-order studio ---------- */
+          .v40-stroke-panel{margin-top:14px;padding:17px;border:1px solid var(--v40-line);border-radius:20px;background:linear-gradient(145deg,#fffdfa,#f6f2ea);box-shadow:var(--v40-shadow-1)}
+          .v40-stroke-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}.v40-stroke-head>div{min-width:0}.v40-stroke-head span{display:block;color:#8b6a64;font-size:9px;font-weight:850;letter-spacing:.14em}.v40-stroke-head h3{margin:4px 0 0!important;color:var(--v40-ink)!important;font-size:16px!important}.v40-stroke-head p{margin:4px 0 0;color:var(--v40-muted);font-size:9px}.v40-stroke-stage{display:grid;place-items:center;min-height:260px;margin-top:12px;border:1px solid #e2ddd4;border-radius:17px;background-color:#fff;background-image:linear-gradient(#f1eee8 1px,transparent 1px),linear-gradient(90deg,#f1eee8 1px,transparent 1px),linear-gradient(#e5dfd5 1px,transparent 1px),linear-gradient(90deg,#e5dfd5 1px,transparent 1px);background-size:25% 25%,25% 25%,50% 50%,50% 50%;overflow:hidden}.v40-stroke-svg{width:min(280px,78%);height:auto;display:block;color:var(--v40-ink)}.v40-stroke-svg path{fill:none!important;stroke:#17364b!important}.v40-stroke-number{fill:#b9474d!important;font-weight:700!important}.v40-stroke-loading{display:flex;align-items:center;gap:9px;color:#77858e;font-size:10px}.v40-stroke-loading span{width:18px;height:18px;border-radius:50%;border:2px solid #ddd7ce;border-top-color:var(--v40-red);animation:v40spin .8s linear infinite}.v40-stroke-empty{padding:18px;text-align:center;color:#7d8a92;font-size:10px}@keyframes v40spin{to{transform:rotate(360deg)}}
+          @media(max-width:520px){.v40-stroke-head{flex-direction:column}.v40-stroke-head .v40-btn{width:100%}.v40-stroke-stage{min-height:220px}.v40-stroke-svg{width:min(240px,86%)}}
+          @media(prefers-reduced-motion:reduce){.v40-stroke-loading span{animation:none!important}}
+          CSS
+
+          cat > _build/v40/top-notch-v40.js <<'JAVASCRIPT'
+          (() => {
+            "use strict";
+          
+            document.documentElement.dataset.ui = "top-notch-v40";
+          
+            const q = (s, r = document) => r.querySelector(s);
+            const qa = (s, r = document) => [...r.querySelectorAll(s)];
+            const clamp = (n, a, b) => Math.max(a, Math.min(b, Number(n) || 0));
+            const esc40 = (value) => {
+              try {
+                if (typeof window.esc === "function") return window.esc(String(value ?? ""));
+              } catch {}
+              return String(value ?? "").replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+            };
+          
+            function allVocab() {
+              try { return window.N5_OFFLINE_DATA?.vocabulary || []; }
+              catch { return []; }
+            }
+          
+            function progressMap() {
+              try { return state?.progress || {}; }
+              catch { return {}; }
+            }
+          
+            function totalMastered() {
+              const p = progressMap();
+              return allVocab().reduce((n, v) => n + (p[v.id] ? 1 : 0), 0);
+            }
+          
+            function lessonMastery(lesson) {
+              const rows = allVocab().filter(v => Number(v.lesson) === Number(lesson));
+              const p = progressMap();
+              const mastered = rows.filter(v => p[v.id]).length;
+              return { lesson:Number(lesson), total:rows.length, mastered, pct:rows.length ? Math.round(mastered * 100 / rows.length) : 0 };
+            }
+          
+            function allLessonMastery() {
+              return Array.from({length:25}, (_, i) => lessonMastery(i + 1));
+            }
+          
+            function spellingHealth() {
+              try {
+                const rows = Array.isArray(state?.spelling) ? state.spelling : [];
+                const correct = rows.filter(x => x.correct).length;
+                return { attempts:rows.length, correct, accuracy:rows.length ? Math.round(correct * 100 / rows.length) : 0 };
+              } catch { return {attempts:0,correct:0,accuracy:0}; }
+            }
+          
+            function srsHealth() {
+              const vocabIds = new Set(allVocab().map(v => Number(v.id)));
+              const srs = (() => { try { return state?.srs || {}; } catch { return {}; } })();
+              const now = Date.now();
+              let studied = 0, due = 0, mature = 0, learning = 0, growing = 0;
+          
+              for (const [id, st] of Object.entries(srs)) {
+                if (!vocabIds.has(Number(id)) || !st) continue;
+                studied += 1;
+                const dueAt = st.due_at ? new Date(st.due_at).getTime() : Infinity;
+                const isDue = Number.isFinite(dueAt) && dueAt <= now;
+                const isMature = Number(st.interval_days || 0) >= 7 || Number(st.repetitions || 0) >= 5;
+                if (isDue) due += 1;
+                if (isMature) mature += 1;
+                else if (Number(st.interval_days || 0) < 1 || ["learn","recall","use"].includes(st.phase)) learning += 1;
+                else growing += 1;
+              }
+          
+              const total = allVocab().length;
+              const fresh = Math.max(0, total - studied);
+              return { total, studied, due, mature, learning, growing, fresh };
+            }
+          
+            function mockHealth() {
+              try {
+                const history = Array.isArray(state?.history) ? state.history : [];
+                const avg = history.length ? Math.round(history.reduce((a, x) => a + Number(x.score || 0), 0) / history.length) : 0;
+                const best = history.length ? Math.max(...history.map(x => Number(x.score || 0))) : 0;
+                return { history, avg, best, attempts:history.length };
+              } catch { return {history:[],avg:0,best:0,attempts:0}; }
+            }
+          
+            function currentLessonStats() {
+              const lesson = Number(state?.lesson || 1);
+              const mastery = lessonMastery(lesson);
+              let srs = {due:0,new:0,studied:0,mature:0,total:mastery.total};
+              try { if (typeof offlineSrsSummary === "function") srs = offlineSrsSummary(lesson); } catch {}
+              return { lesson, mastery, srs };
+            }
+          
+            function ringSVG(pct, label = "Overall") {
+              const value = clamp(pct, 0, 100);
+              const r = 50;
+              const c = 2 * Math.PI * r;
+              const dash = c * value / 100;
+              return `<svg class="v40-ring" viewBox="0 0 132 132" role="img" aria-label="${esc40(label)} ${value}%">
+                <circle class="v40-ring-track" cx="66" cy="66" r="${r}"></circle>
+                <circle class="v40-ring-value" cx="66" cy="66" r="${r}" stroke-dasharray="${dash.toFixed(2)} ${(c-dash).toFixed(2)}"></circle>
+                <text x="66" y="62" text-anchor="middle" class="v40-ring-number">${value}%</text>
+                <text x="66" y="81" text-anchor="middle" class="v40-ring-label">${esc40(label)}</text>
+              </svg>`;
+            }
+          
+            function sparklineSVG(values, label = "Recent scores") {
+              const nums = values.map(Number).filter(Number.isFinite).slice(-10);
+              if (!nums.length) return `<div class="v40-no-data">Mock দিলে এখানে progress trend দেখা যাবে।</div>`;
+              const w = 280, h = 90, pad = 10;
+              const min = Math.min(0, ...nums), max = Math.max(100, ...nums);
+              const x = i => pad + (nums.length === 1 ? (w - 2*pad)/2 : i * (w - 2*pad)/(nums.length-1));
+              const y = v => h - pad - ((v-min)/(max-min || 1))*(h-2*pad);
+              const pts = nums.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+              const dots = nums.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.6"><title>${v}%</title></circle>`).join("");
+              return `<svg class="v40-spark" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc40(label)}">
+                <line x1="${pad}" x2="${w-pad}" y1="${y(70)}" y2="${y(70)}" class="v40-spark-guide"></line>
+                <polyline points="${pts}" class="v40-spark-line"></polyline>${dots}
+              </svg>`;
+            }
+          
+            function heroIllustration() {
+              return `<svg class="v40-hero-art" viewBox="0 0 820 430" role="img" aria-label="Sakura, Mount Fuji and Japanese wave illustration">
+                <defs>
+                  <linearGradient id="v40Sky" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffaf4"/><stop offset=".55" stop-color="#f6efe7"/><stop offset="1" stop-color="#e8eef0"/></linearGradient>
+                  <linearGradient id="v40Fuji" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dbe6e9"/><stop offset="1" stop-color="#9fb8bf"/></linearGradient>
+                  <linearGradient id="v40Water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9e8e9"/><stop offset="1" stop-color="#acc7ca"/></linearGradient>
+                  <radialGradient id="v40Sun"><stop offset="0" stop-color="#f4c8bd"/><stop offset="1" stop-color="#dc7b77"/></radialGradient>
+                  <filter id="v40SoftShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#3a312c" flood-opacity=".12"/></filter>
+                  <pattern id="v40Seigaiha" width="54" height="28" patternUnits="userSpaceOnUse"><path d="M0 28C9 12 18 12 27 28C36 12 45 12 54 28M-27 28C-18 12-9 12 0 28" fill="none" stroke="#2d6772" stroke-opacity=".16" stroke-width="1.4"/></pattern>
+                </defs>
+                <rect width="820" height="430" rx="34" fill="url(#v40Sky)"/>
+                <circle cx="610" cy="105" r="58" fill="url(#v40Sun)" opacity=".78"/>
+                <path d="M285 344 495 126l208 218z" fill="url(#v40Fuji)" opacity=".95"/>
+                <path d="M451 172 495 126l45 47-25-10-20 20-19-18z" fill="#fff" opacity=".98"/>
+                <path d="M0 328h820v102H0z" fill="url(#v40Water)" opacity=".82"/>
+                <path d="M0 328h820v102H0z" fill="url(#v40Seigaiha)"/>
+                <g opacity=".7"><path d="M58 327c50-24 99-22 147 5s96 26 145 2 98-25 146 1 97 25 145 0 97-25 179 2" fill="none" stroke="#417a83" stroke-width="3"/></g>
+                <g filter="url(#v40SoftShadow)" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M816 29C680 53 588 81 489 136c-92 51-176 85-298 113" fill="none" stroke="#5d4037" stroke-width="12"/>
+                  <path d="M724 61c-14 30-43 48-82 59M632 91c-38-7-67-26-89-57M536 131c-33-4-68-27-93-55M450 168c-31 2-68-15-98-42M354 203c-42 2-75-12-105-34" fill="none" stroke="#755044" stroke-width="6"/>
+                </g>
+                <g fill="#e88998" stroke="#fff7f8" stroke-width="1.5">
+                  ${[[748,53,1],[694,75,.82],[643,100,.75],[589,105,.68],[555,145,.72],[494,159,.78],[439,184,.72],[382,207,.64],[329,215,.62],[275,236,.58]].map(([x,y,s])=>`<g transform="translate(${x} ${y}) scale(${s})"><ellipse rx="9" ry="18" transform="translate(0 -10)"/><ellipse rx="9" ry="18" transform="rotate(72) translate(0 -10)"/><ellipse rx="9" ry="18" transform="rotate(144) translate(0 -10)"/><ellipse rx="9" ry="18" transform="rotate(216) translate(0 -10)"/><ellipse rx="9" ry="18" transform="rotate(288) translate(0 -10)"/><circle r="4.5" fill="#f1c56c" stroke="none"/></g>`).join("")}
+                </g>
+                <g fill="#db8190" opacity=".72"><path d="m649 172 13-6-5 14z"/><path d="m707 143 12-6-4 13z"/><path d="m570 197 11-5-4 12z"/></g>
+                <g transform="translate(120 245)" fill="#a23c40" opacity=".92"><path d="M0 46h105v11H0z"/><path d="M9 31h87v8H9z"/><path d="M21 0h10v82H21zM74 0h10v82H74z"/><path d="M-7 10h119v9H-7z"/></g>
+              </svg>`;
+            }
+          
+            function lessonHeatmapHTML() {
+              return allLessonMastery().map(x => {
+                const level = x.pct >= 90 ? 4 : x.pct >= 60 ? 3 : x.pct >= 30 ? 2 : x.pct > 0 ? 1 : 0;
+                return `<button type="button" class="v40-heat-cell level-${level} ${x.lesson === Number(state?.lesson || 1) ? "current" : ""}" data-v40-lesson="${x.lesson}" aria-label="Lesson ${x.lesson}: ${x.pct}% mastered">
+                  <span>L${String(x.lesson).padStart(2,"0")}</span><b>${x.pct}%</b><i style="--p:${x.pct}%"></i>
+                </button>`;
+              }).join("");
+            }
+          
+            function srsBarsHTML(health) {
+              const parts = [
+                ["Due now",health.due,"danger"],
+                ["Learning",health.learning,"learning"],
+                ["Growing",health.growing,"growing"],
+                ["Mature",health.mature,"mature"],
+                ["New",health.fresh,"fresh"],
+              ];
+              const max = Math.max(1, ...parts.map(x=>x[1]));
+              return parts.map(([label,val,cls])=>`<div class="v40-health-row"><div><span>${label}</span><b>${val}</b></div><div class="v40-health-track"><i class="${cls}" style="width:${Math.max(val ? 5 : 0, Math.round(val*100/max))}%"></i></div></div>`).join("");
+            }
+          
+            function achievementData() {
+              const mastered = totalMastered();
+              const mock = mockHealth();
+              const srs = srsHealth();
+              const current = lessonMastery(Number(state?.lesson || 1));
+              return [
+                {icon:"百",title:"100 Words",desc:"Vocabulary milestone",done:mastered>=100},
+                {icon:"二五〇",title:"250 Words",desc:"Strong vocabulary base",done:mastered>=250},
+                {icon:"五〇〇",title:"500 Words",desc:"Halfway vocabulary mark",done:mastered>=500},
+                {icon:"熟",title:"50 Mature",desc:"Long-term SRS memory",done:srs.mature>=50},
+                {icon:"満",title:"Lesson Master",desc:`L${String(current.lesson).padStart(2,"0")} fully mastered`,done:current.pct>=100},
+                {icon:"九〇",title:"90% Mock",desc:"High-score milestone",done:mock.best>=90},
+              ];
+            }
+          
+            function renderPremiumOverview() {
+              const root = q("#view-overview");
+              if (!root) return;
+              const vocab = allVocab();
+              const mastered = totalMastered();
+              const overallPct = vocab.length ? Math.round(mastered * 100 / vocab.length) : 0;
+              const srs = srsHealth();
+              const mock = mockHealth();
+              const spell = spellingHealth();
+              const current = currentLessonStats();
+              const content = state?.content || {};
+              const title = content.title || `Lesson ${current.lesson}`;
+              const scenario = content.scenario || "Natural Japanese study";
+              const achievements = achievementData();
+          
+              root.innerHTML = `
+                <section class="v40-hero">
+                  <div class="v40-hero-copy">
+                    <div class="v40-brand-line"><span class="v40-seal">日</span><span>JLPT N5 · PERSONAL STUDY STUDIO</span></div>
+                    <h1>今日も、少しずつ。</h1>
+                    <p><strong>${esc40(title)}</strong> · ${esc40(scenario)}</p>
+                    <div class="v40-hero-actions">
+                      <button type="button" class="v40-btn primary" id="v40Continue">Continue Lesson <span>→</span></button>
+                      <button type="button" class="v40-btn secondary" id="v40Recall">Start Recall</button>
+                      <button type="button" class="v40-btn ghost" id="v40Listen">Listening</button>
+                    </div>
+                    <div class="v40-hero-meta"><span><b>${current.mastery.pct}%</b> current lesson</span><span><b>${current.srs.due || 0}</b> due now</span><span><b>${mock.avg}%</b> mock avg</span></div>
+                  </div>
+                  <div class="v40-hero-visual">${heroIllustration()}</div>
+                </section>
+          
+                <section class="v40-intelligence-grid" aria-label="Learning intelligence">
+                  <article class="v40-panel v40-overall-panel">
+                    <div class="v40-panel-head"><div><span>OVERALL MASTERY</span><h2>N5 Progress</h2></div><em>Real browser data</em></div>
+                    <div class="v40-overall-body">
+                      ${ringSVG(overallPct,"Overall")}
+                      <div class="v40-metric-stack">
+                        <div><span>Vocabulary mastered</span><b>${mastered} / ${vocab.length}</b></div>
+                        <div><span>SRS mature</span><b>${srs.mature}</b></div>
+                        <div><span>Spelling accuracy</span><b>${spell.attempts ? spell.accuracy+"%" : "—"}</b></div>
+                        <div><span>Mock best</span><b>${mock.attempts ? mock.best+"%" : "—"}</b></div>
+                      </div>
+                    </div>
+                  </article>
+          
+                  <article class="v40-panel v40-srs-panel">
+                    <div class="v40-panel-head"><div><span>MEMORY HEALTH</span><h2>Adaptive SRS</h2></div><button type="button" class="v40-link" id="v40SrsPanel">Review →</button></div>
+                    <div class="v40-health-bars">${srsBarsHTML(srs)}</div>
+                  </article>
+          
+                  <article class="v40-panel v40-trend-panel">
+                    <div class="v40-panel-head"><div><span>ASSESSMENT TREND</span><h2>Mock Performance</h2></div><em>${mock.attempts} attempts</em></div>
+                    ${sparklineSVG(mock.history.slice().reverse().map(x=>x.score),"Recent mock scores")}
+                    <div class="v40-trend-foot"><span>Average <b>${mock.avg}%</b></span><span>Best <b>${mock.best}%</b></span></div>
+                  </article>
+                </section>
+          
+                <section class="v40-section">
+                  <div class="v40-section-head"><div><span>LESSON MASTERY MAP</span><h2>25 Lessons at a glance</h2><p>প্রতিটি tile আপনার আসল vocabulary mastery দেখায়।</p></div><div class="v40-legend"><i class="l0"></i>0 <i class="l1"></i>Started <i class="l2"></i>Growing <i class="l3"></i>Strong <i class="l4"></i>Mastered</div></div>
+                  <div class="v40-heatmap">${lessonHeatmapHTML()}</div>
+                </section>
+          
+                <section class="v40-section">
+                  <div class="v40-section-head"><div><span>CONTINUE LEARNING</span><h2>Your focused study flow</h2><p>Learn → Recall → Listen → Review.</p></div></div>
+                  <div class="v40-action-grid">
+                    <button type="button" class="v40-action-card lesson" id="v40LessonCard"><span class="v40-action-icon">あ</span><div><small>LESSON ${String(current.lesson).padStart(2,"0")}</small><h3>${esc40(title)}</h3><p>${current.mastery.mastered}/${current.mastery.total} words mastered</p><div class="v40-progress"><i style="width:${current.mastery.pct}%"></i></div></div><b>Continue →</b></button>
+                    <button type="button" class="v40-action-card recall" id="v40RecallCard"><span class="v40-action-icon">↻</span><div><small>ACTIVE RECALL</small><h3>Smart SRS Session</h3><p>${current.srs.due || 0} due · ${current.srs.new || 0} new</p></div><b>Review →</b></button>
+                    <button type="button" class="v40-action-card listening" id="v40ListeningCard"><span class="v40-action-icon">◖</span><div><small>LISTENING</small><h3>Natural Japanese</h3><p>Live transcript · max 1× speed</p><div class="v40-mini-wave">${"<i></i>".repeat(13)}</div></div><b>Listen →</b></button>
+                    <button type="button" class="v40-action-card kanji" id="v40KanjiCard"><span class="v40-action-icon">木</span><div><small>KANJI TREE</small><h3>Visual KLC Memory</h3><p>Components · readings · memory story</p></div><b>Explore →</b></button>
+                  </div>
+                </section>
+          
+                <section class="v40-section">
+                  <div class="v40-section-head"><div><span>ACHIEVEMENTS</span><h2>Milestones earned from real progress</h2></div></div>
+                  <div class="v40-achievement-grid">${achievements.map(a=>`<article class="v40-achievement ${a.done ? "unlocked" : "locked"}"><div class="v40-achievement-mark">${a.icon}</div><div><h3>${a.title}</h3><p>${a.desc}</p></div><span>${a.done ? "Unlocked" : "Locked"}</span></article>`).join("")}</div>
+                </section>`;
+          
+              q("#v40Continue")?.addEventListener("click",()=>showView("vocab"));
+              q("#v40Recall")?.addEventListener("click",()=>startSrsSession(8));
+              q("#v40Listen")?.addEventListener("click",()=>showView("listening"));
+              q("#v40SrsPanel")?.addEventListener("click",()=>showView("srs"));
+              q("#v40LessonCard")?.addEventListener("click",()=>showView("vocab"));
+              q("#v40RecallCard")?.addEventListener("click",()=>startSrsSession(8));
+              q("#v40ListeningCard")?.addEventListener("click",()=>showView("listening"));
+              q("#v40KanjiCard")?.addEventListener("click",()=>showView("kanji"));
+              qa("[data-v40-lesson]",root).forEach(btn=>btn.addEventListener("click",()=>setLesson(Number(btn.dataset.v40Lesson),"vocab")));
+            }
+          
+            function installOverviewOverride() {
+              window.renderOverview = renderPremiumOverview;
+              renderPremiumOverview();
+            }
+          
+            function addSrsHealthPanel() {
+              const root = q("#view-srs");
+              if (!root || q(".v40-srs-insight",root)) return;
+              if (state?.srsSession) return;
+              const x = currentLessonStats();
+              const global = srsHealth();
+              const anchor = q(".stats",root) || q(".srs-actions",root);
+              if (!anchor) return;
+              anchor.insertAdjacentHTML("afterend",`<section class="v40-srs-insight">
+                <div><span>MEMORY HEALTH · L${String(x.lesson).padStart(2,"0")}</span><h3>Review pressure vs long-term memory</h3></div>
+                <div class="v40-srs-mini-grid">
+                  <div><b>${x.srs.due || 0}</b><span>Due now</span></div><div><b>${x.srs.new || 0}</b><span>New</span></div><div><b>${x.srs.mature || 0}</b><span>Mature in lesson</span></div><div><b>${global.mature}</b><span>Mature overall</span></div>
+                </div>
+              </section>`);
+            }
+          
+            function wrapSRS() {
+              if (typeof window.renderSRS !== "function") return;
+              const prev = window.renderSRS;
+              window.renderSRS = function(...args) {
+                const out = prev.apply(this,args);
+                requestAnimationFrame(addSrsHealthPanel);
+                return out;
+              };
+              addSrsHealthPanel();
+            }
+          
+            function mockBreakdownHTML(review) {
+              const groups = new Map();
+              for (const qn of review || []) {
+                const key = String(qn.type || "Other");
+                const g = groups.get(key) || {total:0,correct:0};
+                g.total += 1; if (qn.is_correct) g.correct += 1; groups.set(key,g);
+              }
+              return [...groups.entries()].sort((a,b)=>b[1].total-a[1].total).slice(0,8).map(([name,g])=>{
+                const pct = g.total ? Math.round(g.correct*100/g.total) : 0;
+                return `<div class="v40-break-row"><div><span>${esc40(name)}</span><b>${pct}%</b></div><div><i style="width:${pct}%"></i></div></div>`;
+              }).join("") || `<div class="v40-no-data">No category data.</div>`;
+            }
+          
+            function addMockAnalytics() {
+              const root = q("#view-mock");
+              if (!root || q(".v40-mock-analytics",root) || !state?.result) return;
+              const r = state.result;
+              const history = mockHealth();
+              const title = q(".exam-title",root);
+              if (!title) return;
+              title.insertAdjacentHTML("afterend",`<section class="v40-mock-analytics">
+                <article class="v40-mock-score">${ringSVG(r.score,"Score")}<div><span>CORRECT</span><b>${r.correct}/${r.total}</b><small>${r.wrong} wrong · ${r.unanswered} unanswered</small></div></article>
+                <article class="v40-mock-breakdown"><div class="v40-panel-head"><div><span>QUESTION TYPE ACCURACY</span><h3>Where you performed best</h3></div></div>${mockBreakdownHTML(r.review)}</article>
+                <article class="v40-mock-history"><div class="v40-panel-head"><div><span>RECENT TREND</span><h3>Mock progression</h3></div></div>${sparklineSVG(history.history.slice().reverse().map(x=>x.score),"Mock trend")}</article>
+              </section>`);
+            }
+          
+            function wrapMockReview() {
+              if (typeof window.renderReview === "function") {
+                const prev = window.renderReview;
+                window.renderReview = function(...args){ const out = prev.apply(this,args); requestAnimationFrame(addMockAnalytics); return out; };
+                addMockAnalytics();
+              }
+              if (typeof window.renderHistory === "function") {
+                const prevH = window.renderHistory;
+                window.renderHistory = function(...args){
+                  const out = prevH.apply(this,args);
+                  requestAnimationFrame(()=>{
+                    const root=q("#view-history"); if(!root||q(".v40-history-trend",root)) return;
+                    const h=mockHealth(); const head=q(".section-head",root); if(!head) return;
+                    head.insertAdjacentHTML("afterend",`<section class="v40-history-trend"><div><span>PERFORMANCE TREND</span><h3>${h.attempts ? `${h.attempts} saved attempts` : "Your first trend will appear here"}</h3></div>${sparklineSVG(h.history.slice().reverse().map(x=>x.score),"Saved mock scores")}</section>`);
+                  });
+                  return out;
+                };
+              }
+            }
+          
+            function refineListening() {
+              if (typeof window.renderListening !== "function") return;
+              const prev = window.renderListening;
+              window.renderListening = function(...args) {
+                const out = prev.apply(this,args);
+                requestAnimationFrame(()=>{
+                  const root = q("#view-listening"); if(!root) return;
+                  ["#l125","#l15","#l2","#l3"].forEach(id=>q(id,root)?.remove());
+                  const rate = q("#rate");
+                  if (rate) { rate.max = "1.00"; if (Number(rate.value)>1) {rate.value="1.00"; q("#rateValue") && (q("#rateValue").textContent="1.00×");} }
+                  const speeds = q(".listen-speeds",root);
+                  if (speeds && !q(".v40-speed-cap",root)) speeds.insertAdjacentHTML("afterend",`<div class="v40-speed-cap"><span>Natural listening range</span><b>0.75× · 0.90× · 1×</b></div>`);
+                  const stage = q(".enhanced-stage,.listen-stage",root);
+                  if (stage && !q(".v40-player-badge",stage)) stage.insertAdjacentHTML("afterbegin",`<div class="v40-player-badge"><span class="dot"></span> Expressive neural Japanese · single stream</div>`);
+                });
+                return out;
+              };
+            }
+          
+          
+          
+            let strokeIndexPromise = null;
+            function strokeIndex() {
+              if (!strokeIndexPromise) {
+                strokeIndexPromise = fetch("./assets/strokes/index.json", {cache:"force-cache"})
+                  .then(r => r.ok ? r.json() : Promise.reject(new Error(`Stroke index HTTP ${r.status}`)))
+                  .catch(err => { strokeIndexPromise = null; throw err; });
+              }
+              return strokeIndexPromise;
+            }
+          
+            async function renderStrokeOrder(character, mount) {
+              if (!mount || !character) return;
+              mount.innerHTML = `<div class="v40-stroke-loading"><span></span><b>Loading stroke order…</b></div>`;
+              try {
+                const index = await strokeIndex();
+                const filename = index[String(character)] || null;
+                if (!filename) {
+                  mount.innerHTML = `<div class="v40-stroke-empty">এই Kanji-এর KanjiVG stroke file এই build-এ পাওয়া যায়নি।</div>`;
+                  return;
+                }
+                const res = await fetch(`./assets/strokes/${filename}`, {cache:"force-cache"});
+                if (!res.ok) throw new Error(`Stroke SVG HTTP ${res.status}`);
+                const raw = await res.text();
+                const doc = new DOMParser().parseFromString(raw, "image/svg+xml");
+                const svg = doc.documentElement;
+                svg.removeAttribute("width"); svg.removeAttribute("height");
+                svg.classList.add("v40-stroke-svg");
+                svg.setAttribute("role","img");
+                svg.setAttribute("aria-label",`${character} stroke order`);
+                mount.replaceChildren(svg);
+          
+                const paths = [...svg.querySelectorAll("path")].filter(p => {
+                  try { return p.getTotalLength() > 1; } catch { return false; }
+                });
+                const numbers = [...svg.querySelectorAll("text")];
+                numbers.forEach(t => t.classList.add("v40-stroke-number"));
+          
+                const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+                const replay = () => {
+                  paths.forEach(p => { try { p.getAnimations().forEach(a=>a.cancel()); } catch {} });
+                  if (reduce) {
+                    paths.forEach(p => { p.style.strokeDasharray=""; p.style.strokeDashoffset=""; });
+                    return;
+                  }
+                  paths.forEach((p,i) => {
+                    const len = p.getTotalLength();
+                    p.style.fill = "none";
+                    p.style.stroke = "#17364b";
+                    p.style.strokeWidth = "3.4";
+                    p.style.strokeLinecap = "round";
+                    p.style.strokeLinejoin = "round";
+                    p.style.strokeDasharray = String(len);
+                    p.style.strokeDashoffset = String(len);
+                    p.animate(
+                      [{strokeDashoffset:len},{strokeDashoffset:0}],
+                      {duration:460,easing:"cubic-bezier(.3,.7,.2,1)",delay:i*360,fill:"forwards"}
+                    );
+                  });
+                };
+                replay();
+                const btn = q("#v40StrokeReplay"); if (btn) btn.onclick = replay;
+              } catch (err) {
+                mount.innerHTML = `<div class="v40-stroke-empty">Stroke order load হয়নি। আবার page reload করে দেখুন।</div>`;
+                console.warn("v40 stroke order:", err);
+              }
+            }
+          
+            function installStrokeOrderPanel() {
+              const root = q("#view-kanji");
+              const detail = q("#klcDetail", root);
+              const selected = (()=>{try{return state?.klcSelected?.kanji || "";}catch{return "";}})();
+              if (!root || !detail || !selected) return;
+              let panel = q("#v40StrokePanel", detail);
+              if (!panel) {
+                detail.insertAdjacentHTML("beforeend",`<section class="v40-stroke-panel" id="v40StrokePanel">
+                  <div class="v40-stroke-head"><div><span>STROKE ORDER</span><h3>Write ${esc40(selected)} in the correct sequence</h3><p>Vector stroke data: KanjiVG · CC BY-SA 3.0</p></div><button type="button" class="v40-btn secondary" id="v40StrokeReplay">Replay</button></div>
+                  <div class="v40-stroke-stage" id="v40StrokeStage"></div>
+                </section>`);
+                panel = q("#v40StrokePanel", detail);
+              } else {
+                const h = q("h3",panel); if(h) h.textContent=`Write ${selected} in the correct sequence`;
+              }
+              renderStrokeOrder(selected, q("#v40StrokeStage",panel));
+            }
+          
+            function refineKanji() {
+              if (typeof window.renderKanji !== "function") return;
+              const prev = window.renderKanji;
+              window.renderKanji = function(...args) {
+                const out = prev.apply(this,args);
+                requestAnimationFrame(()=>{
+                  const root=q("#view-kanji"); if(!root) return;
+                  q(".klc-page-hero",root)?.classList.add("v40-kanji-hero");
+                  q(".klc-component-grid",root)?.classList.add("v40-tree-grid");
+                  q(".klc-build-grid",root)?.classList.add("v40-tree-grid");
+                  installStrokeOrderPanel();
+                });
+                return out;
+              };
+            }
+          
+            function installGlobalPolish() {
+              document.documentElement.style.setProperty("--v40-ready","1");
+              // Prevent old speed ranges from exposing >1× on initial load.
+              const rate=q("#rate"); if(rate){rate.max="1.00"; if(Number(rate.value)>1) rate.value="1.00";}
+          
+              // Accessible skip link for keyboard users.
+              if(!q("#v40Skip")){
+                const a=document.createElement("a"); a.id="v40Skip"; a.className="v40-skip"; a.href="#view-overview"; a.textContent="Skip to study content"; document.body.prepend(a);
+              }
+            }
+          
+            function wrapLessonUpdates() {
+              try {
+                const prev = window.setLesson;
+                if (typeof prev === "function") {
+                  window.setLesson = function(...args) {
+                    const out = prev.apply(this,args);
+                    setTimeout(()=>{ if (state?.view === "overview") renderPremiumOverview(); },0);
+                    return out;
+                  };
+                }
+              } catch {}
+            }
+          
+            installGlobalPolish();
+            refineListening();
+            refineKanji();
+            wrapSRS();
+            wrapMockReview();
+            wrapLessonUpdates();
+            installOverviewOverride();
+          
+            console.info("N5 Top Notch Product UI v40 loaded — real-data visualizations, mobile-first production layer.");
+          })();
+          JAVASCRIPT
+
+          node --check _build/v40/top-notch-v40.js
+          echo "v40 UI assets built"
+
       - name: Assemble GitHub Pages site
         shell: bash
         run: |
@@ -2496,6 +3290,9 @@ jobs:
           cp _build/analytics-events-v32.js _site/analytics-events-v32.js
           cp _build/calm-premium-ui-v34.js _site/calm-premium-ui-v34.js
           cp _build/production-premium-ui-v36.js _site/production-premium-ui-v36.js
+          mkdir -p _site/assets/v40
+          cp _build/v40/top-notch-v40.css _site/assets/v40/top-notch-v40.css
+          cp _build/v40/top-notch-v40.js _site/assets/v40/top-notch-v40.js
 
           # Copy only generated MP3 files — no neural model ships to the phone.
           cp _audio_cache/*.mp3 _site/audio/
@@ -2514,9 +3311,11 @@ jobs:
               <script src="./analytics-events-v32.js"></script>
               <script src="./calm-premium-ui-v34.js"></script>
               <script src="./production-premium-ui-v36.js"></script>
+              <link rel="stylesheet" href="./assets/v40/top-notch-v40.css?v=40">
+              <script src="./assets/v40/top-notch-v40.js?v=40"></script>
               """
 
-              if "production-premium-ui-v36.js" not in html or "calm-premium-ui-v34.js" not in html or "analytics-events-v32.js" not in html or "instant-audio-v32.js" not in html or "app-clean-v32.js" not in html:
+              if "top-notch-v40.js" not in html or "production-premium-ui-v36.js" not in html or "calm-premium-ui-v34.js" not in html or "analytics-events-v32.js" not in html or "instant-audio-v32.js" not in html or "app-clean-v32.js" not in html:
                   html = html.replace("</body>", injection + "\n</body>")
 
               ga_tag = """
@@ -2534,17 +3333,17 @@ jobs:
 
               html = html.replace(
                   "GitHub Single File · Mobile First · Romaji→Kana",
-                  "Production v36 · Random SRS · Natural Audio · Mobile First"
+                  "Top Notch v40 · Learning Intelligence · Natural Audio · Mobile First"
               )
               html = html.replace(
                   "<title>N5 Natural Japanese Studio — GitHub Single File</title>",
-                  "<title>N5 Natural Japanese Studio — Production Premium v36</title>"
+                  "<title>N5 Natural Japanese Studio — Top Notch Product v40</title>"
               )
 
               path.write_text(html, encoding="utf-8")
           PYTHON
 
-      - name: Verify production v36 deployment
+      - name: Verify Top Notch v40 deployment
         shell: bash
         run: |
           set -e
@@ -2555,6 +3354,11 @@ jobs:
           test -f _site/analytics-events-v32.js
           test -f _site/calm-premium-ui-v34.js
           test -f _site/production-premium-ui-v36.js
+          test -f _site/assets/v40/top-notch-v40.css
+          test -f _site/assets/v40/top-notch-v40.js
+          test -f _site/assets/strokes/index.json
+          test -f _site/assets/strokes/KANJIVG_LICENSE.txt
+          test "$(find _site/assets/strokes -name '*.svg' | wc -l)" -gt 1800
           test -d _site/audio
           test "$(find _site/audio -name '*.mp3' | wc -l)" -gt 1500
           test "$(find _site/audio -name 'lesson-*.json' | wc -l)" -eq 25
@@ -2562,6 +3366,21 @@ jobs:
           grep -q "analytics-events-v32.js" _site/index.html
           grep -q "calm-premium-ui-v34.js" _site/index.html
           grep -q "production-premium-ui-v36.js" _site/index.html
+          grep -q "top-notch-v40.css" _site/index.html
+          grep -q "top-notch-v40.js" _site/index.html
+          grep -q "v40-heatmap" _site/assets/v40/top-notch-v40.js
+          grep -q "srsHealth" _site/assets/v40/top-notch-v40.js
+          grep -q "mockBreakdownHTML" _site/assets/v40/top-notch-v40.js
+          grep -q "achievementData" _site/assets/v40/top-notch-v40.js
+          grep -q "installStrokeOrderPanel" _site/assets/v40/top-notch-v40.js
+          grep -q "assets/strokes/index.json" _site/assets/v40/top-notch-v40.js
+          grep -q "0.75× · 0.90× · 1×" _site/assets/v40/top-notch-v40.js
+          grep -q "@media(max-width:360px)" _site/assets/v40/top-notch-v40.css
+          grep -q "prefers-reduced-motion" _site/assets/v40/top-notch-v40.css
+          grep -q "prefers-contrast" _site/assets/v40/top-notch-v40.css
+          grep -q "min-height:48px" _site/assets/v40/top-notch-v40.css
+          grep -q "v40-stroke-panel" _site/assets/v40/top-notch-v40.css
+          if grep -q "100vw" _site/assets/v40/top-notch-v40.css; then echo "ERROR: avoid 100vw mobile overflow trap"; exit 1; fi
           grep -q "Production Premium UI v36" _site/production-premium-ui-v36.js
           grep -q "v36-dashboard-hero" _site/production-premium-ui-v36.js
           grep -q "v36-hero-art" _site/production-premium-ui-v36.js
@@ -2620,7 +3439,15 @@ jobs:
           node --check _site/analytics-events-v32.js
           node --check _site/calm-premium-ui-v34.js
           node --check _site/production-premium-ui-v36.js
-          echo "v36 production premium UI QA PASS"
+          node --check _site/assets/v40/top-notch-v40.js
+          python - <<'PYTHON'
+          import json
+          from pathlib import Path
+          idx=json.loads(Path("_site/assets/strokes/index.json").read_text(encoding="utf-8"))
+          assert len(idx)>1800, len(idx)
+          print("KanjiVG index:", len(idx))
+          PYTHON
+          echo "v40 top notch product UI QA PASS"
           echo "MP3 clips: $(find _site/audio -name '*.mp3' | wc -l)"
           echo "Published site size:"
           du -sh _site
