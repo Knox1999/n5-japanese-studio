@@ -1,4 +1,4 @@
-name: Deploy N5 Studio — Clean Stable + Google Analytics v28
+name: Deploy N5 Studio — Lean Learning Analytics v30
 
 on:
   push:
@@ -315,7 +315,7 @@ jobs:
           }
 
           manifest = {
-              "version": "28",
+              "version": "30",
               "voice": "jf_alpha",
               "speed": 0.94,
               "count": len(available),
@@ -347,7 +347,7 @@ jobs:
       - name: Build clean v26 browser app
         shell: bash
         run: |
-          cat > _build/instant-audio-v28.js <<'JAVASCRIPT'
+          cat > _build/instant-audio-v30.js <<'JAVASCRIPT'
           (() => {
             "use strict";
 
@@ -436,6 +436,11 @@ jobs:
               const hash = await sha1(text);
               if (!available.has(hash)) {
                 console.warn("No pre-generated audio for:", text);
+                try {
+                  window.dispatchEvent(new CustomEvent("n5:audio-error", {
+                    detail: { message: "Pre-generated audio missing", text }
+                  }));
+                } catch {}
                 setStatus("এই rare line-এর pre-generated audio পাওয়া যায়নি।", "warn");
                 try { onend?.(); } catch {}
                 return;
@@ -473,11 +478,21 @@ jobs:
                     setStatus("✓ Instant Natural Voice · single-stream", "ready");
                   } catch (err) {
                     console.error("Audio source start failed:", err);
+                    try {
+                      window.dispatchEvent(new CustomEvent("n5:audio-error", {
+                        detail: { message: String(err?.message || "Audio source start failed"), text }
+                      }));
+                    } catch {}
                     finish();
                   }
                 });
               } catch (err) {
                 console.error("Static audio playback error:", err);
+                try {
+                  window.dispatchEvent(new CustomEvent("n5:audio-error", {
+                    detail: { message: String(err?.message || "Static audio playback error"), text }
+                  }));
+                } catch {}
                 setStatus("Audio play হয়নি। Reload করে Voice Test দিন।", "warn");
                 try { onend?.(); } catch {}
               }
@@ -527,12 +542,12 @@ jobs:
             window.N5_INSTANT_AUDIO = { speak: speakInstant, stop, prefetchLesson, manifest };
 
             setTimeout(() => prefetchLesson($("#lessonSelect")?.value || 1), 1200);
-            console.info(`N5 Clean Instant Audio v28: ${available.size} clips`);
+            console.info(`N5 Clean Instant Audio v30: ${available.size} clips`);
           })();
 
           JAVASCRIPT
 
-          cat > _build/app-clean-v28.js <<'JAVASCRIPT'
+          cat > _build/app-clean-v30.js <<'JAVASCRIPT'
           (() => {
             "use strict";
 
@@ -543,7 +558,7 @@ jobs:
               }
             } catch {}
 
-            document.documentElement.dataset.build = "clean-v28";
+            document.documentElement.dataset.build = "clean-v30";
 
             // ---------- Clean view navigation ----------
             showView = function(name, opts = {}) {
@@ -730,9 +745,555 @@ jobs:
             refresh();
             showView(state.view || "overview", { keepScroll: true, instant: true });
 
-            console.info("N5 Clean App v28 loaded — Analytics enabled.");
+            console.info("N5 Clean App v30 loaded — Lean Analytics enabled.");
           })();
 
+          JAVASCRIPT
+
+      - name: Build Lean Learning Analytics v30
+        shell: bash
+        run: |
+          cat > _build/analytics-events-v30.js <<'JAVASCRIPT'
+          (() => {
+            "use strict";
+
+            const MEASUREMENT_ID = "G-FG3JCWGSPR";
+            const BUILD = "v30";
+            const CUSTOM_EVENTS = new Set([
+              "lesson_open",
+              "section_open",
+              "vocabulary_mastered",
+              "practice_result",
+              "audio_play",
+              "shadowing_complete",
+              "quiz_event",
+              "app_error",
+            ]);
+
+            let pendingLessonSource = "direct";
+            let pendingSectionSource = "app";
+            let sectionTimer = null;
+            let pendingSectionPrevious = "";
+            let pendingSectionTarget = "";
+            let lastTrackedSection = "";
+            let pendingShadow = null;
+            const recentErrors = new Map();
+
+            function clip(value, max = 95) {
+              const s = String(value ?? "").replace(/\s+/g, " ").trim();
+              return s.length > max ? s.slice(0, max) : s;
+            }
+
+            function cleanParams(params = {}) {
+              const out = {};
+              for (const [key, value] of Object.entries(params)) {
+                if (value === undefined || value === null || value === "") continue;
+                if (typeof value === "string") out[key] = clip(value);
+                else if (typeof value === "number" || typeof value === "boolean") out[key] = value;
+                else out[key] = clip(value);
+              }
+              return out;
+            }
+
+            function track(eventName, params = {}) {
+              if (!CUSTOM_EVENTS.has(eventName)) {
+                console.warn("[GA4] blocked non-lean custom event:", eventName);
+                return;
+              }
+              try {
+                if (typeof window.gtag !== "function") return;
+                window.gtag("event", eventName, cleanParams({
+                  app_name: "N5 Japanese Studio",
+                  app_build: BUILD,
+                  ...params,
+                }));
+                console.debug("[GA4]", eventName, params);
+              } catch (err) {
+                console.warn("GA4 event skipped:", eventName, err);
+              }
+            }
+
+            function currentLesson() {
+              try { return Number(state?.lesson || 0); } catch { return 0; }
+            }
+
+            function currentView() {
+              try { return String(state?.view || "overview"); } catch { return "overview"; }
+            }
+
+            function currentVocabById(id) {
+              try {
+                const numeric = Number(id);
+                return (state?.vocab || []).find(v => Number(v.id) === numeric) ||
+                       (window.N5_OFFLINE_DATA?.vocabulary || []).find(v => Number(v.id) === numeric) ||
+                       null;
+              } catch { return null; }
+            }
+
+            function totalMastered() {
+              try {
+                return Object.values(state?.progress || {}).filter(Boolean).length;
+              } catch { return 0; }
+            }
+
+            function lessonMastered() {
+              try {
+                return (state?.vocab || []).filter(v => !!state?.progress?.[v.id]).length;
+              } catch { return 0; }
+            }
+
+            function wrapGlobal(name, factory) {
+              const original = window[name];
+              if (typeof original !== "function") return false;
+              window[name] = factory(original);
+              return true;
+            }
+
+            function safePath(url) {
+              try { return clip(new URL(url, document.baseURI).pathname, 110); }
+              catch { return clip(url, 110); }
+            }
+
+            function trackErrorOnce(params = {}) {
+              const key = [
+                params.error_type || "unknown",
+                params.error_message || "",
+                params.resource_path || "",
+                currentView(),
+                currentLesson(),
+              ].join("|");
+              const now = Date.now();
+              const last = recentErrors.get(key) || 0;
+              if (now - last < 30000) return;
+              recentErrors.set(key, now);
+              track("app_error", {
+                lesson_number: currentLesson(),
+                section_name: currentView(),
+                ...params,
+              });
+            }
+
+            // ------------------------------------------------------------
+            // 1) lesson_open
+            // ------------------------------------------------------------
+            wrapGlobal("setLesson", original => function(n, targetView = "overview") {
+              const lesson = Number(n || 0);
+              const source = pendingLessonSource || "direct";
+              pendingLessonSource = "direct";
+              pendingSectionSource = source;
+              const result = original.apply(this, arguments);
+              track("lesson_open", {
+                lesson_number: lesson,
+                lesson_label: lesson ? `L${String(lesson).padStart(2, "0")}` : "",
+                target_view: targetView || currentView(),
+                open_source: source,
+              });
+              return result;
+            });
+
+            // ------------------------------------------------------------
+            // 2) section_open
+            // Only actual section changes are counted. Rapid intermediate
+            // navigation is debounced so Search -> overview -> vocab becomes
+            // one final vocab section_open.
+            // ------------------------------------------------------------
+            wrapGlobal("showView", original => function(name, opts = {}) {
+              const before = currentView();
+              const source = opts?.analyticsSource || pendingSectionSource || "app";
+              const result = original.apply(this, arguments);
+              const after = currentView();
+
+              if (after !== before) {
+                // Preserve the same source across rapid transitional navigation.
+                // Example: Search -> overview -> vocab should report source=search.
+                pendingSectionSource = source;
+                pendingSectionPrevious = before;
+                pendingSectionTarget = after;
+                clearTimeout(sectionTimer);
+                sectionTimer = setTimeout(() => {
+                  const finalView = currentView();
+                  if (finalView !== lastTrackedSection) {
+                    track("section_open", {
+                      lesson_number: currentLesson(),
+                      section_name: finalView || pendingSectionTarget,
+                      previous_section: pendingSectionPrevious,
+                      open_source: pendingSectionSource || source,
+                    });
+                    lastTrackedSection = finalView;
+                  }
+                  pendingSectionSource = "app";
+                }, 90);
+              }
+              return result;
+            });
+
+            // ------------------------------------------------------------
+            // 7) quiz_event
+            // quiz_action=start/complete keeps GA4 clean without two event names.
+            // ------------------------------------------------------------
+            wrapGlobal("startMock", original => function(mode, lesson = null, upto = null) {
+              const result = original.apply(this, arguments);
+              try {
+                const m = state?.mock || {};
+                const quizType = mode || m.mode || "";
+                track("quiz_event", {
+                  quiz_action: "start",
+                  quiz_type: quizType,
+                  lesson_number: quizType === "lesson" ? Number(lesson || m.lesson || currentLesson() || 0) : 0,
+                  upto_lesson: Number(upto || m.upto || 0),
+                  question_count: Number(m.question_count || m.questions?.length || 0),
+                });
+              } catch {}
+              return result;
+            });
+
+            wrapGlobal("submitMock", original => function() {
+              const quizType = state?.mock?.mode || "";
+              const before = {
+                quiz_type: quizType,
+                lesson_number: quizType === "lesson" ? Number(state?.mock?.lesson || currentLesson() || 0) : 0,
+                upto_lesson: Number(state?.mock?.upto || 0),
+              };
+              const result = original.apply(this, arguments);
+              try {
+                const r = state?.result || {};
+                track("quiz_event", {
+                  quiz_action: "complete",
+                  ...before,
+                  question_count: Number(r.total || 0),
+                  score_percent: Number(r.score || 0),
+                  correct_count: Number(r.correct || 0),
+                  wrong_count: Number(r.wrong || 0),
+                  unanswered_count: Number(r.unanswered || 0),
+                });
+              } catch {}
+              return result;
+            });
+
+            // ------------------------------------------------------------
+            // 6) shadowing_complete
+            // audio_play is the "started/attempted" denominator.
+            // Completion fires only if the serial sequence naturally reaches done.
+            // ------------------------------------------------------------
+            wrapGlobal("sequence", original => async function(lines, pause = 600, rate = .88, done = null) {
+              const shadow = pendingShadow && (Date.now() - pendingShadow.armedAt < 1500)
+                ? pendingShadow
+                : null;
+              pendingShadow = null;
+
+              if (!shadow) return original.apply(this, arguments);
+
+              const startedAt = Date.now();
+              const lineCount = Array.isArray(lines) ? lines.filter(Boolean).length : 0;
+              const wrappedDone = () => {
+                track("shadowing_complete", {
+                  lesson_number: currentLesson(),
+                  shadowing_type: shadow.type,
+                  line_count: lineCount,
+                  playback_speed: Number(rate || 0),
+                  duration_seconds: Math.max(0, Math.round((Date.now() - startedAt) / 1000)),
+                });
+                try { done?.(); } catch {}
+              };
+              return original.call(this, lines, pause, rate, wrappedDone);
+            });
+
+            function audioEventFromClick(target) {
+              const el = target?.closest?.("button");
+              if (!el) return null;
+              const lesson = currentLesson();
+
+              const card = el.closest(".vocab-card");
+              if (card && (el.classList.contains("wa") || el.classList.contains("sa"))) {
+                const v = currentVocabById(card.dataset.id);
+                if (!v) return null;
+                return {
+                  audio_type: el.classList.contains("wa") ? "vocabulary_word" : "vocabulary_sentence",
+                  audio_label: el.classList.contains("wa") ? v.japanese : (v.example?.jp || ""),
+                  lesson_number: lesson,
+                  word_id: Number(v.id || 0),
+                  word_number: Number(v.word_no || 0),
+                };
+              }
+
+              if (el.classList.contains("lp")) {
+                const i = Number(el.dataset.i || 0);
+                const dlg = state?.content?.dialogue_extended || state?.content?.dialogue || [];
+                return {
+                  audio_type: "conversation_line",
+                  audio_label: dlg[i]?.[1] || `line_${i + 1}`,
+                  lesson_number: lesson,
+                  line_number: i + 1,
+                };
+              }
+
+              if (el.classList.contains("mp")) {
+                const v = currentVocabById(el.dataset.id);
+                return {
+                  audio_type: "micro_practice",
+                  audio_label: v?.example?.jp || v?.japanese || "",
+                  lesson_number: lesson,
+                  word_id: Number(v?.id || 0),
+                };
+              }
+
+              if (el.classList.contains("qa")) {
+                return {
+                  audio_type: "quiz_question",
+                  audio_label: el.dataset.text || "quiz_audio",
+                  lesson_number: lesson,
+                };
+              }
+
+              const map = {
+                playWords: ["vocabulary_stream", "Vocabulary Word Stream"],
+                cp: ["conversation_full", "Full Conversation"],
+                cs: ["conversation_slow", "Slow Full Conversation"],
+                csh: ["conversation_shadowing", "Conversation Shadowing"],
+                rp: ["reading_full", "Full Reading Passage"],
+                rs: ["reading_slow", "Slow Reading Passage"],
+                rshadow: ["reading_shadowing", "Reading Shadowing"],
+                r2: ["reading_repeat", "Full Reading Repeat"],
+                rewriteAudio: ["reading_rewrite_audio", "Reading Rewrite Passage"],
+                listenCore: ["listening_extended", "Extended Listening"],
+                listenShadow: ["listening_shadowing", "Shadowing Marathon"],
+                listenMarathon: ["listening_intensive", "Intensive Marathon"],
+                lb: ["listening_speed", "Core Listening 0.78x"],
+                ln: ["listening_speed", "Core Listening 0.90x"],
+                lf: ["listening_speed", "Core Listening 1x"],
+                l15: ["listening_speed", "Core Listening 1.5x"],
+                l2: ["listening_speed", "Core Listening 2x"],
+                l3: ["listening_speed", "Core Listening 3x"],
+                vstream: ["listening_word_stream", "Quick Word Stream"],
+                sstream: ["listening_sentence_stream", "Quick Sentence Stream"],
+                spellWordAudio: ["spelling_word", "Spelling Word Audio"],
+                spellAudio: ["spelling_prompt", "Spelling Audio Prompt"],
+                sla: ["srs_word", "SRS Learn Audio"],
+                sra: ["srs_word", "SRS Recall Audio"],
+                klcSpeak: ["kanji", "KLC Kanji Audio"],
+                voiceTestBtn: ["voice_test", "Natural Voice Test"],
+              };
+
+              const hit = map[el.id];
+              if (!hit) return null;
+
+              const out = {
+                audio_type: hit[0],
+                audio_label: hit[1],
+                lesson_number: lesson,
+              };
+
+              const speeds = { lb:.78, ln:.90, lf:1, l15:1.5, l2:2, l3:3 };
+              if (speeds[el.id]) out.playback_speed = speeds[el.id];
+
+              if (el.id === "klcSpeak") {
+                out.audio_label = state?.klcSelected?.kanji || hit[1];
+                out.klc_number = Number(state?.klcSelected?.klc_no || 0);
+              }
+
+              if (el.id === "spellWordAudio" || el.id === "spellAudio") {
+                const c = state?.spellingSession?.[state?.spellingIndex || 0];
+                out.audio_label = c?.japanese || c?.spelling_text || hit[1];
+                out.word_id = Number(c?.id || 0);
+              }
+
+              if (el.id === "sla" || el.id === "sra") {
+                const c = state?.srsSession?.[state?.srsIndex || 0];
+                out.audio_label = c?.japanese || hit[1];
+                out.word_id = Number(c?.id || 0);
+              }
+              return out;
+            }
+
+            // ------------------------------------------------------------
+            // Delegated listener: dynamic cards/buttons need no MutationObserver.
+            // ------------------------------------------------------------
+            document.addEventListener("click", event => {
+              const button = event.target?.closest?.("button");
+              if (!button) return;
+
+              // Sources for lesson_open / section_open, no separate roadmap event.
+              if (button.closest?.("[data-jump]")) {
+                pendingLessonSource = "roadmap";
+                pendingSectionSource = "roadmap";
+              } else if (button.matches?.("[data-sl]")) {
+                pendingLessonSource = "search";
+                pendingSectionSource = "search";
+              } else if (button.dataset?.view) {
+                pendingSectionSource = "navigation";
+              }
+
+              // 3) vocabulary_mastered
+              if (button.classList.contains("ma")) {
+                const card = button.closest(".vocab-card");
+                const id = Number(card?.dataset.id || 0);
+                const v = currentVocabById(id);
+                setTimeout(() => {
+                  const mastered = !!state?.progress?.[id];
+                  track("vocabulary_mastered", {
+                    lesson_number: Number(v?.lesson || currentLesson()),
+                    word_id: id,
+                    word_number: Number(v?.word_no || 0),
+                    japanese_word: v?.japanese || "",
+                    mastered_state: mastered ? 1 : 0,
+                    lesson_mastered_count: lessonMastered(),
+                    total_mastered_count: totalMastered(),
+                  });
+                }, 0);
+              }
+
+              // 4) practice_result — SRS
+              if (button.matches("[data-rate]")) {
+                try {
+                  const card = state?.srsSession?.[state?.srsIndex || 0];
+                  const rating = button.dataset.rate || "";
+                  track("practice_result", {
+                    practice_type: "srs",
+                    result_status: rating,
+                    lesson_number: currentLesson(),
+                    word_id: Number(card?.id || 0),
+                    word_number: Number(card?.word_no || 0),
+                    japanese_word: card?.japanese || "",
+                    srs_phase: card?.srs?.phase || "learn",
+                  });
+                } catch {}
+              }
+
+              // 4) practice_result — Spelling checked.
+              if (button.id === "checkSpell") {
+                try {
+                  const input = document.querySelector("#spellInput");
+                  if (String(input?.value || "").trim()) {
+                    const card = state?.spellingSession?.[state?.spellingIndex || 0];
+                    const usedHint = !!state?.spellingHint;
+                    const mode = state?.spellingMode || "";
+                    setTimeout(() => {
+                      const r = state?.spellingResult;
+                      if (!r) return;
+                      track("practice_result", {
+                        practice_type: "spelling",
+                        result_status: r.is_correct ? "correct" : "wrong",
+                        lesson_number: currentLesson(),
+                        word_id: Number(card?.id || 0),
+                        word_number: Number(card?.word_no || 0),
+                        japanese_word: card?.japanese || "",
+                        spelling_mode: mode,
+                        used_hint: usedHint ? 1 : 0,
+                      });
+                    }, 40);
+                  }
+                } catch {}
+              }
+
+              // 4) practice_result — Spelling skipped (skip is neutral, not wrong).
+              if (button.id === "skipSpell") {
+                try {
+                  const card = state?.spellingSession?.[state?.spellingIndex || 0];
+                  track("practice_result", {
+                    practice_type: "spelling",
+                    result_status: "skip",
+                    lesson_number: currentLesson(),
+                    word_id: Number(card?.id || 0),
+                    word_number: Number(card?.word_no || 0),
+                    japanese_word: card?.japanese || "",
+                    spelling_mode: state?.spellingMode || "",
+                  });
+                } catch {}
+              }
+
+              // Arm the only three explicit Shadowing flows.
+              const shadowMap = {
+                csh: "conversation_shadowing",
+                rshadow: "reading_shadowing",
+                listenShadow: "listening_shadowing",
+              };
+              if (shadowMap[button.id]) {
+                pendingShadow = {
+                  type: shadowMap[button.id],
+                  armedAt: Date.now(),
+                };
+              }
+
+              // 5) audio_play
+              const audioParams = audioEventFromClick(event.target);
+              if (audioParams) track("audio_play", audioParams);
+            }, true);
+
+            document.addEventListener("change", event => {
+              if (event.target?.id === "lessonSelect") {
+                pendingLessonSource = "lesson_selector";
+                pendingSectionSource = "lesson_selector";
+              }
+            }, true);
+
+            // ------------------------------------------------------------
+            // 8) app_error
+            // JavaScript, Promise, resource and audio failures all use one event.
+            // ------------------------------------------------------------
+            window.addEventListener("error", event => {
+              const t = event.target;
+              if (t && t !== window && (t.src || t.href)) {
+                trackErrorOnce({
+                  error_type: "resource",
+                  error_message: `${t.tagName || "resource"} failed to load`,
+                  resource_type: t.tagName || "RESOURCE",
+                  resource_path: safePath(t.src || t.href),
+                });
+                return;
+              }
+
+              trackErrorOnce({
+                error_type: "javascript",
+                error_message: clip(event.message || "JavaScript error", 120),
+                source_path: safePath(event.filename || ""),
+                line_number: Number(event.lineno || 0),
+              });
+            }, true);
+
+            window.addEventListener("unhandledrejection", event => {
+              trackErrorOnce({
+                error_type: "promise",
+                error_message: clip(event.reason?.message || event.reason || "Unhandled promise rejection", 120),
+              });
+            });
+
+            window.addEventListener("n5:audio-error", event => {
+              trackErrorOnce({
+                error_type: "audio",
+                error_message: clip(event.detail?.message || "Audio playback error", 120),
+                audio_label: clip(event.detail?.text || "", 80),
+              });
+            });
+
+            // Initial page state.
+            setTimeout(() => {
+              const lesson = currentLesson();
+              const view = currentView();
+              track("lesson_open", {
+                lesson_number: lesson,
+                lesson_label: lesson ? `L${String(lesson).padStart(2, "0")}` : "",
+                target_view: view,
+                open_source: "initial_load",
+              });
+              if (!lastTrackedSection) {
+                track("section_open", {
+                  lesson_number: lesson,
+                  section_name: view,
+                  previous_section: "",
+                  open_source: "initial_load",
+                });
+                lastTrackedSection = view;
+              }
+            }, 400);
+
+            window.N5_ANALYTICS = {
+              track,
+              measurementId: MEASUREMENT_ID,
+              customEvents: [...CUSTOM_EVENTS],
+            };
+
+            console.info("N5 Lean Learning Analytics v30 enabled: exactly 8 custom events.");
+          })();
           JAVASCRIPT
 
       - name: Assemble GitHub Pages site
@@ -744,9 +1305,10 @@ jobs:
           cp index.html _site/404.html
           cp .nojekyll _site/.nojekyll 2>/dev/null || true
 
-          cp _build/audio-manifest.js _site/audio-manifest-v28.js
-          cp _build/instant-audio-v28.js _site/instant-audio-v28.js
-          cp _build/app-clean-v28.js _site/app-clean-v28.js
+          cp _build/audio-manifest.js _site/audio-manifest-v30.js
+          cp _build/instant-audio-v30.js _site/instant-audio-v30.js
+          cp _build/app-clean-v30.js _site/app-clean-v30.js
+          cp _build/analytics-events-v30.js _site/analytics-events-v30.js
 
           # Copy only generated MP3 files — no neural model ships to the phone.
           cp _audio_cache/*.mp3 _site/audio/
@@ -759,12 +1321,13 @@ jobs:
               html = path.read_text(encoding="utf-8")
 
               injection = """
-              <script src="./audio-manifest-v28.js"></script>
-              <script src="./instant-audio-v28.js"></script>
-              <script src="./app-clean-v28.js"></script>
+              <script src="./audio-manifest-v30.js"></script>
+              <script src="./instant-audio-v30.js"></script>
+              <script src="./app-clean-v30.js"></script>
+              <script src="./analytics-events-v30.js"></script>
               """
 
-              if "app-clean-v28.js" not in html:
+              if "analytics-events-v30.js" not in html:
                   html = html.replace("</body>", injection + "\n</body>")
 
               ga_tag = """
@@ -782,42 +1345,57 @@ jobs:
 
               html = html.replace(
                   "GitHub Single File · Mobile First · Romaji→Kana",
-                  "Clean v28 · Analytics · Instant Audio · Mobile First"
+                  "Clean v30 · Lean Analytics · Instant Audio · Mobile First"
               )
               html = html.replace(
                   "<title>N5 Natural Japanese Studio — GitHub Single File</title>",
-                  "<title>N5 Natural Japanese Studio — Clean v28</title>"
+                  "<title>N5 Natural Japanese Studio — Lean Analytics v30</title>"
               )
 
               path.write_text(html, encoding="utf-8")
           PYTHON
 
-      - name: Verify clean v26 deployment
+      - name: Verify clean v30 deployment
         shell: bash
         run: |
           set -e
           test -f _site/index.html
-          test -f _site/audio-manifest-v28.js
-          test -f _site/instant-audio-v28.js
-          test -f _site/app-clean-v28.js
+          test -f _site/audio-manifest-v30.js
+          test -f _site/instant-audio-v30.js
+          test -f _site/app-clean-v30.js
+          test -f _site/analytics-events-v30.js
           test -d _site/audio
           test "$(find _site/audio -name '*.mp3' | wc -l)" -gt 1500
           test "$(find _site/audio -name 'lesson-*.json' | wc -l)" -eq 25
-          grep -q "app-clean-v28.js" _site/index.html
+          grep -q "app-clean-v30.js" _site/index.html
+          grep -q "analytics-events-v30.js" _site/index.html
+          grep -q '"lesson_open"' _site/analytics-events-v30.js
+          grep -q '"section_open"' _site/analytics-events-v30.js
+          grep -q '"vocabulary_mastered"' _site/analytics-events-v30.js
+          grep -q '"practice_result"' _site/analytics-events-v30.js
+          grep -q '"audio_play"' _site/analytics-events-v30.js
+          grep -q '"shadowing_complete"' _site/analytics-events-v30.js
+          grep -q '"quiz_event"' _site/analytics-events-v30.js
+          grep -q '"app_error"' _site/analytics-events-v30.js
+          if grep -q '"vocabulary_open"' _site/analytics-events-v30.js; then echo "ERROR: vocabulary_open must be removed"; exit 1; fi
+          if grep -q '"roadmap_click"' _site/analytics-events-v30.js; then echo "ERROR: roadmap_click must be removed"; exit 1; fi
+          if grep -q '"quiz_start"' _site/analytics-events-v30.js; then echo "ERROR: quiz_start must be merged into quiz_event"; exit 1; fi
+          if grep -q '"quiz_complete"' _site/analytics-events-v30.js; then echo "ERROR: quiz_complete must be merged into quiz_event"; exit 1; fi
           grep -q "G-FG3JCWGSPR" _site/index.html
           grep -q "googletagmanager.com/gtag/js" _site/index.html
-          grep -q "Critical: resolve only after THIS clip actually ends" _site/instant-audio-v28.js
-          grep -q 'setLesson(Number(b.dataset.jump), "vocab")' _site/app-clean-v28.js
-          grep -q 'id="skipSpell"' _site/app-clean-v28.js
-          grep -q 'id="l3"' _site/app-clean-v28.js
-          grep -q 'Reveal বাংলা অর্থ + উচ্চারণ' _site/app-clean-v28.js
-          if grep -q 'new MutationObserver' _site/app-clean-v28.js; then
-            echo "ERROR: v28 clean app must not create MutationObserver patches"
+          grep -q "Critical: resolve only after THIS clip actually ends" _site/instant-audio-v30.js
+          grep -q 'setLesson(Number(b.dataset.jump), "vocab")' _site/app-clean-v30.js
+          grep -q 'id="skipSpell"' _site/app-clean-v30.js
+          grep -q 'id="l3"' _site/app-clean-v30.js
+          grep -q 'Reveal বাংলা অর্থ + উচ্চারণ' _site/app-clean-v30.js
+          if grep -q 'new MutationObserver' _site/app-clean-v30.js; then
+            echo "ERROR: v30 clean app must not create MutationObserver patches"
             exit 1
           fi
-          node --check _site/instant-audio-v28.js
-          node --check _site/app-clean-v28.js
-          echo "v28 QA PASS"
+          node --check _site/instant-audio-v30.js
+          node --check _site/app-clean-v30.js
+          node --check _site/analytics-events-v30.js
+          echo "v30 QA PASS"
           echo "MP3 clips: $(find _site/audio -name '*.mp3' | wc -l)"
           echo "Published site size:"
           du -sh _site
