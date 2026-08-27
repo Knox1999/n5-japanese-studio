@@ -1,0 +1,10 @@
+N5 v45 Patch QA
+==============
+[PASS] Dashboard has default export
+[PASS] Shell has default export
+[PASS] Layout imports v45 CSS
+[PASS] GA ID preserved
+[PASS] 25 lesson roadmap handler preserved
+[PASS] All existing ViewName modules referenced
+[PASS] No book sales
+[PASS] Responsive CSS present

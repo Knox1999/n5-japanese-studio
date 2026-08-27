@@ -3,6 +3,7 @@ import Script from 'next/script';
 import './globals.css';
 import '@/styles/premium.scss';
 import '@/styles/v44-editorial.scss';
+import '@/styles/v45-academy.scss';
 
 export const metadata: Metadata = {
   title: 'N5 Natural Japanese Studio',
@@ -16,7 +17,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0B100F',
+  themeColor: '#0E1715',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

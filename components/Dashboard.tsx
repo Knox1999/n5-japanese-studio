@@ -1,9 +1,11 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowRight, BookOpen, Brain, Headphones, PenLine, Sparkles,
-  TreePine, Trophy, RotateCcw, Play, CheckCircle2
+  ArrowRight, BookOpen, Brain, CheckCircle2, Headphones, Languages,
+  MessageCircle, PenLine, Play, RotateCcw, Sparkles, TreePine,
+  Trophy, BookOpenText, ClipboardCheck, Volume2
 } from 'lucide-react';
 import type { MockAttempt, StudioMeta, SrsCardState, ViewName } from '@/lib/types';
 import type { ProgressMap, SrsMap } from '@/lib/storage';
@@ -26,6 +28,20 @@ function srsHealth(srs: SrsMap, total: number) {
   return { due, learning, growing, mature, fresh: Math.max(0, total - Object.keys(srs).length) };
 }
 
+const modules: Array<{
+  view: ViewName; glyph: string; title: string; bn: string; note: string; icon: any; tone: string;
+}> = [
+  { view:'vocabulary', glyph:'語', title:'Vocabulary', bn:'শব্দভান্ডার', note:'Meaning · sentence · audio · mastery', icon:BookOpen, tone:'rose' },
+  { view:'srs', glyph:'憶', title:'Smart Recall', bn:'মেমরি রিভিউ', note:'Due words return at the right time', icon:Brain, tone:'gold' },
+  { view:'listening', glyph:'聴', title:'Listening Lab', bn:'লিসেনিং + শ্যাডোয়িং', note:'Waveform · transcript · 0.75×–1×', icon:Headphones, tone:'blue' },
+  { view:'spelling', glyph:'書', title:'Spelling', bn:'লিখে মনে রাখা', note:'Hear or read, then produce the word', icon:PenLine, tone:'green' },
+  { view:'kanji', glyph:'木', title:'Kanji Tree', bn:'ভিজ্যুয়াল কাঞ্জি', note:'Component → construction → related forms', icon:TreePine, tone:'ink' },
+  { view:'mock', glyph:'試', title:'Mock Test', bn:'পরীক্ষা প্রস্তুতি', note:'Practice → score → history → retry', icon:ClipboardCheck, tone:'violet' },
+  { view:'conversation', glyph:'話', title:'Conversation', bn:'কথোপকথন', note:'Natural lesson dialogue and usage', icon:MessageCircle, tone:'orange' },
+  { view:'reading', glyph:'読', title:'Reading', bn:'রিডিং প্র্যাকটিস', note:'Read lesson context with confidence', icon:BookOpenText, tone:'teal' },
+  { view:'grammar', glyph:'文', title:'Grammar', bn:'গ্রামার', note:'Pattern → explanation → example', icon:Languages, tone:'slate' },
+];
+
 export default function Dashboard({
   meta, lesson, progress, srs, history, onNavigate, onLesson
 }: {
@@ -37,6 +53,10 @@ export default function Dashboard({
   onNavigate: (v: ViewName) => void;
   onLesson: (n: number, v?: ViewName) => void;
 }) {
+  const [quizChoice, setQuizChoice] = useState('');
+  const [quizChecked, setQuizChecked] = useState(false);
+  const [kanjiFlipped, setKanjiFlipped] = useState(false);
+
   const totalMastered = Object.values(progress).filter(Boolean).length;
   const overall = Math.round(totalMastered / Math.max(1, meta.vocabulary_count) * 100);
   const current = meta.lessons.find(x => x.lesson === lesson)!;
@@ -45,154 +65,180 @@ export default function Dashboard({
   const health = srsHealth(srs, meta.vocabulary_count);
   const best = history.length ? Math.max(...history.map(x => Number(x.score || 0))) : 0;
 
-  const queue = [
-    { icon: Brain, label: 'Recall', detail: `${health.due} due now`, view: 'srs' as ViewName, active: true },
-    { icon: Headphones, label: 'Listening', detail: `Lesson ${String(lesson).padStart(2,'0')} live transcript`, view: 'listening' as ViewName },
-    { icon: PenLine, label: 'Spelling', detail: 'Random lesson words', view: 'spelling' as ViewName },
-    { icon: TreePine, label: 'Kanji Tree', detail: `${meta.klc_edges.toLocaleString()} component relations`, view: 'kanji' as ViewName },
-  ];
+  const nextAction = useMemo(() => {
+    if (health.due > 0) return { label:`${health.due} reviews due`, view:'srs' as ViewName, icon:RotateCcw };
+    if (currentPct < 100) return { label:`Continue Lesson ${String(lesson).padStart(2,'0')}`, view:'vocabulary' as ViewName, icon:BookOpen };
+    return { label:'Start Listening', view:'listening' as ViewName, icon:Headphones };
+  }, [health.due, currentPct, lesson]);
+
+  const NextIcon = nextAction.icon;
+  const quizCorrect = quizChoice === 'は';
 
   return (
-    <div className="editorial-dashboard pb-10">
+    <div className="academy-home">
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="editorial-hero"
+        className="academy-hero"
       >
         <HeroScene />
-        <div className="editorial-hero-copy">
-          <div className="editorial-eyebrow"><Sparkles size={14}/> N5 NATURAL JAPANESE STUDIO</div>
-          <h1 className="editorial-display font-bn">জাপানি শেখা হোক<br/>অভ্যাসে, মুখস্থে নয়।</h1>
-          <p className="editorial-jp font-jp">毎日、少しずつ。</p>
-          <p className="editorial-hero-note font-bn">
-            Vocabulary, recall, listening, spelling, reading এবং Kanji—একই lesson rhythm-এর মধ্যে।
+        <div className="academy-hero-copy">
+          <div className="academy-eyebrow"><Sparkles size={14}/> N5 NATURAL JAPANESE STUDIO</div>
+          <h1 className="academy-display font-bn">জাপানি শেখা হোক<br/><em>প্র্যাকটিসে, প্রতিদিন।</em></h1>
+          <p className="academy-jp font-jp">毎日、少しずつ。自然に身につく。</p>
+          <p className="academy-lead font-bn">
+            আপনার ২৫টি lesson, vocabulary, listening, recall, spelling, grammar,
+            reading, conversation, Kanji এবং mock—একটা connected learning journey-তে।
           </p>
-          <div className="editorial-actions">
-            <button className="editorial-primary" onClick={() => onNavigate('vocabulary')}>
-              Continue Lesson {String(lesson).padStart(2,'0')} <ArrowRight size={16}/>
+          <div className="academy-hero-actions">
+            <button className="academy-btn primary" onClick={() => onNavigate(nextAction.view)}>
+              <NextIcon size={17}/>{nextAction.label}<ArrowRight size={16}/>
             </button>
-            <button className="editorial-secondary" onClick={() => onNavigate('srs')}>
-              <RotateCcw size={15}/> Start Recall
+            <button className="academy-btn ghost" onClick={() => onNavigate('listening')}>
+              <Play size={16}/> Listening Lab
             </button>
+          </div>
+          <div className="academy-proof-row">
+            <div><strong>{meta.vocabulary_count}</strong><span>Vocabulary</span></div>
+            <div><strong>25</strong><span>Lessons</span></div>
+            <div><strong>{meta.klc_edges.toLocaleString()}</strong><span>Kanji links</span></div>
+            <div><strong>{history.length}</strong><span>Mock attempts</span></div>
           </div>
         </div>
 
-        <div className="living-path" aria-label="Current learning path">
-          <span className="living-path-label">THE LIVING STUDY PATH</span>
-          <h2 className="editorial-display">One lesson.<br/>Five ways to remember it.</h2>
-          <div className="living-path-grid">
-            {[
-              ['語','Vocabulary','vocabulary'],['憶','Recall','srs'],['聴','Listening','listening'],['書','Spelling','spelling'],['木','Kanji Tree','kanji']
-            ].map(([glyph,label,view],i)=><button key={label} onClick={()=>onNavigate(view as ViewName)} className={i===1?'active':''}>
-              <span className="font-jp">{glyph}</span><b>{label}</b>
-            </button>)}
+        <aside className="academy-progress-card">
+          <span className="mini-label">TODAY'S STUDY</span>
+          <div className="academy-ring" style={{'--p': `${overall * 3.6}deg`} as React.CSSProperties}>
+            <div><strong>{overall}%</strong><span>N5 mastery</span></div>
           </div>
-          <p>Your next action comes from real progress, not decorative widgets.</p>
-        </div>
+          <div className="current-lesson-row">
+            <div><span>Lesson {String(lesson).padStart(2,'0')}</span><strong>{current.title}</strong></div>
+            <b>{currentPct}%</b>
+          </div>
+          <div className="thin-progress"><i style={{width:`${currentPct}%`}}/></div>
+          <div className="academy-mini-stats">
+            <span><b>{currentMastered}</b> mastered</span>
+            <span><b>{health.due}</b> due</span>
+            <span><b>{best}%</b> best mock</span>
+          </div>
+          <button onClick={() => onNavigate('vocabulary')}>Open current lesson <ArrowRight size={15}/></button>
+        </aside>
       </motion.section>
 
-      <section className="editorial-stat-strip" aria-label="Study statistics">
-        <div><strong>{totalMastered}</strong><span>of {meta.vocabulary_count} words mastered</span></div>
-        <div><strong>{overall}%</strong><span>overall N5 mastery</span></div>
-        <div><strong>{health.due}</strong><span>reviews due now</span></div>
-        <div><strong>{best}%</strong><span>best mock score</span></div>
+      <section className="academy-trust-strip">
+        <span>LEARN</span><i>→</i><span>LISTEN</span><i>→</i><span>RECALL</span><i>→</i>
+        <span>USE</span><i>→</i><span>REVIEW</span><i>→</i><b>MASTER</b>
       </section>
 
-      <section className="editorial-section">
-        <div className="editorial-section-head">
-          <div>
-            <span className="editorial-index">01 · STUDY RHYTHM</span>
-            <h2 className="editorial-display">Learn → Recall → Use → Review</h2>
-          </div>
-          <p className="font-bn">চারটা আলাদা feature না—একই lesson-এর memory cycle।</p>
+      <section className="academy-section">
+        <div className="academy-section-head">
+          <div><span className="academy-kicker">01 · LEARNING MODES</span><h2 className="academy-display">এক lesson, অনেকভাবে practice.</h2></div>
+          <p className="font-bn">একই material বারবার নতুনভাবে ব্যবহার হবে—এটাই connected learning formula।</p>
         </div>
-        <div className="rhythm-grid">
-          {[
-            ['01','Learn','Meaning + natural context'],
-            ['02','Recall','Hide Bangla. Pull from memory.'],
-            ['03','Use','Spell, listen, shadow, read.'],
-            ['04','Review','SRS decides what returns.']
-          ].map(([n,t,d])=><article key={n}>
-            <span>{n}</span><h3 className="editorial-display">{t}</h3><p>{d}</p>
-          </article>)}
+        <div className="academy-module-grid">
+          {modules.map(({view,glyph,title,bn,note,icon:Icon,tone}, i) => (
+            <motion.button
+              key={view}
+              initial={{opacity:0,y:8}}
+              whileInView={{opacity:1,y:0}}
+              viewport={{once:true}}
+              transition={{delay:Math.min(i,6)*.04}}
+              className={`academy-module tone-${tone}`}
+              onClick={()=>onNavigate(view)}
+            >
+              <div className="module-top"><span className="module-glyph font-jp">{glyph}</span><Icon size={19}/></div>
+              <h3>{title}</h3><b className="font-bn">{bn}</b><p>{note}</p>
+              <span className="module-link">Practice now <ArrowRight size={14}/></span>
+            </motion.button>
+          ))}
         </div>
       </section>
 
-      <section className="editorial-section lesson-journey-section">
-        <div className="editorial-section-head compact">
-          <div><span className="editorial-index">02 · 25-LESSON JOURNEY</span><h2 className="editorial-display">See the whole road. Study one step.</h2></div>
-          <p>Tap any lesson → Vocabulary</p>
+      <section className="academy-section academy-demo-section">
+        <div className="academy-section-head">
+          <div><span className="academy-kicker">02 · TRY IT NOW</span><h2 className="academy-display">Homepage-এই শেখা শুরু.</h2></div>
+          <p className="font-bn">শুধু feature দেখানো না—visitor যেন সঙ্গে সঙ্গে practice করতে পারে।</p>
         </div>
-        <div className="editorial-lesson-grid">
+        <div className="academy-demo-grid">
+          <article className="academy-kanji-demo">
+            <div className="demo-label">KANJI FLIP</div>
+            <button className={`flip-card ${kanjiFlipped?'flipped':''}`} onClick={()=>setKanjiFlipped(x=>!x)}>
+              <span className="flip-front font-jp">日</span>
+              <span className="flip-back"><b className="font-jp">にち・ひ</b><strong className="font-bn">দিন / সূর্য</strong><small>Tap again to flip</small></span>
+            </button>
+            <p className="font-bn">কাঞ্জি → reading → বাংলা অর্থ। পরে আপনার KLC Tree-তে deep dive করুন।</p>
+            <button className="text-link" onClick={()=>onNavigate('kanji')}>Open Kanji Tree <ArrowRight size={14}/></button>
+          </article>
+
+          <article className="academy-quiz-demo">
+            <div className="demo-label">30-SECOND QUIZ</div>
+            <h3 className="font-jp">わたし ＿ がくせいです。</h3>
+            <p className="font-bn">সঠিক particle বেছে নিন।</p>
+            <div className="quiz-choice-row">
+              {['は','が','へ'].map(x=><button key={x} className={quizChoice===x?'selected':''} onClick={()=>{setQuizChoice(x);setQuizChecked(false)}}>{x}</button>)}
+            </div>
+            <button className="academy-btn primary quiz-check" disabled={!quizChoice} onClick={()=>setQuizChecked(true)}>Check answer</button>
+            {quizChecked && <div className={`quiz-feedback ${quizCorrect?'good':'bad'}`}>
+              {quizCorrect?<><CheckCircle2 size={18}/><span className="font-bn">সঠিক! 「は」 topic marker হিসেবে এখানে ব্যবহার হবে।</span></>:<><RotateCcw size={18}/><span className="font-bn">আরেকবার চেষ্টা করুন। Hint: “আমি” এখানে topic।</span></>}
+            </div>}
+          </article>
+
+          <button className="academy-listen-demo" onClick={()=>onNavigate('listening')}>
+            <div className="demo-label">LISTENING SPOTLIGHT</div>
+            <Headphones size={30}/>
+            <h3 className="academy-display">Hear → Follow → Shadow</h3>
+            <div className="academy-wave" aria-hidden="true">{[22,46,34,72,40,58,30,82,52,68,34,62,44,76,36,54,28,70].map((h,i)=><i key={i} style={{height:h}}/>)}</div>
+            <div className="academy-transcript"><b className="font-jp">もういちど ゆっくり おねがいします。</b><span className="font-bn">আরেকবার একটু ধীরে বলবেন।</span></div>
+            <span className="listen-cta"><Volume2 size={15}/> Open full listening lab</span>
+          </button>
+        </div>
+      </section>
+
+      <section className="academy-section academy-roadmap">
+        <div className="academy-section-head">
+          <div><span className="academy-kicker">03 · 25-LESSON ROADMAP</span><h2 className="academy-display">পুরো পথ চোখের সামনে.</h2></div>
+          <p className="font-bn">যে lesson-এ ক্লিক করবেন, সেই lesson-এর Vocabulary-তে সরাসরি যাবে।</p>
+        </div>
+        <div className="academy-lesson-grid">
           {meta.lessons.map(L=>{
-            const n=mastered(progress,L.ids||[]);const pct=Math.round(n/Math.max(1,L.count)*100);
-            return <button key={L.lesson} onClick={()=>onLesson(L.lesson,'vocabulary')} className={L.lesson===lesson?'current':''}>
-              <span>L{String(L.lesson).padStart(2,'0')}</span><b>{pct}%</b>
+            const n=mastered(progress,L.ids||[]);
+            const pct=Math.round(n/Math.max(1,L.count)*100);
+            const isCurrent=L.lesson===lesson;
+            return <button key={L.lesson} onClick={()=>onLesson(L.lesson,'vocabulary')} className={isCurrent?'current':''}>
+              <span className="lesson-no">L{String(L.lesson).padStart(2,'0')}</span>
+              <b>{pct}%</b>
               <strong>{L.title}</strong>
-              <i><em style={{width:`${pct}%`}}/></i>
-              <small>{n}/{L.count}</small>
+              <div className="lesson-line"><i style={{width:`${pct}%`}}/></div>
+              <small>{n}/{L.count} mastered</small>
             </button>
           })}
         </div>
       </section>
 
-      <section className="editorial-section practice-showcase">
-        <div className="editorial-section-head">
-          <div><span className="editorial-index">03 · PRACTICE, NOT PAGES</span><h2 className="editorial-display">Hear it. Pull it back. Use it.</h2></div>
-          <p className="font-bn">প্রতিটি module-এর একটা নির্দিষ্ট learning job আছে।</p>
-        </div>
-
-        <div className="practice-feature-grid">
-          <button className="listening-feature" onClick={()=>onNavigate('listening')}>
-            <div className="feature-top"><span>LISTENING LAB</span><Play size={18}/></div>
-            <h3 className="editorial-display">Natural audio.<br/>Live transcript.</h3>
-            <div className="mini-wave" aria-hidden="true">{[18,34,52,28,66,44,30,56,38,70,48,25,58,40,64,32,54].map((h,i)=><i key={i} style={{height:h}}/>)}</div>
-            <div className="mini-transcript"><span className="font-jp">もういちど ゆっくり おねがいします。</span><small className="font-bn">আরেকবার একটু ধীরে বলবেন।</small></div>
-            <div className="speed-row"><span>0.75×</span><span>0.90×</span><b>1×</b></div>
-          </button>
-
-          <div className="practice-stack">
-            {queue.slice(0,3).map(({icon:Icon,label,detail,view,active})=><button key={label} className={active?'active':''} onClick={()=>onNavigate(view)}>
-              <Icon size={20}/><div><span>{label}</span><small>{detail}</small></div><ArrowRight size={15}/>
-            </button>)}
+      <section className="academy-section academy-system">
+        <div className="academy-system-copy">
+          <span className="academy-kicker">04 · YOUR LEARNING ENGINE</span>
+          <h2 className="academy-display">Content একবার। Practice অনেকভাবে।</h2>
+          <p className="font-bn">
+            আপনার existing vocabulary/lesson data-ই core থাকবে। সেই একই data থেকে
+            Vocabulary Card, SRS, Spelling, Listening, Conversation, Reading, Grammar,
+            Kanji এবং Mock—সব interconnected হবে।
+          </p>
+          <div className="system-flow">
+            {['Lesson Data','Vocabulary','Audio','Recall','Practice','Mock'].map((x,i)=><span key={x}>{x}{i<5&&<i>→</i>}</span>)}
           </div>
         </div>
-      </section>
-
-      <section className="editorial-section kanji-signature">
-        <div className="kanji-copy">
-          <span className="editorial-index">04 · KLC VISUAL MEMORY</span>
-          <h2 className="editorial-display">Kanji should feel constructed, not random.</h2>
-          <p className="font-bn">একটা character খুললে component → build → related Kanji একই visual tree-তে দেখা যাবে।</p>
-          <button className="editorial-primary" onClick={()=>onNavigate('kanji')}>Explore Kanji Tree <ArrowRight size={16}/></button>
-        </div>
-        <button className="kanji-demo" onClick={()=>onNavigate('kanji')} aria-label="Open Kanji Tree">
-          <span className="font-jp kanji-main">休</span>
-          <small>KLC visual construction</small>
-          <div className="kanji-parts"><span><b className="font-jp">亻</b><small>person</small></span><span><b className="font-jp">木</b><small>tree</small></span></div>
-          <strong className="font-jp">亻 + 木 → 休</strong>
-          <div className="builds-into"><small>BUILDS INTO</small><span>体</span><span>保</span><span>働</span><span>仮</span></div>
-        </button>
-      </section>
-
-      <section className="editorial-section progress-evidence">
-        <div className="editorial-section-head">
-          <div><span className="editorial-index">05 · PROGRESS THAT MEANS SOMETHING</span><h2 className="editorial-display">No fake streaks. Only evidence.</h2></div>
-          <p>{currentMastered}/{current.count} mastered in Lesson {String(lesson).padStart(2,'0')}</p>
-        </div>
-        <div className="evidence-grid">
-          <article className="mastery-evidence"><strong>{overall}%</strong><span>N5 mastery</span><i><em style={{width:`${overall}%`}}/></i><small>{totalMastered} / {meta.vocabulary_count} vocabulary</small></article>
-          <article className="memory-evidence">
-            {[
-              ['Due now',health.due],['Learning',health.learning],['Growing',health.growing],['Mature',health.mature],['New',health.fresh]
-            ].map(([label,value])=><div key={String(label)}><span>{label}</span><b>{value}</b></div>)}
-          </article>
-          <article className="mock-evidence"><Trophy/><strong>{best}%</strong><span>best mock</span><small>{history.length} saved attempts</small></article>
+        <div className="academy-evidence-grid">
+          <article><Brain/><strong>{health.due}</strong><span>Reviews due now</span></article>
+          <article><BookOpen/><strong>{totalMastered}</strong><span>Words mastered</span></article>
+          <article><Trophy/><strong>{best}%</strong><span>Best mock score</span></article>
+          <article><TreePine/><strong>{meta.klc_edges.toLocaleString()}</strong><span>Kanji relationships</span></article>
         </div>
       </section>
 
-      <section className="editorial-closing">
-        <CheckCircle2 size={18}/><span className="font-bn">আজকের কাজ শেষ করতে বড় session দরকার নেই—পরের সঠিক step-টাই যথেষ্ট।</span>
+      <section className="academy-closing">
+        <div><span className="academy-kicker">READY FOR THE NEXT STEP?</span><h2 className="academy-display">আজকের ছোট practice-টাই আগামীকালের natural Japanese.</h2></div>
+        <button className="academy-btn primary" onClick={()=>onNavigate(nextAction.view)}><NextIcon size={17}/>{nextAction.label}<ArrowRight size={16}/></button>
       </section>
     </div>
   );

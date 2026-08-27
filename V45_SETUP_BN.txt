@@ -1,0 +1,66 @@
+N5 Natural Japanese Studio — v45 Premium Academy Patch
+========================================================
+
+এই patch কী করে
+----------------
+1) Current Next.js / React / Tailwind architecture রাখে।
+2) Existing study materials, data build, audio, SRS, spelling, listening, KLC, mock logic delete করে না।
+3) Left SaaS-style sidebar-এর বদলে premium academy-style top navigation দেয়।
+4) Homepage-এ:
+   - Premium hero
+   - real progress card
+   - connected learning formula
+   - 9 learning mode cards
+   - interactive Kanji flip demo
+   - interactive 30-second grammar quiz
+   - listening spotlight
+   - 25-lesson roadmap
+   - progress / learning engine evidence
+5) Physical book selling / paid course checkout যোগ করা হয়নি।
+6) Current project palette (dark lacquer + mineral paper + vermilion + gold) রাখা হয়েছে।
+7) Mobile responsive header + bottom dock আছে।
+8) GA4 setup অপরিবর্তিত রাখা হয়েছে।
+
+Replace / Add
+-------------
+REPLACE:
+- components/Dashboard.tsx
+- components/Shell.tsx
+- app/layout.tsx
+
+ADD:
+- styles/v45-academy.scss
+
+GitHub upload
+-------------
+1. ZIP extract করুন।
+2. আপনার repository: Knox1999/n5-japanese-studio
+3. উপরের 3টি file replace করুন।
+4. styles/v45-academy.scss নতুন file হিসেবে add করুন।
+5. Commit message:
+   Apply premium academy UI v45
+6. GitHub Actions build green হওয়া পর্যন্ত অপেক্ষা করুন।
+7. Live:
+   https://knox1999.github.io/n5-japanese-studio/
+8. Ctrl+F5 / hard refresh করুন।
+
+IMPORTANT
+---------
+GitHub connector বর্তমানে read-only permission দিয়েছে। Direct branch/create/push attempt-এ GitHub 403:
+"Resource not accessible by integration"
+তাই ChatGPT এই মুহূর্তে আপনার repo-তে নিজে commit করতে পারেনি।
+
+Design formula
+--------------
+Premium feel = consistent design system
+             + structured information hierarchy
+             + one data source / many practice modes
+             + real interaction on homepage
+             + strong typography & whitespace
+             + reusable components
+             + progression / mastery
+             + listening & audio interaction
+             + responsive app shell
+
+এটা Nihonova-এর proprietary graphics/text/logo copy করে না।
+তাদের product/UX formula থেকে শেখা structure আপনার নিজের branding/materials-এ ব্যবহার করে।

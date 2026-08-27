@@ -1,0 +1,32 @@
+{
+  "version": "45.0",
+  "name": "Premium Academy UI",
+  "repo": "Knox1999/n5-japanese-studio",
+  "replace": [
+    "components/Dashboard.tsx",
+    "components/Shell.tsx",
+    "app/layout.tsx"
+  ],
+  "add": [
+    "styles/v45-academy.scss"
+  ],
+  "preserved": [
+    "Vocabulary data/content",
+    "SRS",
+    "Spelling",
+    "Conversation",
+    "Reading",
+    "Listening/audio logic",
+    "Grammar",
+    "KLC Kanji Tree",
+    "Mock tests",
+    "History",
+    "GA4",
+    "data build scripts"
+  ],
+  "excluded": [
+    "Physical book sales",
+    "Paid course checkout"
+  ],
+  "direct_push_status": "blocked_by_github_integration_403"
+}
