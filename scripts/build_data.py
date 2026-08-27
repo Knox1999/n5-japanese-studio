@@ -59,7 +59,7 @@ for lesson in range(1, 26):
         })
 
 meta = {
-    "version": "41",
+    "version": "42",
     "source_version": studio.get("version"),
     "vocabulary_count": len(vocab),
     "lesson_count": 25,
@@ -76,5 +76,5 @@ meta = {
 h = hashlib.sha256()
 for p in [SRC / "studio.json", SRC / "klc-tree.json", SRC / "klc-memory.json"]:
     h.update(p.read_bytes())
-(OUT / "build.json").write_text(json.dumps({"version":"41","fingerprint":h.hexdigest()[:16]}, separators=(",", ":")), encoding="utf-8")
+(OUT / "build.json").write_text(json.dumps({"version":"42","fingerprint":h.hexdigest()[:16]}, separators=(",", ":")), encoding="utf-8")
 print(f"Built {len(summary)} lesson files, {len(search)} search records, {len(klc['nodes'])} KLC nodes")

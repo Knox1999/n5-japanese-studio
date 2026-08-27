@@ -1,0 +1,30 @@
+'use client';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Delete, GripHorizontal, Keyboard, Minus, RotateCcw, Space, X } from 'lucide-react';
+
+const HIRA=['あ','い','う','え','お','か','き','く','け','こ','が','ぎ','ぐ','げ','ご','さ','し','す','せ','そ','ざ','じ','ず','ぜ','ぞ','た','ち','つ','て','と','だ','ぢ','づ','で','ど','な','に','ぬ','ね','の','は','ひ','ふ','へ','ほ','ば','び','ぶ','べ','ぼ','ぱ','ぴ','ぷ','ぺ','ぽ','ま','み','む','め','も','や','ゆ','よ','ら','り','る','れ','ろ','わ','を','ん','ゃ','ゅ','ょ','っ','ぁ','ぃ','ぅ','ぇ','ぉ','ー','、','。'];
+const hiraToKata=(s:string)=>s.replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60));
+type Target=HTMLInputElement|HTMLTextAreaElement;
+
+function setReactValue(el:Target,value:string,caret:number){
+ const proto=el instanceof HTMLTextAreaElement?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;
+ const setter=Object.getOwnPropertyDescriptor(proto,'value')?.set;
+ if(setter)setter.call(el,value);else el.value=value;
+ el.dispatchEvent(new Event('input',{bubbles:true}));
+ requestAnimationFrame(()=>{try{el.focus({preventScroll:true});el.setSelectionRange(caret,caret)}catch{}});
+}
+
+export default function KanaPad(){
+ const [open,setOpen]=useState(false),[min,setMin]=useState(false),[mode,setMode]=useState<'hira'|'kata'>('hira'),[preview,setPreview]=useState(''),[targetName,setTargetName]=useState('Japanese input');
+ const pad=useRef<HTMLDivElement>(null),target=useRef<Target|null>(null),drag=useRef({on:false,x:0,y:0,l:0,t:0});
+ const chars=useMemo(()=>mode==='kata'?HIRA.map(hiraToKata):HIRA,[mode]);
+ useEffect(()=>{try{setMin(localStorage.getItem('n5_kana_pad_minimized')==='1')}catch{};const onFocus=(e:FocusEvent)=>{const el=e.target as HTMLElement;if((el instanceof HTMLInputElement||el instanceof HTMLTextAreaElement)&&el.matches('[data-kana-input],input[lang="ja"],textarea[lang="ja"]')){target.current=el;setPreview(el.value);setTargetName(el.dataset.kanaInput||el.getAttribute('aria-label')||'Japanese input')}};const onInput=(e:Event)=>{if(e.target===target.current)setPreview(target.current?.value||'')};document.addEventListener('focusin',onFocus);document.addEventListener('input',onInput);return()=>{document.removeEventListener('focusin',onFocus);document.removeEventListener('input',onInput)}},[]);
+ useEffect(()=>{if(!open||!pad.current)return;const el=pad.current;const mobile=matchMedia('(max-width:820px)').matches;if(mobile){el.style.left='';el.style.top='';return}try{const p=JSON.parse(localStorage.getItem('n5_kana_pad_position')||'null');if(p&&Number.isFinite(p.left)&&Number.isFinite(p.top)){el.style.left=Math.max(8,Math.min(p.left,innerWidth-el.offsetWidth-8))+'px';el.style.top=Math.max(8,Math.min(p.top,innerHeight-el.offsetHeight-8))+'px';return}}catch{}el.style.left=Math.max(12,(innerWidth-el.offsetWidth)/2)+'px';el.style.top=Math.max(12,innerHeight-el.offsetHeight-26)+'px'},[open,min]);
+ const edit=(kind:'insert'|'space'|'back'|'clear',txt='')=>{const el=target.current;if(!el){setTargetName('আগে Japanese input box-এ click করুন');return}const a=el.selectionStart??el.value.length,b=el.selectionEnd??a;let v=el.value,p=a;if(kind==='insert'||kind==='space'){const x=kind==='space'?' ':txt;v=v.slice(0,a)+x+v.slice(b);p=a+x.length}else if(kind==='clear'){v='';p=0}else if(a!==b){v=v.slice(0,a)+v.slice(b);p=a}else if(a>0){v=v.slice(0,a-1)+v.slice(a);p=a-1}setReactValue(el,v,p);setPreview(v)};
+ const reset=()=>{if(!pad.current)return;pad.current.style.left=Math.max(12,(innerWidth-pad.current.offsetWidth)/2)+'px';pad.current.style.top=Math.max(12,innerHeight-pad.current.offsetHeight-26)+'px';try{localStorage.removeItem('n5_kana_pad_position')}catch{}};
+ const down=(e:React.PointerEvent)=>{if((e.target as HTMLElement).closest('button')||matchMedia('(max-width:820px)').matches||!pad.current)return;const r=pad.current.getBoundingClientRect();drag.current={on:true,x:e.clientX,y:e.clientY,l:r.left,t:r.top};(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)};
+ const move=(e:React.PointerEvent)=>{if(!drag.current.on||!pad.current)return;const d=drag.current,l=Math.max(8,Math.min(d.l+e.clientX-d.x,innerWidth-pad.current.offsetWidth-8)),t=Math.max(8,Math.min(d.t+e.clientY-d.y,innerHeight-pad.current.offsetHeight-8));pad.current.style.left=l+'px';pad.current.style.top=t+'px'};
+ const end=()=>{if(!drag.current.on||!pad.current)return;drag.current.on=false;try{localStorage.setItem('n5_kana_pad_position',JSON.stringify({left:parseFloat(pad.current.style.left)||pad.current.offsetLeft,top:parseFloat(pad.current.style.top)||pad.current.offsetTop}))}catch{}};
+ return <><button className="kana-launcher" onClick={()=>setOpen(v=>!v)} aria-label="Open Kana Pad"><Keyboard/><span>あ Kana</span></button>{open&&<div ref={pad} className={`kana-pad-v42 ${min?'is-min':''}`} role="dialog" aria-label="Floating Kana Pad"><div className="kana-pad-head" onPointerDown={down} onPointerMove={move} onPointerUp={end} onPointerCancel={end}><div><GripHorizontal/><b>Kana Pad</b><small>{targetName}</small></div><div><button onClick={reset} title="Reset position"><RotateCcw/></button><button onClick={()=>{setMin(v=>{try{localStorage.setItem('n5_kana_pad_minimized',!v?'1':'0')}catch{};return !v})}} title="Minimize"><Minus/></button><button onClick={()=>setOpen(false)} title="Close"><X/></button></div></div>{!min&&<div className="kana-pad-body"><div className="kana-preview font-jp">{preview||'Japanese input box নির্বাচন করুন'}</div><div className="kana-mode"><button className={mode==='hira'?'active':''} onClick={()=>setMode('hira')}>ひらがな</button><button className={mode==='kata'?'active':''} onClick={()=>setMode('kata')}>カタカナ</button></div><div className="kana-grid">{chars.map((ch,i)=><button key={`${ch}-${i}`} onClick={()=>edit('insert',ch)}>{ch}</button>)}</div><div className="kana-actions"><button onClick={()=>edit('space')}><Space/> Space</button><button onClick={()=>edit('back')}><Delete/> Backspace</button><button className="danger" onClick={()=>edit('clear')}>Clear</button></div></div>}</div>}</>
+}

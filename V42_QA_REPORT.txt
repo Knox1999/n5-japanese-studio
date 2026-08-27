@@ -1,0 +1,24 @@
+N5 Studio v42 — Feature Recovery QA
+Date: 2026-08-27
+
+KLC CSV build PASS: 2300 nodes / 4034 edges
+Built 25 lesson files, 1011 search records, 2300 KLC nodes
+PASS 2300 KLC nodes from CSV
+PASS 4034 KLC edges from CSV
+PASS Spelling wired to Kana Pad
+PASS Global floating Kana Pad mounted
+PASS Hiragana/Katakana modes
+PASS Kana Pad position persistence
+PASS Recursive KLC tree UI
+PASS Builds-into reverse graph
+PASS Lesson Kanji derived from actual vocabulary
+PASS KLC CSV build integrated
+PASS v42 responsive styles present
+PASS v42 service-worker cache bust
+V42 QA COMPLETE: 12/12 PASS
+PASS TypeScript syntax/semantic smoke check: KanaPad.tsx + KanjiExplorer.tsx
+PASS Uploaded KLC CSV columns parsed directly; no inferred replacement dataset used.
+PASS Service Worker cache bumped to n5-studio-v42; JSON uses network-first refresh.
+PASS Next.js dependency bumped from 15.5.2 to 15.5.9; React/ReactDOM to 19.1.2.
+
+NOTE: Full npm/Next production build could not be completed in this sandbox because npm dependency installation did not finish within the local execution window. The GitHub Actions workflow is the final full production build/type/deploy verification.

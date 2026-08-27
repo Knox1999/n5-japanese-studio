@@ -1,4 +1,4 @@
-name: Deploy N5 Studio — Premium Next.js v41
+name: Deploy N5 Studio — Feature Recovery v42
 
 on:
   push:
@@ -38,23 +38,24 @@ jobs:
 
       - name: Build and validate study data
         run: |
+          python scripts/build_klc_from_csv.py
           python scripts/build_data.py
-          python scripts/qa_v41.py --prebuild
+          python scripts/qa_v42.py --prebuild
 
       - name: Restore Japanese audio cache
         uses: actions/cache@v4
         with:
           path: _audio_cache
-          key: n5-v41-kokoro-${{ hashFiles('source/data/studio.json') }}
+          key: n5-v42-kokoro-${{ hashFiles('source/data/studio.json') }}
           restore-keys: |
-            n5-v41-kokoro-
+            n5-v42-kokoro-
             n5-kokoro-jf-alpha-
 
       - name: Restore model cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
-          key: kokoro-82m-japanese-v41
+          key: kokoro-82m-japanese-v42
           restore-keys: |
             kokoro-82m-japanese-
 
@@ -96,7 +97,7 @@ jobs:
       - name: Final production QA
         run: |
           touch out/.nojekyll
-          python scripts/qa_v41.py --postbuild
+          python scripts/qa_v42.py --postbuild
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

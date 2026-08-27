@@ -1,23 +1,23 @@
 {
-  "name": "n5-natural-japanese-studio-v41",
-  "version": "41.0.0",
+  "name": "n5-natural-japanese-studio-v42",
+  "version": "42.0.0",
   "private": true,
   "scripts": {
-    "data:build": "python scripts/build_data.py",
+    "data:build": "python scripts/build_klc_from_csv.py && python scripts/build_data.py",
     "dev": "npm run data:build && next dev",
     "build": "npm run data:build && next build",
     "start": "next start",
     "lint:types": "tsc --noEmit",
-    "qa": "python scripts/qa_v41.py"
+    "qa": "python scripts/qa_v42.py"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
     "framer-motion": "^12.23.12",
     "gsap": "^3.13.0",
     "lucide-react": "^0.468.0",
-    "next": "15.5.2",
-    "react": "19.1.1",
-    "react-dom": "19.1.1",
+    "next": "15.5.9",
+    "react": "19.1.2",
+    "react-dom": "19.1.2",
     "three": "^0.179.1"
   },
   "devDependencies": {

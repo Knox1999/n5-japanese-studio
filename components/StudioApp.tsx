@@ -17,6 +17,7 @@ import KanjiExplorer from './KanjiExplorer';
 import MockTest from './MockTest';
 import HistoryView from './HistoryView';
 import { Conversation, Grammar, Reading } from './StudyViews';
+import KanaPad from './KanaPad';
 
 export default function StudioApp(){
  const [meta,setMeta]=useState<StudioMeta|null>(null);const [lesson,setLessonState]=useState(1);const [data,setData]=useState<LessonPayload|null>(null);const [view,setView]=useState<ViewName>('dashboard');const [progress,setProgress]=useState<ProgressMap>({});const [srs,setSrs]=useState<SrsMap>({});const [history,setHistory]=useState<MockAttempt[]>([]);const [error,setError]=useState('');
@@ -31,5 +32,5 @@ export default function StudioApp(){
  if(error)return <div className="fatal-state"><b>Study app could not load.</b><p>{error}</p><button onClick={()=>location.reload()}>Reload</button></div>;
  if(!meta||!data)return <div className="boot-screen"><div className="boot-seal">日</div><Loader2 className="animate-spin"/><b>N5 Natural Japanese Studio</b><span>Preparing premium study workspace…</span></div>;
  const content=(()=>{switch(view){case'dashboard':return <Dashboard meta={meta} lesson={lesson} progress={progress} srs={srs} history={history} onNavigate={changeView} onLesson={changeLesson}/>;case'vocabulary':return <Vocabulary data={data} progress={progress} onToggle={toggleMastery}/>;case'srs':return <SRS data={data} srs={srs} progress={progress} onSrsChange={updateSrs} onProgressChange={updateProgress}/>;case'spelling':return <Spelling data={data}/>;case'conversation':return <Conversation data={data}/>;case'reading':return <Reading data={data}/>;case'listening':return <Listening data={data}/>;case'grammar':return <Grammar data={data}/>;case'kanji':return <KanjiExplorer data={data}/>;case'mock':return <MockTest data={data} onSave={addHistory}/>;case'history':return <HistoryView history={history}/>;default:return null}})();
- return <Shell meta={meta} lesson={lesson} view={view} onLesson={changeLesson} onView={changeView}><AnimatePresence mode="wait"><motion.div key={`${view}-${lesson}`} initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-4}} transition={{duration:.2,ease:[.2,.8,.2,1]}}>{content}</motion.div></AnimatePresence></Shell>
+ return <><Shell meta={meta} lesson={lesson} view={view} onLesson={changeLesson} onView={changeView}><AnimatePresence mode="wait"><motion.div key={`${view}-${lesson}`} initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-4}} transition={{duration:.2,ease:[.2,.8,.2,1]}}>{content}</motion.div></AnimatePresence></Shell><KanaPad/></>
 }
