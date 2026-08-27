@@ -1,4 +1,4 @@
-name: Deploy N5 Studio — Clean Stable Instant Audio v27
+name: Deploy N5 Studio — Clean Stable + Renshu B Practice v28
 
 on:
   push:
@@ -30,6 +30,64 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Prepare Minna no Nihongo Renshu B package
+        shell: bash
+        run: |
+          set -e
+          PACKAGE="Minna_Renshu_B_QA_Package_L1-L25_v2.zip"
+          if [ ! -f "$PACKAGE" ]; then
+            echo "ERROR: $PACKAGE is missing from repository root."
+            echo "Upload the provided Renshu B ZIP to the repository root, then run this workflow again."
+            exit 1
+          fi
+
+          rm -rf _build/renshu_extract _build/renshu_src
+          mkdir -p _build/renshu_extract _build/renshu_src
+          unzip -q "$PACKAGE" -d _build/renshu_extract
+
+          ROOT="$(find _build/renshu_extract -type f -name 'lesson-01.json' -path '*/data/*' -printf '%h\n' | head -1 | xargs dirname)"
+          if [ -z "$ROOT" ] || [ ! -d "$ROOT/data" ] || [ ! -d "$ROOT/images" ]; then
+            echo "ERROR: Could not locate Renshu B data/images inside package."
+            exit 1
+          fi
+
+          cp -R "$ROOT/data" _build/renshu_src/data
+          cp -R "$ROOT/images" _build/renshu_src/images
+          cp "$ROOT/README.md" _build/renshu_src/README.md 2>/dev/null || true
+          cp "$ROOT/schema.json" _build/renshu_src/schema.json 2>/dev/null || true
+
+          python - <<'PYTHON'
+          import json
+          from pathlib import Path
+
+          root = Path('_build/renshu_src')
+          problems=[]
+          typed=0
+          for lesson in range(1,26):
+              jp=root/'data'/f'lesson-{lesson:02d}.json'
+              if not jp.exists():
+                  problems.append(f'missing {jp}')
+                  continue
+              d=json.loads(jp.read_text(encoding='utf-8'))
+              if int(d.get('lesson',0)) != lesson:
+                  problems.append(f'lesson mismatch {lesson}')
+              sheets=d.get('sourceSheets') or []
+              if len(sheets)!=2:
+                  problems.append(f'L{lesson:02d}: expected 2 source sheets')
+              for i in (1,2):
+                  img=root/'images'/f'lesson-{lesson:02d}'/f'renshu-b-sheet-{i}.jpg'
+                  if not img.exists(): problems.append(f'missing {img}')
+              ans=root/'images'/'answers'/f'lesson-{lesson:02d}-answers.jpg'
+              if not ans.exists(): problems.append(f'missing {ans}')
+              typed += sum(len(ex.get('items',[])) for ex in d.get('exercises',[]) if isinstance(ex,dict))
+
+          if problems:
+              print('\n'.join(problems))
+              raise SystemExit(f'Renshu package validation failed: {len(problems)} problems')
+          print('Renshu B validation PASS: 25 lessons, 50 question images, 25 answer images')
+          print('Typed interactive Q&A items currently available:', typed)
+          PYTHON
 
       - name: Restore generated-audio cache
         uses: actions/cache@v4
@@ -145,6 +203,26 @@ jobs:
               0,
               "voice_test",
           )
+
+          # Renshu B typed question/answer audio. The current package has
+          # typed interactive items for Lesson 1; future package updates are
+          # automatically included without changing this workflow.
+          renshu_data = Path("_build/renshu_src/data")
+          if renshu_data.exists():
+              for lesson_file in sorted(renshu_data.glob("lesson-*.json")):
+                  try:
+                      rd = json.loads(lesson_file.read_text(encoding="utf-8"))
+                      lesson = int(rd.get("lesson") or 0)
+                      for ex in rd.get("exercises") or []:
+                          if not isinstance(ex, dict):
+                              continue
+                          for item in ex.get("items") or []:
+                              if not isinstance(item, dict):
+                                  continue
+                              add(item.get("question"), lesson, "renshu_question")
+                              add(item.get("answer"), lesson, "renshu_answer")
+                  except Exception as exc:
+                      print("Renshu audio extraction warning:", lesson_file, exc)
 
           # Sentence-level splits of full readings so sentence shadowing never
           # has to generate at runtime.
@@ -315,7 +393,7 @@ jobs:
           }
 
           manifest = {
-              "version": "27",
+              "version": "28",
               "voice": "jf_alpha",
               "speed": 0.94,
               "count": len(available),
@@ -344,10 +422,308 @@ jobs:
 
           python _build/build_manifest.py
 
+      - name: Build Renshu B lesson data and assets
+        shell: bash
+        run: |
+          set -e
+          mkdir -p _site/renshu-b
+          cp -R _build/renshu_src/data _site/renshu-b/data
+          cp -R _build/renshu_src/images _site/renshu-b/images
+
+          python - <<'PYTHON'
+          import json
+          from pathlib import Path
+
+          data={}
+          for lesson in range(1,26):
+              p=Path('_build/renshu_src/data')/f'lesson-{lesson:02d}.json'
+              data[str(lesson)]=json.loads(p.read_text(encoding='utf-8'))
+
+          index_path=Path('_build/renshu_src/data/index.json')
+          index=json.loads(index_path.read_text(encoding='utf-8')) if index_path.exists() else {}
+
+          payload={
+              'version':28,
+              'title':'Minna no Nihongo 練習B Practice',
+              'coverage':'Lessons 1-25',
+              'lessons':data,
+              'index':index,
+          }
+          Path('_build/renshu-data-v28.js').write_text(
+              'window.N5_RENSHU_B_DATA='+json.dumps(payload,ensure_ascii=False,separators=(',',':'))+';\n',
+              encoding='utf-8'
+          )
+          print('Renshu B JS data ready:',len(data),'lessons')
+          PYTHON
+
+          cat > _build/renshu-b-v28.js <<'JAVASCRIPT'
+          (() => {
+            "use strict";
+
+            const DB = window.N5_RENSHU_B_DATA;
+            if (!DB?.lessons) {
+              console.error("Renshu B data missing");
+              return;
+            }
+
+            const $ = (q, root=document) => root.querySelector(q);
+            const $$ = (q, root=document) => [...root.querySelectorAll(q)];
+            const escHtml = (s) => String(s ?? "").replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+            const lessonKey = n => `n5_renshub_lesson_${Number(n)}`;
+            const progressKey = "n5_renshub_progress_v28";
+            let currentLesson = Number(localStorage.getItem("n5_renshub_current") || state?.lesson || 1);
+            let answerVisible = false;
+            let zoomOverlay = null;
+
+            function assetPath(rel) {
+              rel = String(rel || "").replace(/^\.\.\//, "");
+              return new URL(`./renshu-b/${rel}`, document.baseURI).href;
+            }
+
+            function getProgress() {
+              try { return JSON.parse(localStorage.getItem(progressKey) || "{}"); }
+              catch { return {}; }
+            }
+            function saveProgress(obj) { localStorage.setItem(progressKey, JSON.stringify(obj)); }
+            function progressSummary() {
+              const p=getProgress();
+              const mastered=Object.values(p).filter(x=>x?.rating==='mastered').length;
+              const reviewed=Object.keys(p).length;
+              return {mastered,reviewed,pct:Math.round(mastered/25*100)};
+            }
+
+            function ensureView() {
+              let view=$("#view-renshub");
+              if (!view) {
+                view=document.createElement("section");
+                view.className="view";
+                view.id="view-renshub";
+                $("main.main")?.appendChild(view);
+              }
+              return view;
+            }
+
+            function ensureNav() {
+              const nav=$("#nav");
+              if (nav && !nav.querySelector('[data-view="renshub"]')) {
+                const btn=document.createElement("button");
+                btn.dataset.view="renshub";
+                btn.innerHTML='<span>練</span> 練習B Practice';
+                const vocab=nav.querySelector('[data-view="vocab"]');
+                vocab?.after(btn);
+                btn.onclick=()=>openRenshu(state?.lesson || currentLesson);
+              }
+
+              const dock=$("#mobileDock");
+              if (dock && !dock.querySelector('[data-mobile-view="renshub"]')) {
+                const btn=document.createElement("button");
+                btn.dataset.mobileView="renshub";
+                btn.innerHTML='<span>練</span><b>練B</b>';
+                const vocab=dock.querySelector('[data-mobile-view="vocab"]');
+                vocab?.after(btn);
+                btn.onclick=()=>openRenshu(state?.lesson || currentLesson);
+                dock.classList.add("renshu-six-dock");
+              }
+            }
+
+            function setCurrentLesson(n) {
+              n=Math.max(1,Math.min(25,Number(n)||1));
+              currentLesson=n;
+              answerVisible=false;
+              localStorage.setItem("n5_renshub_current",String(n));
+              try {
+                // Keep the main Studio lesson state synchronized, so after
+                // 練習B the Vocabulary/Grammar/Kanji modules open the SAME lesson.
+                if (typeof setLesson === "function") setLesson(n, "renshub");
+                else {
+                  state.lesson=n;
+                  localStorage.setItem(KEYS.lesson,n);
+                }
+              } catch {}
+              render();
+              showView("renshub", {instant:true, keepScroll:true});
+              try { window.N5_INSTANT_AUDIO?.prefetchLesson?.(n); } catch {}
+            }
+
+            function openRenshu(n=currentLesson) {
+              ensureView(); ensureNav();
+              currentLesson=Math.max(1,Math.min(25,Number(n)||1));
+              localStorage.setItem("n5_renshub_current",String(currentLesson));
+              render();
+              showView("renshub", {instant:true});
+            }
+
+            function normalizeAnswer(s) {
+              return String(s||"")
+                .normalize("NFKC")
+                .replace(/[\s。．,.、!?！？]/g,"")
+                .trim();
+            }
+
+            function interactiveExerciseHTML(ex) {
+              const items=ex.items || [];
+              return `<section class="renshu-interactive card">
+                <div class="renshu-card-head"><div><div class="eyebrow">INTERACTIVE CHECK</div><h3>練習B ${escHtml(ex.exerciseNo || '')}</h3><p>${escHtml(ex.prompt || '')}</p></div><span class="type-chip">${items.length} questions</span></div>
+                <div class="renshu-items">${items.map((q,i)=>`
+                  <div class="renshu-item" data-qid="${escHtml(q.id)}">
+                    <div class="renshu-qno">${i+1}</div>
+                    <div class="renshu-item-body">
+                      ${q.cue ? `<div class="renshu-cue">${escHtml(q.cue)}</div>` : ''}
+                      <div class="renshu-question">${escHtml(q.question || '')}</div>
+                      <div class="renshu-answer-row"><input class="search-input renshu-answer-input" lang="ja" data-jp-input="1" placeholder="Japanese answer লিখুন…"><button class="btn primary renshu-check">Check</button><button class="btn soft renshu-reveal-one">Answer</button></div>
+                      <div class="renshu-feedback" hidden></div>
+                      <div class="renshu-correct-answer" hidden><b>Correct:</b> ${escHtml(q.answer || '')}</div>
+                    </div>
+                  </div>`).join('')}</div>
+              </section>`;
+            }
+
+            function notebookHTML(lesson) {
+              return `<section class="card renshu-notebook">
+                <div class="eyebrow">YOUR ANSWER NOTEBOOK</div>
+                <h3>Book sheet দেখে নিজে solve করুন</h3>
+                <p class="renshu-muted">Answer Key দেখার আগে Sheet 1 এবং Sheet 2-এর উত্তর এখানে লিখে রাখুন। সব লেখা এই device-এ auto-save হবে।</p>
+                <div class="renshu-note-grid">
+                  <label><b>Sheet 1 Answers</b><textarea id="renshuNote1" rows="8" lang="ja" data-jp-input="1" placeholder="1. ...\n2. ...\n3. ..."></textarea></label>
+                  <label><b>Sheet 2 Answers</b><textarea id="renshuNote2" rows="8" lang="ja" data-jp-input="1" placeholder="4. ...\n5. ...\n6. ..."></textarea></label>
+                </div>
+                <div class="renshu-note-actions"><button class="btn soft" id="clearRenshuNotes">Clear Notes</button></div>
+              </section>`;
+            }
+
+            function questionSheetsHTML(d) {
+              const sheets=d.sourceSheets || [];
+              return `<section class="renshu-sheets">
+                <div class="section-head"><div><div class="eyebrow">QUESTION SHEETS</div><h2>練習B — Solve First</h2><p>ছবিতে tap করলে full-screen zoom হবে।</p></div></div>
+                <div class="renshu-sheet-grid">${sheets.map((sheet,i)=>`
+                  <figure class="renshu-sheet-card card"><figcaption><b>Sheet ${i+1}</b><span>Printed p.${escHtml(sheet.printedPage)} · PDF p.${escHtml(sheet.pdfPage)}</span></figcaption><button class="renshu-image-button" data-zoom-src="${assetPath(sheet.image)}"><img src="${assetPath(sheet.image)}" alt="Lesson ${d.lesson} 練習B Sheet ${i+1}" loading="lazy"></button></figure>`).join('')}</div>
+              </section>`;
+            }
+
+            function answerKeyHTML(d) {
+              const src=assetPath(d.answerKey?.image || `../images/answers/lesson-${String(d.lesson).padStart(2,'0')}-answers.jpg`);
+              return `<section class="card renshu-answer-card">
+                <div class="renshu-card-head"><div><div class="eyebrow">ANSWER KEY</div><h3>Check only after solving</h3><p>নিজের answer শেষ করার পরে reveal করুন।</p></div><button class="btn ${answerVisible?'soft':'red'}" id="toggleRenshuAnswer">${answerVisible?'Hide Answer':'Show Answer Key'}</button></div>
+                <div id="renshuAnswerImage" ${answerVisible?'':'hidden'}><button class="renshu-image-button answer-image" data-zoom-src="${src}"><img src="${src}" alt="Lesson ${d.lesson} answer key" loading="lazy"></button></div>
+              </section>`;
+            }
+
+            function ratingHTML(lesson) {
+              const p=getProgress()[String(lesson)] || {};
+              return `<section class="card renshu-rating-card"><div><div class="eyebrow">SELF REVIEW</div><h3>এই Lesson কেমন হলো?</h3><p>নিজে solve + Answer Key check করার পরে rate করুন।</p></div><div class="renshu-ratings"><button data-renshu-rate="again" class="btn ${p.rating==='again'?'danger':'soft'}">Again</button><button data-renshu-rate="hard" class="btn ${p.rating==='hard'?'gold':'soft'}">Hard</button><button data-renshu-rate="good" class="btn ${p.rating==='good'?'primary':'soft'}">Good</button><button data-renshu-rate="mastered" class="btn ${p.rating==='mastered'?'green-btn':'soft'}">✓ Mastered</button></div></section>`;
+            }
+
+            function render() {
+              const view=ensureView();
+              const d=DB.lessons[String(currentLesson)];
+              if (!d) { view.innerHTML='<div class="empty">Lesson data পাওয়া যায়নি।</div>'; return; }
+              const ex=d.exercises || [];
+              const ps=progressSummary();
+              const typedCount=ex.reduce((n,e)=>n+(e.items?.length||0),0);
+
+              view.innerHTML=`
+                <div class="renshu-hero">
+                  <div><div class="eyebrow">MINNA NO NIHONGO · 練習B</div><h1>Lesson ${String(currentLesson).padStart(2,'0')} Practice</h1><p>Book exercise দেখুন → নিজে answer লিখুন → Answer Key দিয়ে check করুন → self-review করুন।</p></div>
+                  <div class="renshu-progress-badge"><b>${ps.mastered}/25</b><span>Mastered</span></div>
+                </div>
+
+                <div class="renshu-topbar card">
+                  <button class="btn soft" id="renshuPrev" ${currentLesson===1?'disabled':''}>← Prev</button>
+                  <label><span>Lesson</span><select id="renshuLessonSelect" class="select">${Array.from({length:25},(_,i)=>i+1).map(n=>`<option value="${n}" ${n===currentLesson?'selected':''}>Lesson ${String(n).padStart(2,'0')}</option>`).join('')}</select></label>
+                  <button class="btn soft" id="renshuNext" ${currentLesson===25?'disabled':''}>Next →</button>
+                </div>
+
+                <div class="renshu-mini-stats"><div class="stat"><strong>2</strong><span>Question sheets</span></div><div class="stat"><strong>${typedCount}</strong><span>Interactive typed Q&A</span></div><div class="stat"><strong>1</strong><span>Answer page</span></div><div class="stat"><strong>${ps.pct}%</strong><span>Course mastery</span></div></div>
+                <div class="renshu-method card"><div><b>1</b><span>Pattern / example দেখুন</span></div><i>→</i><div><b>2</b><span>Answer নিজে লিখুন</span></div><i>→</i><div><b>3</b><span>Answer Key মিলান</span></div><i>→</i><div><b>4</b><span>Again / Good / Mastered</span></div></div>
+
+                ${questionSheetsHTML(d)}
+                ${typedCount ? ex.map(interactiveExerciseHTML).join('') : `<div class="notice renshu-source-note"><b>Image Practice Mode:</b> এই Lesson-এর per-question typed transcription package-এ নেই। তাই original question sheet দেখে নিচের notebook-এ answer লিখুন, তারপর Answer Key reveal করে মিলান।</div>`}
+                ${notebookHTML(currentLesson)}
+                ${answerKeyHTML(d)}
+                ${ratingHTML(currentLesson)}
+              `;
+
+              bind(currentLesson,d);
+              try { activateJapaneseInputs(view); } catch {}
+            }
+
+            function bind(lesson,d) {
+              $("#renshuPrev")?.addEventListener("click",()=>setCurrentLesson(lesson-1));
+              $("#renshuNext")?.addEventListener("click",()=>setCurrentLesson(lesson+1));
+              $("#renshuLessonSelect")?.addEventListener("change",e=>setCurrentLesson(Number(e.target.value)));
+
+              [1,2].forEach(i=>{
+                const ta=$("#renshuNote"+i);
+                const key=`${lessonKey(lesson)}_sheet_${i}`;
+                if (ta) {
+                  ta.value=localStorage.getItem(key)||"";
+                  ta.oninput=()=>localStorage.setItem(key,ta.value);
+                }
+              });
+              $("#clearRenshuNotes")?.addEventListener("click",()=>{
+                [1,2].forEach(i=>localStorage.removeItem(`${lessonKey(lesson)}_sheet_${i}`));
+                const a=$("#renshuNote1"),b=$("#renshuNote2"); if(a)a.value=""; if(b)b.value="";
+                toast("Renshu notes cleared");
+              });
+
+              $("#toggleRenshuAnswer")?.addEventListener("click",()=>{answerVisible=!answerVisible;render();setTimeout(()=>$("#renshuAnswerImage")?.scrollIntoView({behavior:'smooth',block:'start'}),30)});
+
+              $$("[data-zoom-src]").forEach(btn=>btn.onclick=()=>openZoom(btn.dataset.zoomSrc));
+
+              $$(".renshu-item").forEach(item=>{
+                const qid=item.dataset.qid;
+                let q=null;
+                for(const ex of d.exercises||[]) q=(ex.items||[]).find(x=>x.id===qid)||q;
+                if(!q)return;
+                const input=$(".renshu-answer-input",item), feedback=$(".renshu-feedback",item), correct=$(".renshu-correct-answer",item);
+                $(".renshu-check",item).onclick=()=>{
+                  const typed=normalizeAnswer(input?.value);
+                  if(!typed){toast("আগে answer লিখুন।");return;}
+                  const accepted=[q.answer,...(q.acceptedAnswers||[])].filter(Boolean).map(normalizeAnswer);
+                  const ok=accepted.includes(typed);
+                  feedback.hidden=false; feedback.className=`renshu-feedback ${ok?'ok':'bad'}`; feedback.textContent=ok?'✓ Correct':'✕ আবার চেষ্টা করুন';
+                  if(ok) correct.hidden=false;
+                };
+                $(".renshu-reveal-one",item).onclick=()=>{correct.hidden=!correct.hidden;};
+              });
+
+              $$("[data-renshu-rate]").forEach(btn=>btn.onclick=()=>{
+                const rating=btn.dataset.renshuRate;
+                const all=getProgress();
+                all[String(lesson)]={rating,at:Date.now()}; saveProgress(all); render();
+                toast(rating==='mastered'?'Lesson Mastered ✓':`Saved: ${rating}`);
+              });
+            }
+
+            function openZoom(src) {
+              if (!zoomOverlay) {
+                zoomOverlay=document.createElement('div');
+                zoomOverlay.className='renshu-zoom';
+                zoomOverlay.innerHTML='<button class="renshu-zoom-close" aria-label="Close">✕</button><div class="renshu-zoom-body"><img alt="Zoomed exercise page"></div>';
+                document.body.appendChild(zoomOverlay);
+                zoomOverlay.onclick=e=>{if(e.target===zoomOverlay||e.target.closest('.renshu-zoom-close'))zoomOverlay.classList.remove('open');};
+              }
+              $('img',zoomOverlay).src=src; zoomOverlay.classList.add('open');
+            }
+
+            const style=document.createElement('style');
+            style.textContent=`
+              .renshu-hero{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:25px;border-radius:24px;background:linear-gradient(135deg,#102238,#214e70);color:#fff;box-shadow:var(--shadow);margin-bottom:14px}.renshu-hero h1{margin:2px 0 8px;font-size:30px}.renshu-hero p{margin:0;color:#d7e4ed;line-height:1.6}.renshu-progress-badge{width:92px;height:92px;border-radius:22px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);display:grid;place-items:center;text-align:center;flex:0 0 92px}.renshu-progress-badge b{font-size:22px}.renshu-progress-badge span{font-size:9px;color:#d7e4ed}.renshu-topbar{display:grid;grid-template-columns:auto minmax(180px,260px) auto;justify-content:center;align-items:end;gap:10px;margin-bottom:12px}.renshu-topbar label{display:grid;gap:5px;font-size:10px;font-weight:900;color:var(--muted)}.renshu-mini-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}.renshu-method{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;gap:8px;align-items:center;margin-bottom:18px;padding:12px 14px}.renshu-method>div{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:800;color:var(--muted)}.renshu-method>div b{width:25px;height:25px;border-radius:8px;display:grid;place-items:center;background:var(--navy);color:#fff}.renshu-method>i{font-style:normal;color:#a8b6c0}.renshu-sheet-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.renshu-sheet-card{padding:10px}.renshu-sheet-card figcaption{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:3px 4px 9px}.renshu-sheet-card figcaption span{font-size:9px;color:var(--muted)}.renshu-image-button{width:100%;padding:0;border:0;background:transparent;border-radius:13px;overflow:hidden;cursor:zoom-in}.renshu-image-button img{display:block;width:100%;height:auto}.renshu-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.renshu-card-head h3{margin:0 0 5px}.renshu-card-head p{margin:0;color:var(--muted)}.renshu-items{display:grid;gap:9px;margin-top:14px}.renshu-item{display:grid;grid-template-columns:34px 1fr;gap:10px;padding:13px;border:1px solid var(--line);border-radius:14px;background:#fafcfd}.renshu-qno{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--navy);color:white;font-weight:900}.renshu-cue{font-weight:900;color:var(--red);margin-bottom:3px}.renshu-question{font:700 17px/1.6 "Noto Sans JP","Yu Gothic",sans-serif}.renshu-answer-row{display:grid;grid-template-columns:1fr auto auto;gap:7px;margin-top:9px}.renshu-feedback{margin-top:8px;padding:7px 9px;border-radius:9px;font-weight:900;font-size:11px}.renshu-feedback.ok{background:var(--green-bg);color:var(--green)}.renshu-feedback.bad{background:var(--red-bg);color:var(--red)}.renshu-correct-answer{margin-top:8px;padding:9px 10px;border-radius:10px;background:#eef6fb;font:700 14px/1.6 "Noto Sans JP",sans-serif}.renshu-note-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.renshu-note-grid label{display:grid;gap:7px}.renshu-note-grid textarea{width:100%;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:11px;line-height:1.6;background:#fff}.renshu-note-actions{display:flex;justify-content:flex-end;margin-top:9px}.renshu-muted{color:var(--muted);line-height:1.6}.renshu-answer-card{margin-top:14px}.renshu-answer-card #renshuAnswerImage{margin-top:12px}.renshu-rating-card{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;margin-top:14px}.renshu-rating-card h3{margin:0 0 4px}.renshu-rating-card p{margin:0;color:var(--muted)}.renshu-ratings{display:flex;gap:6px;flex-wrap:wrap}.green-btn{background:var(--green)!important;color:#fff!important}.renshu-source-note{margin:14px 0}.renshu-zoom{position:fixed;inset:0;z-index:9999;background:rgba(5,14,23,.92);display:none;padding:48px 12px 20px;overflow:auto}.renshu-zoom.open{display:block}.renshu-zoom-close{position:fixed;right:14px;top:14px;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:#102238;color:white;font-size:20px}.renshu-zoom-body{max-width:1100px;margin:auto}.renshu-zoom-body img{display:block;width:100%;height:auto;background:#fff;border-radius:10px}.renshu-six-dock{grid-template-columns:repeat(6,1fr)!important}
+              @media(max-width:820px){.renshu-method{grid-template-columns:1fr 1fr}.renshu-method>i{display:none}.renshu-hero{padding:18px;border-radius:19px}.renshu-hero h1{font-size:23px}.renshu-progress-badge{width:70px;height:70px;flex-basis:70px;border-radius:17px}.renshu-topbar{grid-template-columns:auto 1fr auto;padding:12px}.renshu-mini-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.renshu-sheet-grid,.renshu-note-grid{grid-template-columns:1fr}.renshu-sheet-card{padding:8px}.renshu-answer-row{grid-template-columns:1fr 1fr}.renshu-answer-row .search-input{grid-column:1/-1}.renshu-rating-card{grid-template-columns:1fr}.renshu-ratings .btn{flex:1 1 42%}.renshu-six-dock button{min-width:0;padding-inline:2px}.renshu-six-dock button b{font-size:7px}.renshu-card-head{align-items:flex-start}}
+              @media(max-width:480px){.renshu-hero{align-items:flex-start}.renshu-hero h1{font-size:20px}.renshu-hero p{font-size:11px}.renshu-topbar{grid-template-columns:1fr 1fr}.renshu-topbar label{grid-column:1/-1;grid-row:1}.renshu-topbar #renshuPrev,.renshu-topbar #renshuNext{width:100%}.renshu-item{grid-template-columns:28px 1fr;padding:10px}.renshu-qno{width:26px;height:26px}.renshu-question{font-size:15px}.renshu-card-head{display:grid}.renshu-card-head #toggleRenshuAnswer{width:100%}.renshu-zoom{padding-top:62px}}
+            `;
+            document.head.appendChild(style);
+
+            ensureView(); ensureNav();
+            window.N5_RENSHU_B={open:openRenshu,render,setLesson:setCurrentLesson};
+            console.info('N5 練習B Practice v28 loaded — 25 lessons');
+          })();
+          JAVASCRIPT
+
       - name: Build clean v26 browser app
         shell: bash
         run: |
-          cat > _build/instant-audio-v27.js <<'JAVASCRIPT'
+          cat > _build/instant-audio-v28.js <<'JAVASCRIPT'
           (() => {
             "use strict";
 
@@ -527,12 +903,12 @@ jobs:
             window.N5_INSTANT_AUDIO = { speak: speakInstant, stop, prefetchLesson, manifest };
 
             setTimeout(() => prefetchLesson($("#lessonSelect")?.value || 1), 1200);
-            console.info(`N5 Clean Instant Audio v27: ${available.size} clips`);
+            console.info(`N5 Clean Instant Audio v28: ${available.size} clips`);
           })();
 
           JAVASCRIPT
 
-          cat > _build/app-clean-v27.js <<'JAVASCRIPT'
+          cat > _build/app-clean-v28.js <<'JAVASCRIPT'
           (() => {
             "use strict";
 
@@ -543,7 +919,7 @@ jobs:
               }
             } catch {}
 
-            document.documentElement.dataset.build = "clean-v27";
+            document.documentElement.dataset.build = "clean-v28";
 
             // ---------- Clean view navigation ----------
             showView = function(name, opts = {}) {
@@ -730,7 +1106,7 @@ jobs:
             refresh();
             showView(state.view || "overview", { keepScroll: true, instant: true });
 
-            console.info("N5 Clean App v27 loaded — no MutationObserver patches.");
+            console.info("N5 Clean App v28 loaded — no MutationObserver patches.");
           })();
 
           JAVASCRIPT
@@ -744,9 +1120,11 @@ jobs:
           cp index.html _site/404.html
           cp .nojekyll _site/.nojekyll 2>/dev/null || true
 
-          cp _build/audio-manifest.js _site/audio-manifest-v27.js
-          cp _build/instant-audio-v27.js _site/instant-audio-v27.js
-          cp _build/app-clean-v27.js _site/app-clean-v27.js
+          cp _build/audio-manifest.js _site/audio-manifest-v28.js
+          cp _build/instant-audio-v28.js _site/instant-audio-v28.js
+          cp _build/app-clean-v28.js _site/app-clean-v28.js
+          cp _build/renshu-data-v28.js _site/renshu-data-v28.js
+          cp _build/renshu-b-v28.js _site/renshu-b-v28.js
 
           # Copy only generated MP3 files — no neural model ships to the phone.
           cp _audio_cache/*.mp3 _site/audio/
@@ -759,21 +1137,23 @@ jobs:
               html = path.read_text(encoding="utf-8")
 
               injection = """
-              <script src="./audio-manifest-v27.js"></script>
-              <script src="./instant-audio-v27.js"></script>
-              <script src="./app-clean-v27.js"></script>
+              <script src="./audio-manifest-v28.js"></script>
+              <script src="./instant-audio-v28.js"></script>
+              <script src="./app-clean-v28.js"></script>
+              <script src="./renshu-data-v28.js"></script>
+              <script src="./renshu-b-v28.js"></script>
               """
 
-              if "app-clean-v27.js" not in html:
+              if "renshu-b-v28.js" not in html:
                   html = html.replace("</body>", injection + "\n</body>")
 
               html = html.replace(
                   "GitHub Single File · Mobile First · Romaji→Kana",
-                  "Clean v27 · Instant Audio · Mobile First"
+                  "Clean v28 · 練習B Practice · Mobile First"
               )
               html = html.replace(
                   "<title>N5 Natural Japanese Studio — GitHub Single File</title>",
-                  "<title>N5 Natural Japanese Studio — Clean v27</title>"
+                  "<title>N5 Natural Japanese Studio — 練習B Practice v28</title>"
               )
 
               path.write_text(html, encoding="utf-8")
@@ -784,25 +1164,35 @@ jobs:
         run: |
           set -e
           test -f _site/index.html
-          test -f _site/audio-manifest-v27.js
-          test -f _site/instant-audio-v27.js
-          test -f _site/app-clean-v27.js
+          test -f _site/audio-manifest-v28.js
+          test -f _site/instant-audio-v28.js
+          test -f _site/app-clean-v28.js
+          test -f _site/renshu-data-v28.js
+          test -f _site/renshu-b-v28.js
+          test -f _site/renshu-b/data/lesson-01.json
+          test -f _site/renshu-b/data/lesson-25.json
+          test -f _site/renshu-b/images/lesson-01/renshu-b-sheet-1.jpg
+          test -f _site/renshu-b/images/answers/lesson-25-answers.jpg
           test -d _site/audio
           test "$(find _site/audio -name '*.mp3' | wc -l)" -gt 1500
           test "$(find _site/audio -name 'lesson-*.json' | wc -l)" -eq 25
-          grep -q "app-clean-v27.js" _site/index.html
-          grep -q "Critical: resolve only after THIS clip actually ends" _site/instant-audio-v27.js
-          grep -q 'setLesson(Number(b.dataset.jump), "vocab")' _site/app-clean-v27.js
-          grep -q 'id="skipSpell"' _site/app-clean-v27.js
-          grep -q 'id="l3"' _site/app-clean-v27.js
-          grep -q 'Reveal বাংলা অর্থ + উচ্চারণ' _site/app-clean-v27.js
-          if grep -q 'new MutationObserver' _site/app-clean-v27.js; then
-            echo "ERROR: v27 clean app must not create MutationObserver patches"
+          grep -q "app-clean-v28.js" _site/index.html
+          grep -q "renshu-b-v28.js" _site/index.html
+          grep -q "練習B Practice" _site/renshu-b-v28.js
+          grep -q "N5_RENSHU_B_DATA" _site/renshu-data-v28.js
+          grep -q "Critical: resolve only after THIS clip actually ends" _site/instant-audio-v28.js
+          grep -q 'setLesson(Number(b.dataset.jump), "vocab")' _site/app-clean-v28.js
+          grep -q 'id="skipSpell"' _site/app-clean-v28.js
+          grep -q 'id="l3"' _site/app-clean-v28.js
+          grep -q 'Reveal বাংলা অর্থ + উচ্চারণ' _site/app-clean-v28.js
+          if grep -q 'new MutationObserver' _site/app-clean-v28.js; then
+            echo "ERROR: v28 clean app must not create MutationObserver patches"
             exit 1
           fi
-          node --check _site/instant-audio-v27.js
-          node --check _site/app-clean-v27.js
-          echo "v27 QA PASS"
+          node --check _site/instant-audio-v28.js
+          node --check _site/app-clean-v28.js
+          node --check _site/renshu-b-v28.js
+          echo "v28 QA PASS"
           echo "MP3 clips: $(find _site/audio -name '*.mp3' | wc -l)"
           echo "Published site size:"
           du -sh _site
