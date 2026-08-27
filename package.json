@@ -1,6 +1,6 @@
 {
-  "name": "n5-natural-japanese-studio-v42",
-  "version": "42.0.0",
+  "name": "n5-natural-japanese-studio-v44",
+  "version": "44.0.0",
   "private": true,
   "scripts": {
     "data:build": "python scripts/build_klc_from_csv.py && python scripts/build_data.py",

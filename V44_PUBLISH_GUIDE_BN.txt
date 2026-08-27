@@ -1,0 +1,53 @@
+N5 Natural Japanese Studio — v44 REAL WEBSITE PATCH
+====================================================
+
+এটা mockup না। এই ZIP-এর file structure সরাসরি আপনার বর্তমান v42 GitHub repo-এর উপর paste/replace করার জন্য।
+
+PATCH-এ যা আছে
+----------------
+app/globals.css
+app/layout.tsx
+components/Dashboard.tsx
+components/HeroScene.tsx
+styles/v44-editorial.scss
+sw.js
+package.json
+
+কি পরিবর্তন হয়েছে
+-----------------
+1) Dark lacquer + mineral-paper editorial design system
+2) Generic SaaS-card dashboard কমিয়ে distinctive Japanese study identity
+3) Real Fuji + Sakura layered SVG hero (external image dependency নেই)
+4) Living Study Path: Vocabulary / Recall / Listening / Spelling / Kanji Tree
+5) 25 lesson roadmap retained; lesson click -> Vocabulary retained
+6) Listening preview max 1x direction retained
+7) Existing KLC tree, Kana Pad, SRS, Spelling, audio logic untouched
+8) Kana Pad visual polish + mobile bottom-sheet layout
+9) Mobile bottom dock, safe-area, 44px+ touch target, no shrink-only layout
+10) Service worker cache key v44; old cache purge হবে
+
+UPLOAD STEPS
+------------
+1. ZIP Extract করুন।
+2. GitHub Desktop > Repository > Show in Explorer.
+3. Extract করা folder-এর ভেতরের app, components, styles, sw.js, package.json copy করুন।
+4. cloned n5-japanese-studio root folder-এ Paste করুন।
+5. Replace files in destination চাপুন।
+6. GitHub Desktop Changes-এ verify করুন:
+   - app/globals.css modified
+   - app/layout.tsx modified
+   - components/Dashboard.tsx modified
+   - components/HeroScene.tsx modified
+   - styles/v44-editorial.scss NEW
+   - sw.js modified
+   - package.json modified
+7. Summary: Apply editorial learning UI v44
+8. Commit to main > Push origin
+9. GitHub Actions green হওয়া পর্যন্ত অপেক্ষা করুন।
+10. Live site-এ Ctrl+F5; mobile-এ পুরোনো tab close করে নতুন tab খুলুন।
+
+IMPORTANT
+---------
+পুরো v42 project delete করবেন না। Patch শুধু replace/add করবেন।
+components/KanaPad.tsx, KanjiExplorer.tsx, Listening.tsx, SRS.tsx ইত্যাদি delete/replace করা হচ্ছে না।
+এই patch visual layer + dashboard hero/structure polish করে, study logic রাখে।

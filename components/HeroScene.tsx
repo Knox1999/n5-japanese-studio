@@ -1,73 +1,56 @@
 'use client';
 
 import { useLayoutEffect, useRef } from 'react';
-import AmbientCanvas from './AmbientCanvas';
 
-export default function HeroScene() {
-  const root = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    const el = root.current;
-    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let ctx: any;
-    (async () => {
-      const { gsap } = await import('gsap');
-      if (!el) return;
-      ctx = gsap.context(() => {
-        gsap.fromTo('.sakura-bloom', { opacity: 0, scale: .55 }, { opacity: 1, scale: 1, duration: .8, stagger: .055, ease: 'back.out(1.8)', delay: .12 });
-        gsap.fromTo('.fuji-layer', { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 1, ease: 'power3.out' });
-        gsap.fromTo('.wave-line', { strokeDashoffset: 180 }, { strokeDashoffset: 0, duration: 1.4, stagger: .08, ease: 'power2.out' });
-      }, el);
-    })();
-    return () => ctx?.revert?.();
-  }, []);
-
-  return (
-    <div ref={root} className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <AmbientCanvas />
-      <svg viewBox="0 0 720 320" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid slice">
-        <defs>
-          <linearGradient id="skyWash" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#fffdf8" />
-            <stop offset=".58" stopColor="#f8f1e8" />
-            <stop offset="1" stopColor="#f5e8e6" />
-          </linearGradient>
-          <linearGradient id="fuji" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#60768a" />
-            <stop offset="1" stopColor="#2f4a61" />
-          </linearGradient>
-          <filter id="softShadow"><feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="#102a43" floodOpacity=".10"/></filter>
-        </defs>
-        <rect width="720" height="320" fill="url(#skyWash)" opacity=".96" />
-        <circle cx="595" cy="80" r="40" fill="#d65b63" opacity=".12" />
-        <g className="fuji-layer" filter="url(#softShadow)" opacity=".95">
-          <path d="M392 255 L530 104 L674 255 Z" fill="url(#fuji)" opacity=".22"/>
-          <path d="M497 141 L530 104 L567 145 L548 140 L532 151 L519 139 Z" fill="#fffdfa" opacity=".9" />
-        </g>
-        <g fill="none" stroke="#6c91ad" strokeWidth="2" opacity=".25">
-          <path className="wave-line" strokeDasharray="180" d="M332 270 C380 245 425 295 472 270 S565 245 615 270"/>
-          <path className="wave-line" strokeDasharray="180" d="M360 285 C405 263 451 307 499 285 S588 262 648 285"/>
-        </g>
-        <g stroke="#5b4034" strokeLinecap="round" fill="none">
-          <path d="M720 18 C638 35 602 92 548 133 C500 169 452 180 410 209" strokeWidth="9" opacity=".86"/>
-          <path d="M641 48 C610 53 582 44 558 29" strokeWidth="5" opacity=".8"/>
-          <path d="M603 91 C575 84 548 88 520 108" strokeWidth="5" opacity=".8"/>
-          <path d="M550 132 C523 127 497 137 474 160" strokeWidth="4" opacity=".75"/>
-        </g>
-        {[
-          [650,38],[620,53],[588,34],[568,72],[535,92],[505,118],[480,151],[455,172],[599,82],[549,55],[523,142],[430,195]
-        ].map(([cx,cy], i) => (
-          <g key={i} className="sakura-bloom" transform={`translate(${cx} ${cy})`}>
-            <ellipse rx="8" ry="4.5" transform="rotate(-28) translate(6 0)" fill="#d9808c" opacity=".84"/>
-            <ellipse rx="8" ry="4.5" transform="rotate(44) translate(6 0)" fill="#e2939e" opacity=".82"/>
-            <ellipse rx="8" ry="4.5" transform="rotate(116) translate(6 0)" fill="#d87786" opacity=".82"/>
-            <ellipse rx="8" ry="4.5" transform="rotate(188) translate(6 0)" fill="#e9a4aa" opacity=".84"/>
-            <ellipse rx="8" ry="4.5" transform="rotate(260) translate(6 0)" fill="#d9808c" opacity=".84"/>
-            <circle r="2.3" fill="#b7883e"/>
-          </g>
-        ))}
-      </svg>
-      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-paper/80 to-transparent" />
-    </div>
-  );
+export default function HeroScene(){
+  const root=useRef<HTMLDivElement>(null);
+  useLayoutEffect(()=>{
+    const el=root.current;if(!el||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    let ctx:any;(async()=>{const {gsap}=await import('gsap');ctx=gsap.context(()=>{
+      gsap.fromTo('.v44-fuji',{y:16,opacity:0},{y:0,opacity:1,duration:1.15,ease:'power3.out'});
+      gsap.fromTo('.v44-branch',{x:28,opacity:0},{x:0,opacity:1,duration:1.05,ease:'power3.out',delay:.08});
+      gsap.fromTo('.v44-bloom',{scale:.4,opacity:0},{scale:1,opacity:1,duration:.7,stagger:.045,ease:'back.out(1.7)',delay:.18});
+      gsap.to('.v44-petal',{y:18,x:-8,rotation:18,duration:3.8,repeat:-1,yoyo:true,stagger:.18,ease:'sine.inOut'});
+    },el)})();return()=>ctx?.revert?.();
+  },[]);
+  const blooms=[[602,58,1],[640,76,.84],[677,45,.72],[570,92,.9],[535,128,.76],[500,150,.65],[704,96,.62],[618,122,.7],[552,54,.58]];
+  return <div ref={root} className="hero-scene-v44" aria-hidden="true">
+    <svg viewBox="0 0 760 410" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <linearGradient id="v44Sky" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#111b19"/><stop offset=".62" stopColor="#0b1211"/><stop offset="1" stopColor="#17211f"/></linearGradient>
+        <radialGradient id="v44Sun"><stop offset="0" stopColor="#d8b16a" stopOpacity=".92"/><stop offset="1" stopColor="#c94753" stopOpacity=".28"/></radialGradient>
+        <linearGradient id="v44Fuji" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#556a68"/><stop offset=".5" stopColor="#334946"/><stop offset="1" stopColor="#1c302d"/></linearGradient>
+        <linearGradient id="v44Front" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#2e4541"/><stop offset="1" stopColor="#12231f"/></linearGradient>
+        <filter id="v44Blur"><feGaussianBlur stdDeviation="18"/></filter>
+        <filter id="v44Shadow"><feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#000" floodOpacity=".28"/></filter>
+      </defs>
+      <rect width="760" height="410" fill="url(#v44Sky)"/>
+      <circle cx="614" cy="104" r="58" fill="url(#v44Sun)" opacity=".9"/>
+      <circle cx="614" cy="104" r="90" fill="#c94753" opacity=".08" filter="url(#v44Blur)"/>
+      <g className="v44-fuji" filter="url(#v44Shadow)">
+        <path d="M278 358 L474 118 L686 358 Z" fill="url(#v44Fuji)"/>
+        <path d="M430 171 L474 118 L522 177 L503 166 L489 184 L476 169 L458 188 L445 167 Z" fill="#f0eadf" opacity=".95"/>
+        <path d="M300 358 L430 244 L535 358 Z" fill="#263b38" opacity=".75"/>
+        <path d="M462 358 L586 255 L710 358 Z" fill="#1f3531" opacity=".86"/>
+      </g>
+      <path d="M0 334 C115 288 215 350 324 316 C430 282 535 342 760 292 L760 410 L0 410 Z" fill="url(#v44Front)" opacity=".96"/>
+      <path d="M0 366 C170 334 280 382 438 350 C570 325 662 356 760 340" fill="none" stroke="#c99b52" strokeWidth="1.4" opacity=".24"/>
+      <g className="v44-branch" fill="none" strokeLinecap="round">
+        <path d="M770 8 C690 24 644 64 598 100 C555 133 508 163 448 207" stroke="#725044" strokeWidth="12"/>
+        <path d="M676 47 C648 42 622 30 602 12" stroke="#725044" strokeWidth="6"/>
+        <path d="M620 84 C592 75 563 78 538 94" stroke="#725044" strokeWidth="6"/>
+        <path d="M566 132 C539 126 516 136 493 155" stroke="#725044" strokeWidth="5"/>
+      </g>
+      {blooms.map(([cx,cy,s],i)=><g key={i} className="v44-bloom" transform={`translate(${cx} ${cy}) scale(${s})`}>
+        <ellipse rx="11" ry="6" transform="rotate(-12) translate(9 0)" fill="#dc7d88"/>
+        <ellipse rx="11" ry="6" transform="rotate(60) translate(9 0)" fill="#eb9ca6"/>
+        <ellipse rx="11" ry="6" transform="rotate(132) translate(9 0)" fill="#d9707f"/>
+        <ellipse rx="11" ry="6" transform="rotate(204) translate(9 0)" fill="#f0aeb4"/>
+        <ellipse rx="11" ry="6" transform="rotate(276) translate(9 0)" fill="#dc7d88"/>
+        <circle r="3" fill="#d2a75b"/>
+      </g>)}
+      {[[612,168],[655,142],[544,188],[702,123],[590,205]].map(([cx,cy],i)=><ellipse key={i} className="v44-petal" cx={cx} cy={cy} rx="7" ry="3.4" fill="#e9949e" opacity={.65-i*.06} transform={`rotate(${i*19-26} ${cx} ${cy})`}/>) }
+      <rect x="0" y="0" width="760" height="410" fill="none" stroke="#c99b52" strokeOpacity=".08"/>
+    </svg>
+  </div>
 }

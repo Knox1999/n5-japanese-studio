@@ -3,32 +3,32 @@
 @tailwind utilities;
 
 :root{
-  --ink:#142638;
-  --navy:#102A43;
-  --navy-2:#163A56;
-  --ivory:#F7F4ED;
-  --paper:#FFFDFC;
-  --sakura:#C95362;
-  --sakura-soft:#FCEAEC;
-  --sage:#547663;
-  --sage-soft:#EAF2ED;
-  --gold:#B58B3A;
-  --gold-soft:#F7EFD9;
-  --blue:#48769B;
-  --blue-soft:#EAF2F8;
-  --violet:#6B5D8F;
-  --violet-soft:#F0EDF8;
-  --mist:#E7E2D8;
-  --muted:#667583;
-  --shadow:0 18px 50px rgba(16,42,67,.08);
+  --ink:#17221f;
+  --navy:#0B100F;
+  --navy-2:#13211e;
+  --ivory:#F2EEE5;
+  --paper:#FCFAF5;
+  --sakura:#C94753;
+  --sakura-soft:#F5E2E3;
+  --sage:#405C54;
+  --sage-soft:#E4ECE7;
+  --gold:#C99B52;
+  --gold-soft:#F1E5CF;
+  --blue:#18384D;
+  --blue-soft:#E5EDF1;
+  --violet:#665B80;
+  --violet-soft:#ECE8F2;
+  --mist:#D8D0C3;
+  --muted:#61706B;
+  --shadow:0 18px 50px rgba(11,16,15,.08);
 }
 *{box-sizing:border-box}
 html{background:var(--ivory);scroll-behavior:smooth;text-rendering:optimizeLegibility}
 body{margin:0;min-width:320px;background:var(--ivory);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Bengali","Noto Sans JP",sans-serif;overflow-x:hidden}
 button,input,select,textarea{font:inherit}
 button{touch-action:manipulation}
-::selection{background:#f2c7cd;color:#4b1d24}
-:focus-visible{outline:3px solid rgba(72,118,155,.35);outline-offset:3px}
+::selection{background:#d8b373;color:#171b18}
+:focus-visible{outline:2px solid #C99B52;outline-offset:3px}
 .font-jp{font-family:"Noto Sans JP","Yu Gothic","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
-.font-bn{font-family:"Noto Sans Bengali","Hind Siliguri","Nirmala UI",system-ui,sans-serif}
+.font-bn{font-family:"Hind Siliguri","Noto Sans Bengali","Nirmala UI",system-ui,sans-serif}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}

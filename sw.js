@@ -1,42 +1,36 @@
-const CACHE = "n5-japanese-studio-v18";
-const CORE = [
-  "./",
-  "./index.html",
-  "./404.html",
-  "./manifest.webmanifest",
-  "./static/styles.css",
-  "./offline/offline_data.js",
-  "./offline/klc_tree_data.js",
-  "./offline/klc_memory_bn.js",
-  "./offline/offline_app.js",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
-];
+const CACHE = 'n5-japanese-studio-v44';
+const CORE = ['./', './manifest.webmanifest'];
 
-self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)));
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).catch(()=>{}));
   self.skipWaiting();
 });
 
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
-  );
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))));
   self.clients.claim();
 });
 
-self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+  const req = event.request;
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req).then(response => {
         const copy = response.clone();
-        caches.open(CACHE).then(cache => cache.put(event.request, copy)).catch(()=>{});
+        caches.open(CACHE).then(cache => cache.put(req, copy)).catch(()=>{});
         return response;
-      }).catch(() => caches.match("./index.html"));
-    })
+      }).catch(() => caches.match(req).then(r => r || caches.match('./')))
+    );
+    return;
+  }
+  event.respondWith(
+    caches.match(req).then(cached => cached || fetch(req).then(response => {
+      if (response && response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE).then(cache => cache.put(req, copy)).catch(()=>{});
+      }
+      return response;
+    }))
   );
 });

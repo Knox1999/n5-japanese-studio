@@ -1,13 +1,17 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { BookOpen, Brain, Headphones, Flame, Trophy, Sparkles, ArrowRight, TreePine, RotateCcw } from 'lucide-react';
+import {
+  ArrowRight, BookOpen, Brain, Headphones, PenLine, Sparkles,
+  TreePine, Trophy, RotateCcw, Play, CheckCircle2
+} from 'lucide-react';
 import type { MockAttempt, StudioMeta, SrsCardState, ViewName } from '@/lib/types';
 import type { ProgressMap, SrsMap } from '@/lib/storage';
-import ProgressRing from './ProgressRing';
 import HeroScene from './HeroScene';
 
-function mastered(progress: ProgressMap, ids: number[]) { return ids.reduce((n, id) => n + (progress[String(id)] ? 1 : 0), 0); }
+function mastered(progress: ProgressMap, ids: number[]) {
+  return ids.reduce((n, id) => n + (progress[String(id)] ? 1 : 0), 0);
+}
 
 function srsHealth(srs: SrsMap, total: number) {
   const now = Date.now();
@@ -22,21 +26,16 @@ function srsHealth(srs: SrsMap, total: number) {
   return { due, learning, growing, mature, fresh: Math.max(0, total - Object.keys(srs).length) };
 }
 
-function trendPath(values: number[]) {
-  if (!values.length) return '';
-  const w = 220, h = 66, pad = 5;
-  return values.map((v, i) => {
-    const x = values.length === 1 ? w/2 : pad + i * (w - pad*2) / (values.length - 1);
-    const y = h - pad - (Math.max(0, Math.min(100, v)) / 100) * (h - pad*2);
-    return `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-}
-
 export default function Dashboard({
   meta, lesson, progress, srs, history, onNavigate, onLesson
 }: {
-  meta: StudioMeta; lesson: number; progress: ProgressMap; srs: SrsMap; history: MockAttempt[];
-  onNavigate: (v: ViewName) => void; onLesson: (n: number, v?: ViewName) => void;
+  meta: StudioMeta;
+  lesson: number;
+  progress: ProgressMap;
+  srs: SrsMap;
+  history: MockAttempt[];
+  onNavigate: (v: ViewName) => void;
+  onLesson: (n: number, v?: ViewName) => void;
 }) {
   const totalMastered = Object.values(progress).filter(Boolean).length;
   const overall = Math.round(totalMastered / Math.max(1, meta.vocabulary_count) * 100);
@@ -44,89 +43,156 @@ export default function Dashboard({
   const currentMastered = mastered(progress, current.ids || []);
   const currentPct = Math.round(currentMastered / Math.max(1, current.count) * 100);
   const health = srsHealth(srs, meta.vocabulary_count);
-  const recentScores = [...history].slice(0, 8).reverse().map(x => Number(x.score || 0));
   const best = history.length ? Math.max(...history.map(x => Number(x.score || 0))) : 0;
-  const achievements = [
-    { ok: totalMastered >= 100, title: '100 Words', sub: 'Vocabulary milestone' },
-    { ok: totalMastered >= 250, title: '250 Words', sub: 'Strong foundation' },
-    { ok: health.mature >= 50, title: '50 Mature', sub: 'Long-term memory' },
-    { ok: best >= 90, title: '90% Mock', sub: 'Exam readiness' },
+
+  const queue = [
+    { icon: Brain, label: 'Recall', detail: `${health.due} due now`, view: 'srs' as ViewName, active: true },
+    { icon: Headphones, label: 'Listening', detail: `Lesson ${String(lesson).padStart(2,'0')} live transcript`, view: 'listening' as ViewName },
+    { icon: PenLine, label: 'Spelling', detail: 'Random lesson words', view: 'spelling' as ViewName },
+    { icon: TreePine, label: 'Kanji Tree', detail: `${meta.klc_edges.toLocaleString()} component relations`, view: 'kanji' as ViewName },
   ];
 
   return (
-    <div className="space-y-7 pb-8">
-      <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="premium-hero relative isolate overflow-hidden rounded-[28px] border border-mist bg-paper shadow-premium">
+    <div className="editorial-dashboard pb-10">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="editorial-hero"
+      >
         <HeroScene />
-        <div className="relative z-10 max-w-[760px] px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
-          <div className="mb-3 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.18em] text-sakura"><Sparkles size={15}/> Premium N5 Study Studio</div>
-          <h1 className="font-jp text-[34px] font-black leading-[1.08] tracking-[-.035em] text-ink sm:text-[44px] lg:text-[52px]">今日も、少しずつ。</h1>
-          <p className="mt-3 max-w-[620px] text-sm leading-7 text-slatecopy sm:text-base"><b className="text-ink">Lesson {String(lesson).padStart(2,'0')} · {current.title}</b><br/><span className="font-bn">{current.scenario}</span></p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button className="premium-btn premium-btn-primary" onClick={() => onNavigate('vocabulary')}>Continue Lesson <ArrowRight size={17}/></button>
-            <button className="premium-btn premium-btn-secondary" onClick={() => onNavigate('srs')}><RotateCcw size={16}/> Start Recall</button>
+        <div className="editorial-hero-copy">
+          <div className="editorial-eyebrow"><Sparkles size={14}/> N5 NATURAL JAPANESE STUDIO</div>
+          <h1 className="editorial-display font-bn">জাপানি শেখা হোক<br/>অভ্যাসে, মুখস্থে নয়।</h1>
+          <p className="editorial-jp font-jp">毎日、少しずつ。</p>
+          <p className="editorial-hero-note font-bn">
+            Vocabulary, recall, listening, spelling, reading এবং Kanji—একই lesson rhythm-এর মধ্যে।
+          </p>
+          <div className="editorial-actions">
+            <button className="editorial-primary" onClick={() => onNavigate('vocabulary')}>
+              Continue Lesson {String(lesson).padStart(2,'0')} <ArrowRight size={16}/>
+            </button>
+            <button className="editorial-secondary" onClick={() => onNavigate('srs')}>
+              <RotateCcw size={15}/> Start Recall
+            </button>
           </div>
+        </div>
+
+        <div className="living-path" aria-label="Current learning path">
+          <span className="living-path-label">THE LIVING STUDY PATH</span>
+          <h2 className="editorial-display">One lesson.<br/>Five ways to remember it.</h2>
+          <div className="living-path-grid">
+            {[
+              ['語','Vocabulary','vocabulary'],['憶','Recall','srs'],['聴','Listening','listening'],['書','Spelling','spelling'],['木','Kanji Tree','kanji']
+            ].map(([glyph,label,view],i)=><button key={label} onClick={()=>onNavigate(view as ViewName)} className={i===1?'active':''}>
+              <span className="font-jp">{glyph}</span><b>{label}</b>
+            </button>)}
+          </div>
+          <p>Your next action comes from real progress, not decorative widgets.</p>
         </div>
       </motion.section>
 
-      <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-        <motion.article whileHover={{ y: -2 }} className="metric-card col-span-2 flex items-center gap-4 xl:col-span-1">
-          <ProgressRing value={overall} size={92} label="N5" />
-          <div><span className="metric-label">Overall mastery</span><b className="metric-value">{totalMastered}</b><small>of {meta.vocabulary_count} words</small></div>
-        </motion.article>
-        <motion.article whileHover={{ y: -2 }} className="metric-card"><span className="metric-icon bg-rose-50 text-sakura"><BookOpen/></span><span className="metric-label">Current lesson</span><b className="metric-value">{currentPct}%</b><small>{currentMastered}/{current.count} mastered</small></motion.article>
-        <motion.article whileHover={{ y: -2 }} className="metric-card"><span className="metric-icon bg-violet-50 text-violet-700"><Brain/></span><span className="metric-label">Review due</span><b className="metric-value">{health.due}</b><small>{health.mature} mature cards</small></motion.article>
-        <motion.article whileHover={{ y: -2 }} className="metric-card"><span className="metric-icon bg-sky-50 text-sky-700"><Headphones/></span><span className="metric-label">Listening</span><b className="metric-value">1×</b><small>natural-speed ceiling</small></motion.article>
-        <motion.article whileHover={{ y: -2 }} className="metric-card"><span className="metric-icon bg-amber-50 text-gold"><Trophy/></span><span className="metric-label">Best mock</span><b className="metric-value">{best}%</b><small>{history.length} saved attempts</small></motion.article>
+      <section className="editorial-stat-strip" aria-label="Study statistics">
+        <div><strong>{totalMastered}</strong><span>of {meta.vocabulary_count} words mastered</span></div>
+        <div><strong>{overall}%</strong><span>overall N5 mastery</span></div>
+        <div><strong>{health.due}</strong><span>reviews due now</span></div>
+        <div><strong>{best}%</strong><span>best mock score</span></div>
       </section>
 
-      <section>
-        <div className="section-kicker">Continue learning</div>
-        <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="section-title">Pick up where you left off</h2><p className="section-subtitle">Every card opens a real study tool, not a decorative placeholder.</p></div></div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {[
-            { icon:<BookOpen/>, tag:`LESSON ${String(lesson).padStart(2,'0')}`, title:current.title, text:`${currentMastered}/${current.count} words mastered`, view:'vocabulary' as ViewName, cls:'tone-red' },
-            { icon:<Brain/>, tag:'SRS · RECALL', title:'Memory Review', text:`${health.due} due · ${health.fresh} untouched`, view:'srs' as ViewName, cls:'tone-purple' },
-            { icon:<Headphones/>, tag:'LISTENING', title:'Live Transcript', text:'Expressive Japanese · max 1×', view:'listening' as ViewName, cls:'tone-blue' },
-            { icon:<TreePine/>, tag:'KANJI KLC', title:'2,300 Kanji Tree', text:`${meta.klc_edges.toLocaleString()} component relations`, view:'kanji' as ViewName, cls:'tone-green' },
-          ].map((x, i) => <motion.button key={x.view} initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} transition={{delay:i*.05}} whileHover={{y:-3}} className={`continue-card ${x.cls}`} onClick={() => onNavigate(x.view)}><span className="continue-icon">{x.icon}</span><span className="section-kicker">{x.tag}</span><b>{x.title}</b><p>{x.text}</p><span className="continue-link">Open <ArrowRight size={15}/></span></motion.button>)}
-        </div>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[1.35fr_.65fr]">
-        <article className="premium-panel">
-          <div className="flex items-end justify-between gap-3"><div><div className="section-kicker">Lesson mastery map</div><h2 className="section-title">25-lesson visual roadmap</h2></div><span className="hidden text-xs text-slatecopy sm:block">Tap any lesson → Vocabulary</span></div>
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {meta.lessons.map((L) => {
-              const n = mastered(progress, L.ids || []); const pct = Math.round(n/Math.max(1,L.count)*100);
-              return <button key={L.lesson} onClick={() => onLesson(L.lesson,'vocabulary')} className={`lesson-tile ${L.lesson===lesson?'is-current':''}`} aria-label={`Lesson ${L.lesson}, ${pct}% mastered`}>
-                <div className="flex items-center justify-between"><span>L{String(L.lesson).padStart(2,'0')}</span><b>{pct}%</b></div>
-                <strong>{L.title}</strong><div className="mastery-track"><i style={{width:`${pct}%`}}/></div><small>{n}/{L.count} words</small>
-              </button>;
-            })}
+      <section className="editorial-section">
+        <div className="editorial-section-head">
+          <div>
+            <span className="editorial-index">01 · STUDY RHYTHM</span>
+            <h2 className="editorial-display">Learn → Recall → Use → Review</h2>
           </div>
-        </article>
-
-        <div className="space-y-4">
-          <article className="premium-panel">
-            <div className="section-kicker">Memory health</div><h2 className="section-title">SRS distribution</h2>
-            <div className="mt-5 space-y-3">
-              {[
-                ['Due now',health.due,'bg-sakura'],['Learning',health.learning,'bg-violet-500'],['Growing',health.growing,'bg-sky-600'],['Mature',health.mature,'bg-sage'],['New',health.fresh,'bg-slate-300']
-              ].map(([label,count,color]) => { const c=Number(count); const pct=Math.min(100, c/Math.max(1,meta.vocabulary_count)*100); return <div key={String(label)}><div className="mb-1 flex justify-between text-xs"><span className="text-slatecopy">{label}</span><b className="text-ink">{c}</b></div><div className="h-2 overflow-hidden rounded-full bg-[#eeeae3]"><i className={`block h-full rounded-full ${color}`} style={{width:`${Math.max(c?2:0,pct)}%`}}/></div></div> })}
-            </div>
-          </article>
-          <article className="premium-panel overflow-hidden">
-            <div className="section-kicker">Mock trend</div><div className="flex items-end justify-between"><h2 className="section-title">Recent scores</h2><b className="text-sm text-ink">{recentScores.length ? `${recentScores.at(-1)}%` : 'No data'}</b></div>
-            {recentScores.length ? <svg viewBox="0 0 220 70" className="mt-4 h-[90px] w-full overflow-visible" aria-label="Mock score trend"><path d={trendPath(recentScores)} fill="none" stroke="#c95362" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/><path d={`${trendPath(recentScores)} L215,66 L5,66 Z`} fill="#c95362" opacity=".06"/></svg> : <div className="mt-4 rounded-2xl bg-ivory p-5 text-sm text-slatecopy">Complete a mock test and your real score trend will appear here.</div>}
-          </article>
+          <p className="font-bn">চারটা আলাদা feature না—একই lesson-এর memory cycle।</p>
+        </div>
+        <div className="rhythm-grid">
+          {[
+            ['01','Learn','Meaning + natural context'],
+            ['02','Recall','Hide Bangla. Pull from memory.'],
+            ['03','Use','Spell, listen, shadow, read.'],
+            ['04','Review','SRS decides what returns.']
+          ].map(([n,t,d])=><article key={n}>
+            <span>{n}</span><h3 className="editorial-display">{t}</h3><p>{d}</p>
+          </article>)}
         </div>
       </section>
 
-      <section className="premium-panel">
-        <div className="section-kicker">Achievements</div><h2 className="section-title">Milestones that reflect real progress</h2>
-        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {achievements.map((a,i)=><div key={a.title} className={`achievement ${a.ok?'unlocked':''}`}><span>{a.ok?<Flame/>:<Trophy/>}</span><b>{a.title}</b><small>{a.sub}</small></div>)}
+      <section className="editorial-section lesson-journey-section">
+        <div className="editorial-section-head compact">
+          <div><span className="editorial-index">02 · 25-LESSON JOURNEY</span><h2 className="editorial-display">See the whole road. Study one step.</h2></div>
+          <p>Tap any lesson → Vocabulary</p>
         </div>
+        <div className="editorial-lesson-grid">
+          {meta.lessons.map(L=>{
+            const n=mastered(progress,L.ids||[]);const pct=Math.round(n/Math.max(1,L.count)*100);
+            return <button key={L.lesson} onClick={()=>onLesson(L.lesson,'vocabulary')} className={L.lesson===lesson?'current':''}>
+              <span>L{String(L.lesson).padStart(2,'0')}</span><b>{pct}%</b>
+              <strong>{L.title}</strong>
+              <i><em style={{width:`${pct}%`}}/></i>
+              <small>{n}/{L.count}</small>
+            </button>
+          })}
+        </div>
+      </section>
+
+      <section className="editorial-section practice-showcase">
+        <div className="editorial-section-head">
+          <div><span className="editorial-index">03 · PRACTICE, NOT PAGES</span><h2 className="editorial-display">Hear it. Pull it back. Use it.</h2></div>
+          <p className="font-bn">প্রতিটি module-এর একটা নির্দিষ্ট learning job আছে।</p>
+        </div>
+
+        <div className="practice-feature-grid">
+          <button className="listening-feature" onClick={()=>onNavigate('listening')}>
+            <div className="feature-top"><span>LISTENING LAB</span><Play size={18}/></div>
+            <h3 className="editorial-display">Natural audio.<br/>Live transcript.</h3>
+            <div className="mini-wave" aria-hidden="true">{[18,34,52,28,66,44,30,56,38,70,48,25,58,40,64,32,54].map((h,i)=><i key={i} style={{height:h}}/>)}</div>
+            <div className="mini-transcript"><span className="font-jp">もういちど ゆっくり おねがいします。</span><small className="font-bn">আরেকবার একটু ধীরে বলবেন।</small></div>
+            <div className="speed-row"><span>0.75×</span><span>0.90×</span><b>1×</b></div>
+          </button>
+
+          <div className="practice-stack">
+            {queue.slice(0,3).map(({icon:Icon,label,detail,view,active})=><button key={label} className={active?'active':''} onClick={()=>onNavigate(view)}>
+              <Icon size={20}/><div><span>{label}</span><small>{detail}</small></div><ArrowRight size={15}/>
+            </button>)}
+          </div>
+        </div>
+      </section>
+
+      <section className="editorial-section kanji-signature">
+        <div className="kanji-copy">
+          <span className="editorial-index">04 · KLC VISUAL MEMORY</span>
+          <h2 className="editorial-display">Kanji should feel constructed, not random.</h2>
+          <p className="font-bn">একটা character খুললে component → build → related Kanji একই visual tree-তে দেখা যাবে।</p>
+          <button className="editorial-primary" onClick={()=>onNavigate('kanji')}>Explore Kanji Tree <ArrowRight size={16}/></button>
+        </div>
+        <button className="kanji-demo" onClick={()=>onNavigate('kanji')} aria-label="Open Kanji Tree">
+          <span className="font-jp kanji-main">休</span>
+          <small>KLC visual construction</small>
+          <div className="kanji-parts"><span><b className="font-jp">亻</b><small>person</small></span><span><b className="font-jp">木</b><small>tree</small></span></div>
+          <strong className="font-jp">亻 + 木 → 休</strong>
+          <div className="builds-into"><small>BUILDS INTO</small><span>体</span><span>保</span><span>働</span><span>仮</span></div>
+        </button>
+      </section>
+
+      <section className="editorial-section progress-evidence">
+        <div className="editorial-section-head">
+          <div><span className="editorial-index">05 · PROGRESS THAT MEANS SOMETHING</span><h2 className="editorial-display">No fake streaks. Only evidence.</h2></div>
+          <p>{currentMastered}/{current.count} mastered in Lesson {String(lesson).padStart(2,'0')}</p>
+        </div>
+        <div className="evidence-grid">
+          <article className="mastery-evidence"><strong>{overall}%</strong><span>N5 mastery</span><i><em style={{width:`${overall}%`}}/></i><small>{totalMastered} / {meta.vocabulary_count} vocabulary</small></article>
+          <article className="memory-evidence">
+            {[
+              ['Due now',health.due],['Learning',health.learning],['Growing',health.growing],['Mature',health.mature],['New',health.fresh]
+            ].map(([label,value])=><div key={String(label)}><span>{label}</span><b>{value}</b></div>)}
+          </article>
+          <article className="mock-evidence"><Trophy/><strong>{best}%</strong><span>best mock</span><small>{history.length} saved attempts</small></article>
+        </div>
+      </section>
+
+      <section className="editorial-closing">
+        <CheckCircle2 size={18}/><span className="font-bn">আজকের কাজ শেষ করতে বড় session দরকার নেই—পরের সঠিক step-টাই যথেষ্ট।</span>
       </section>
     </div>
   );
