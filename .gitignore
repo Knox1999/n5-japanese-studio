@@ -1,0 +1,7 @@
+node_modules/
+.next/
+out/
+_build/
+_audio_cache/
+_kanjivg/
+.DS_Store

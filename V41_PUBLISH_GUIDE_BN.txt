@@ -1,0 +1,46 @@
+N5 Natural Japanese Studio — Premium Next.js v41
+GitHub Pages Publish Guide
+================================================
+
+এটি আগের single-file/patch architecture না। এটি একটি full source project।
+
+সবচেয়ে নিরাপদ publish পদ্ধতি:
+
+1) GitHub repo Knox1999/n5-japanese-studio-এর backup/download রাখুন।
+2) v41 ZIP extract করুন।
+3) ZIP-এর ভেতরের সব project file repository root-এ upload/commit করুন।
+4) পুরোনো .github/workflows deployment file থাকলে disable/remove করুন, যাতে দুইটি Pages workflow একসাথে deploy না করে।
+5) v41-এর workflow file রাখুন:
+   .github/workflows/deploy-pages.yml
+6) Commit to main.
+7) GitHub → Actions → "Deploy N5 Studio — Premium Next.js v41" খুলুন।
+8) Build green ✓ হওয়া পর্যন্ত অপেক্ষা করুন। প্রথম build-এ Kokoro model/audio এবং KanjiVG-এর জন্য সময় লাগতে পারে। পরের build cache ব্যবহার করবে।
+9) Settings → Pages → Source = GitHub Actions থাকা উচিত।
+10) Live URL:
+   https://knox1999.github.io/n5-japanese-studio/
+
+গুরুত্বপূর্ণ:
+- Browser-এ Python চলে না। GitHub Actions Ubuntu runner-এ Python চলে।
+- Python data split, QA, Kokoro audio এবং KanjiVG stroke assets তৈরি করে।
+- এরপর Next.js static HTML/CSS/JS export করে GitHub Pages-এ publish করে।
+- পুরোনো localStorage key preserve করা হয়েছে:
+  n5_offline_lesson
+  n5_offline_progress
+  n5_offline_history
+  n5_offline_srs_v8
+  n5_offline_spelling_v12
+  তাই একই browser/domain-এ আগের progress পড়ার জন্য architecture প্রস্তুত।
+
+Listening speed:
+- 0.75x
+- 0.90x
+- 1x
+1x-এর উপরে কোনো Listening speed নেই।
+
+যদি প্রথম build fail করে:
+- Actions log-এর failed step দেখুন।
+- Node/Next failure হলে "Install frontend dependencies" বা "Build static Next.js site" step দেখুন।
+- Kokoro failure হলে "Install Japanese neural TTS toolchain" / "Generate cached natural Japanese audio" দেখুন।
+- KanjiVG failure হলে "Build KanjiVG stroke-order library" দেখুন।
+
+v41-এ deploy করার মূল ফাইল শুধু workflow না—পুরো project upload করতে হবে।

@@ -1,44 +1,55 @@
-# N5 Natural Japanese Studio — GitHub Pages Edition v18
+# N5 Natural Japanese Studio — Premium Next.js v41
 
-Pure static/mobile-first JLPT N5 study website.
+A production-oriented static Japanese learning application designed for GitHub Pages.
 
-## Included
+## Stack
 
-- 1,011 verified vocabulary
-- curated natural sentences
-- spelling + writing lab
-- adaptive SRS in browser LocalStorage
-- long conversation
-- long reading + rewrite
-- listening + shadowing
-- grammar
-- KLC 2300 Kanji tree
-- Onyomi / Kunyomi / Furigana
-- Bangla Kanji memory stories
-- 100-question random mock
-- mobile slide-out menu + bottom dock
-- compact floating Kana Pad
-- Romaji → Hiragana / Katakana
-- Native Japanese keyboard / IME mode
-- PWA / Add to Home Screen
-- service-worker offline cache
+- **HTML5 / semantic React markup** — accessible app structure.
+- **CSS3 + Tailwind CSS + SCSS** — responsive layout, design tokens, branded components.
+- **JavaScript / TypeScript (ES6+)** — study state, local progress, audio, tests and interactions.
+- **React 19 + Next.js 15** — component architecture and static export.
+- **Framer Motion** — view transitions, card/reveal motion.
+- **GSAP** — Sakura/Fuji hero choreography.
+- **Three.js** — low-cost ambient Sakura particle layer on capable desktop devices only.
+- **Python 3.12** — data split/validation, neural-audio generation, KanjiVG build pipeline and QA.
+- **Kokoro Japanese neural TTS + FFmpeg** — cached pre-generated Japanese MP3.
+- **KanjiVG** — build-time stroke-order SVG assets (CC BY-SA 3.0; attribution copied into the export).
+- **GitHub Actions + GitHub Pages** — Python/Node build in CI, static site served to users.
+
+## Data carried forward
+
+- 1,011 verified vocabulary records.
+- 25 lessons.
+- 2,300 KLC Kanji nodes.
+- 4,034 KLC component relations.
+- 2,300 Bangla memory-story records.
+- Existing browser progress keys are preserved so the new UI can read old progress/history/SRS data.
+
+## Main product surfaces
+
+Dashboard, Vocabulary, Adaptive SRS, Spelling, Conversation, Reading, Listening, Grammar, Kanji KLC, 100-question Mock Test, and Test History.
+
+Listening is intentionally capped at **0.75× / 0.90× / 1×**.
+
+## Local development
+
+```bash
+python scripts/build_data.py
+npm install
+npm run dev
+```
+
+## Production build
+
+```bash
+npm install
+npm run build
+```
+
+Next.js exports the static site to `out/`.
 
 ## GitHub Pages
 
-This project is static. No Python server is required.
+The included `.github/workflows/deploy-pages.yml` runs Python and Node on GitHub Actions, pre-generates the study assets, builds the static Next.js site, performs QA, and deploys `out/` to GitHub Pages.
 
-### Recommended deployment
-
-1. Create a public repository named `n5-japanese-studio`.
-2. Upload **the contents of this folder**, not the ZIP itself.
-3. Repository → **Settings** → **Pages**.
-4. Under **Build and deployment**, set **Source = GitHub Actions**.
-5. The included workflow `.github/workflows/deploy-pages.yml` will deploy the site.
-
-Alternative: use **Deploy from a branch → main → /(root)**; `.nojekyll` is included.
-
-## Important
-
-The GitHub Pages edition uses the Japanese voice available in the phone/browser through Web Speech API. The PC-only Python/Edge-TTS neural backend is not part of a static GitHub Pages site.
-
-Progress is stored per-device in browser LocalStorage.
+Python does **not** run in the visitor's browser. Python is a build-time engine; the published site is static HTML/CSS/JavaScript/SVG/audio.
