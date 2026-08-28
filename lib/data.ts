@@ -1,7 +1,7 @@
 import type { LessonPayload, StudioMeta, KLCTree, KLCMemory } from './types';
 
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
-export const DATA_VERSION = '56';
+export const DATA_VERSION = '57';
 
 function versioned(path: string) {
   const join = path.includes('?') ? '&' : '?';

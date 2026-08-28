@@ -62,7 +62,7 @@ for lesson in range(1, 26):
         })
 
 meta = {
-    "version": "56",
+    "version": "57",
     "source_version": studio.get("version"),
     "vocabulary_count": len(vocab),
     "lesson_count": 25,
@@ -82,7 +82,7 @@ h = hashlib.sha256()
 for p in [SRC / "studio.json", SRC / "klc-tree.json", SRC / "klc-memory.json", SRC / "grammar-visual.json"]:
     h.update(p.read_bytes())
 (OUT / "build.json").write_text(
-    json.dumps({"version":"56","fingerprint":h.hexdigest()[:16]}, separators=(",", ":")), encoding="utf-8"
+    json.dumps({"version":"57","fingerprint":h.hexdigest()[:16]}, separators=(",", ":")), encoding="utf-8"
 )
 rules=sum(len(v.get("rules") or []) for v in (grammar_visual.get("lessons") or {}).values())
 examples=sum(len(r.get("examples") or []) for v in (grammar_visual.get("lessons") or {}).values() for r in (v.get("rules") or []))

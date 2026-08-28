@@ -1,8 +1,8 @@
-const VERSION='v56';
+const VERSION='v57';
 const CORE_CACHE=`nihongo-vibes-${VERSION}-core`;
 const RUNTIME_CACHE=`nihongo-vibes-${VERSION}-runtime`;
 const AUDIO_CACHE=`nihongo-vibes-${VERSION}-audio`;
-const CORE=['./','./?view=dashboard','./data/meta.json?v=56','./manifest.webmanifest'];
+const CORE=['./','./?view=dashboard','./data/meta.json?v=57','./manifest.webmanifest'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CORE_CACHE).then(cache=>cache.addAll(CORE)).catch(()=>{}));

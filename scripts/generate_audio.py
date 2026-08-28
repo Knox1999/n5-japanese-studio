@@ -1,121 +1,203 @@
 #!/usr/bin/env python3
-"""Generate cached Japanese neural audio for V56.
+"""Generate young-adult, natural Japanese neural audio for V57.
 
-V56 dialogue profile:
-- male dialogue voice: jm_kumo
-- female dialogue voice: jf_tebukuro (fallback jf_alpha)
-- default learning voice remains clear/warm Japanese
-- role is encoded in the audio hash, so A/B can use the same text with different voices.
+V57 replaces the previous local Kokoro profile with Microsoft Japanese neural
+voices accessed through edge-tts. The goal is a conversational young-adult
+presentation rather than an obviously synthetic/character voice.
+
+Profiles:
+- default: warm neutral Japanese voice used by vocabulary/grammar/reading
+- female: dialogue/shadowing female speaker
+- male: dialogue male speaker
+
+The UI hashes male/female dialogue separately, so identical text can exist with
+both voices without collisions.
 """
 from __future__ import annotations
-import json, os, subprocess, tempfile
+
+import asyncio
+import json
+import os
+import random
+import subprocess
+import tempfile
 from pathlib import Path
-import numpy as np
-import soundfile as sf
-import torch
-from kokoro import KPipeline
 
-ROOT=Path(__file__).resolve().parents[1]
-ROWS=json.loads((ROOT/'_build/audio_texts.json').read_text(encoding='utf-8'))
-OUT=ROOT/'_audio_cache';OUT.mkdir(exist_ok=True)
-SR=24000
-BASE_SPEED=float(os.getenv('N5_TTS_SPEED','0.93'))
-PROFILE_VERSION='v56-dual-dialogue-ja-1'
-PROFILE_FILE=OUT/'_voice_profile.json'
+import edge_tts
 
-VOICE_CANDIDATES={
-    'default':['jf_alpha,jf_tebukuro','jf_alpha','jf_tebukuro'],
-    'clear':['jf_alpha','jf_alpha,jf_tebukuro','jf_tebukuro'],
-    'dialogue':['jf_tebukuro','jf_alpha'],
-    'female':['jf_tebukuro','jf_alpha','jf_gongitsune'],
-    'male':['jm_kumo'],
+ROOT = Path(__file__).resolve().parents[1]
+ROWS = json.loads((ROOT / "_build/audio_texts.json").read_text(encoding="utf-8"))
+OUT = ROOT / "_audio_cache"
+OUT.mkdir(exist_ok=True)
+PROFILE_FILE = OUT / "_voice_profile.json"
+PROFILE_VERSION = "v57-edge-ja-youngadult-2"
+CONCURRENCY = max(1, min(6, int(os.getenv("N5_TTS_CONCURRENCY", "4"))))
+
+PREFERRED = {
+    "default": [
+        "ja-JP-NanamiNeural",
+        "ja-JP-AoiNeural",
+        "ja-JP-ShioriNeural",
+        "ja-JP-MayuNeural",
+    ],
+    "female": [
+        "ja-JP-NanamiNeural",
+        "ja-JP-ShioriNeural",
+        "ja-JP-AoiNeural",
+        "ja-JP-MayuNeural",
+    ],
+    "male": [
+        "ja-JP-KeitaNeural",
+        "ja-JP-NaokiNeural",
+        "ja-JP-DaichiNeural",
+    ],
 }
 
-def expressive_speed(text:str)->float:
-    t=str(text or '').strip();speed=BASE_SPEED
-    if t.endswith(('？','?')):speed-=.035
-    if t.endswith(('！','!')):speed+=.025
-    if '…' in t or '〜' in t or '～' in t:speed-=.025
-    if any(x in t for x in ('すみません','おねがいします','お願いします','ありがとうございます','ありがとうございました')):speed-=.018
-    if len(t)<=5:speed-=.012
-    elif len(t)>=35:speed+=.01
-    return max(.84,min(1.0,speed))
 
-def contextual_speed(row:dict)->float:
-    speed=expressive_speed(row.get('text',''));kinds=set(row.get('kinds') or [])
-    if 'shadow' in kinds:speed-=.018
-    if 'conversation' in kinds:speed-=.010
-    if 'vocab' in kinds and len(row.get('text',''))<=10:speed-=.018
-    return max(.82,min(1.0,speed))
+def prosody(row: dict, role: str) -> tuple[str, str, str]:
+    """Small prosody adjustments only; avoid cartoonish pitch changes."""
+    text = str(row.get("text") or "").strip()
+    kinds = set(row.get("kinds") or [])
 
-def contextual_pause(row:dict)->float:
-    t=str(row.get('text') or '');p=.105
-    if t.endswith(('？','?')):p=.15
-    elif t.endswith(('。','！','!')):p=.13
-    elif t.endswith('…'):p=.18
-    if 'conversation' in set(row.get('kinds') or []):p+=.025
-    if 'shadow' in set(row.get('kinds') or []):p+=.035
-    return min(.24,p)
+    # Stay close to the voice model's native cadence; heavy slowing sounds synthetic.
+    rate = 0
+    if "shadow" in kinds:
+        rate -= 4
+    elif "conversation" in kinds:
+        rate += 0
+    elif "vocab" in kinds and len(text) <= 10:
+        rate -= 2
+    elif "reading_full" in kinds:
+        rate -= 1
 
-def load_profile():
-    try:return json.loads(PROFILE_FILE.read_text(encoding='utf-8'))
-    except Exception:return {}
+    if text.endswith(("？", "?")):
+        rate -= 1
+    elif text.endswith(("！", "!")):
+        rate += 1
+    if "…" in text or "〜" in text or "～" in text:
+        rate -= 2
 
-def load_first(pipeline:KPipeline,candidates:list[str],fallback:str|None=None)->str:
-    for voice in candidates:
-        try:pipeline.load_voice(voice);return voice
-        except Exception:pass
-    if fallback:return fallback
-    raise RuntimeError('No Japanese Kokoro voice could be loaded from '+repr(candidates))
+    rate = max(-10, min(2, rate))
+    pitch = -1 if role == "male" else 0
+    volume = 0
+    return f"{rate:+d}%", f"{pitch:+d}Hz", f"{volume:+d}%"
 
-def encode_mp3(wav:Path,mp3:Path):
-    subprocess.run(['ffmpeg','-loglevel','error','-y','-i',str(wav),'-af','highpass=f=45,lowpass=f=11500,loudnorm=I=-18:TP=-1.5:LRA=11','-ac','1','-ar',str(SR),'-codec:a','libmp3lame','-b:a','80k',str(mp3)],check=True)
 
-def main():
-    torch.set_num_threads(max(1,os.cpu_count() or 2));device='cuda' if torch.cuda.is_available() else 'cpu'
-    pipeline=KPipeline(lang_code='j',device=device)
-    voices={}
-    voices['default']=load_first(pipeline,VOICE_CANDIDATES['default'])
-    for key in ('clear','dialogue','female','male'):
-        voices[key]=load_first(pipeline,VOICE_CANDIDATES[key],voices['default'])
-    profile={'version':PROFILE_VERSION,'voices':voices,'base_speed':BASE_SPEED,'sample_rate':SR}
-    profile_changed=load_profile()!=profile
-    if profile_changed:print('TTS profile updated; preserving compatible cached clips and generating new dual-voice clips:',profile,flush=True)
+async def available_voices() -> set[str]:
+    try:
+        voices = await edge_tts.list_voices()
+        return {str(v.get("ShortName") or "") for v in voices}
+    except Exception as exc:
+        print("Voice list lookup failed; using preferred names directly:", repr(exc), flush=True)
+        return set()
 
-    generated=reused=0;failed=[]
-    for i,row in enumerate(ROWS,1):
-        final=OUT/f"{row['hash']}.mp3"
-        if final.exists() and final.stat().st_size>1000:
-            reused+=1;continue
-        try:
-            role=row.get('voice_role','default')
-            kinds=set(row.get('kinds') or [])
-            if role in ('male','female'):voice=voices[role]
-            elif kinds.intersection({'conversation','shadow'}):voice=voices['dialogue']
-            elif kinds.intersection({'vocab','spelling','grammar','grammar_visual'}):voice=voices['clear']
-            else:voice=voices['default']
-            parts=[]
-            with torch.inference_mode():
-                for _,_,audio in pipeline(row['text'],voice=voice,speed=contextual_speed(row)):
-                    if audio is None:continue
-                    if hasattr(audio,'detach'):audio=audio.detach().cpu().numpy()
-                    chunk=np.asarray(audio,dtype=np.float32).reshape(-1)
-                    if chunk.size:parts.append(chunk)
-            if not parts:raise RuntimeError('no audio')
-            pause=np.zeros(int(SR*contextual_pause(row)),dtype=np.float32);joined=[]
-            for j,part in enumerate(parts):
-                if j:joined.append(pause)
-                joined.append(part)
-            merged=np.concatenate(joined);peak=float(np.max(np.abs(merged))) if merged.size else 0
-            if peak>.985:merged*=.985/peak
-            with tempfile.TemporaryDirectory() as td:
-                wav=Path(td)/'a.wav';mp3=Path(td)/'a.mp3';sf.write(wav,merged,SR,subtype='PCM_16');encode_mp3(wav,mp3);mp3.replace(final)
-            generated+=1
-        except Exception as exc:failed.append((row['hash'],row.get('voice_role'),row['text'],repr(exc)))
-        if i%50==0:print(i,'/',len(ROWS),'generated',generated,'reused',reused,'failed',len(failed),flush=True)
-    if failed:(ROOT/'_build/audio_failures.json').write_text(json.dumps(failed,ensure_ascii=False,indent=2),encoding='utf-8')
-    if len(failed)>20:raise SystemExit(f'Too many audio failures: {len(failed)}')
-    PROFILE_FILE.write_text(json.dumps(profile,ensure_ascii=False,indent=2),encoding='utf-8')
-    print({'generated':generated,'reused':reused,'failed':len(failed),'voices':voices,'device':device})
 
-if __name__=='__main__':main()
+def choose_voice(role: str, available: set[str]) -> str:
+    choices = PREFERRED.get(role) or PREFERRED["default"]
+    if available:
+        for voice in choices:
+            if voice in available:
+                return voice
+    return choices[0]
+
+
+def normalize_mp3(src: Path, dst: Path) -> None:
+    subprocess.run(
+        [
+            "ffmpeg", "-loglevel", "error", "-y", "-i", str(src),
+            "-af", "highpass=f=45,lowpass=f=12000,loudnorm=I=-17:TP=-1.3:LRA=8",
+            "-ac", "1", "-ar", "24000", "-codec:a", "libmp3lame", "-b:a", "96k", str(dst),
+        ],
+        check=True,
+    )
+
+
+async def synth_one(row: dict, voices: dict[str, str], semaphore: asyncio.Semaphore) -> tuple[str, str | None]:
+    final = OUT / f"{row['hash']}.mp3"
+    if final.exists() and final.stat().st_size > 1200:
+        return "reused", None
+
+    role = str(row.get("voice_role") or "default")
+    if role not in {"default", "male", "female"}:
+        role = "default"
+    voice = voices[role]
+    rate, pitch, volume = prosody(row, role)
+
+    async with semaphore:
+        for attempt in range(1, 5):
+            try:
+                with tempfile.TemporaryDirectory() as td:
+                    raw = Path(td) / "raw.mp3"
+                    fixed = Path(td) / "fixed.mp3"
+                    communicator = edge_tts.Communicate(
+                        text=str(row["text"]),
+                        voice=voice,
+                        rate=rate,
+                        pitch=pitch,
+                        volume=volume,
+                    )
+                    await communicator.save(str(raw))
+                    if not raw.exists() or raw.stat().st_size < 800:
+                        raise RuntimeError("edge-tts returned an empty/short audio file")
+                    normalize_mp3(raw, fixed)
+                    fixed.replace(final)
+                return "generated", None
+            except Exception as exc:
+                if attempt >= 4:
+                    return "failed", repr(exc)
+                await asyncio.sleep((1.1 ** attempt) + random.random() * 0.7)
+    return "failed", "unexpected synthesis exit"
+
+
+async def main_async() -> None:
+    available = await available_voices()
+    voices = {role: choose_voice(role, available) for role in ("default", "female", "male")}
+    profile = {
+        "version": PROFILE_VERSION,
+        "engine": "edge-tts",
+        "voices": voices,
+        "concurrency": CONCURRENCY,
+        "intent": "natural young-adult conversational Japanese",
+    }
+    PROFILE_FILE.write_text(json.dumps(profile, ensure_ascii=False, indent=2), encoding="utf-8")
+    print("V57 voice profile:", profile, flush=True)
+
+    semaphore = asyncio.Semaphore(CONCURRENCY)
+    generated = reused = 0
+    failures: list[dict] = []
+
+    # Small batches avoid opening thousands of sockets simultaneously.
+    batch_size = max(CONCURRENCY * 4, 12)
+    for start in range(0, len(ROWS), batch_size):
+        batch = ROWS[start:start + batch_size]
+        results = await asyncio.gather(*(synth_one(row, voices, semaphore) for row in batch))
+        for row, (status, error) in zip(batch, results):
+            if status == "generated":
+                generated += 1
+            elif status == "reused":
+                reused += 1
+            else:
+                failures.append({
+                    "hash": row.get("hash"),
+                    "text": row.get("text"),
+                    "voice_role": row.get("voice_role"),
+                    "error": error,
+                })
+        done = min(len(ROWS), start + len(batch))
+        print(done, "/", len(ROWS), "generated", generated, "reused", reused, "failed", len(failures), flush=True)
+
+    build = ROOT / "_build"
+    build.mkdir(exist_ok=True)
+    if failures:
+        (build / "audio_failures.json").write_text(json.dumps(failures, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # Keep deployment usable if a handful of remote TTS requests fail; browser fallback handles them.
+    max_failures = max(20, int(len(ROWS) * 0.03))
+    if len(failures) > max_failures:
+        raise SystemExit(f"Too many V57 neural TTS failures: {len(failures)} > {max_failures}")
+
+    print({"generated": generated, "reused": reused, "failed": len(failures), "voices": voices})
+
+
+if __name__ == "__main__":
+    asyncio.run(main_async())

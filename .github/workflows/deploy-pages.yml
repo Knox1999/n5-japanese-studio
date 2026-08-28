@@ -48,43 +48,27 @@ jobs:
       - name: Type-check frontend
         run: npm run lint:types
 
-      - name: Restore Japanese audio cache
+      - name: Restore V57 neural audio cache
         uses: actions/cache@v4
         with:
           path: _audio_cache
-          key: n5-v56-dualvoice-kokoro-${{ hashFiles('source/data/studio.json', 'source/data/grammar-visual.json', 'scripts/generate_audio.py', 'scripts/extract_audio_texts.py') }}
+          key: n5-v57-edge-ja-${{ hashFiles('source/data/studio.json', 'source/data/grammar-visual.json', 'scripts/generate_audio.py', 'scripts/extract_audio_texts.py') }}
           restore-keys: |
-            n5-v56-dualvoice-kokoro-
-            n5-v55-combined-kokoro-
-            n5-v53-grammar-kokoro-
-            n5-v50-kokoro-emotive-
-            n5-v49-kokoro-emotive-
-            n5-v42-kokoro-
+            n5-v57-edge-ja-
           save-always: true
 
-      - name: Restore model cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/huggingface
-          key: kokoro-82m-japanese-v50
-          restore-keys: |
-            kokoro-82m-japanese-
-
-      - name: Install Japanese neural TTS toolchain
+      - name: Install V57 Japanese neural TTS
         shell: bash
         run: |
           set -e
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
           python -m pip install --upgrade pip
-          python -m pip install \
-            "kokoro>=0.9.4,<1.0" \
-            "misaki[ja]>=0.9.4,<1.0" \
-            "soundfile>=0.12" \
-            "numpy>=1.26,<3"
-          python -m unidic download
+          python -m pip install "edge-tts>=7.0,<8.0"
 
-      - name: Generate cached natural Japanese audio
+      - name: Generate young-adult Japanese neural audio
+        env:
+          N5_TTS_CONCURRENCY: "4"
         run: |
           python scripts/extract_audio_texts.py
           python scripts/generate_audio.py
