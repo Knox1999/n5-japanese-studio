@@ -34,6 +34,7 @@ function tokenTone(text:string){
 }
 
 function VisualFormula({rule}:{rule:Rule}){
+  const steps=rule.steps??[];
   return <div className={`grammar-visual grammar-visual-${rule.visual}`}>
     <div className="grammar-visual-label">
       {rule.visual==='table'?<Table2/>:rule.visual==='branch'?<Network/>:<Sparkles/>}
@@ -45,7 +46,7 @@ function VisualFormula({rule}:{rule:Rule}){
         {i<rule.parts.length-1&&<ArrowRight className="grammar-arrow" aria-hidden="true"/>}
       </div>)}
     </div>
-    {rule.steps?.length>0&&<div className="grammar-step-flow">{rule.steps.map((step,i)=><div key={step}><span>{String(i+1).padStart(2,'0')}</span><b className="font-jp" lang="ja">{step}</b>{i<rule.steps.length-1&&<ArrowDown/>}</div>)}</div>}
+    {steps.length>0&&<div className="grammar-step-flow">{steps.map((step,i)=><div key={step}><span>{String(i+1).padStart(2,'0')}</span><b className="font-jp" lang="ja">{step}</b>{i<steps.length-1&&<ArrowDown/>}</div>)}</div>}
   </div>
 }
 
@@ -69,7 +70,7 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
 
   useEffect(()=>{
     let dead=false;
-    fetch(`${BASE}/data/grammar-visual.json?v=53`,{cache:'no-cache'})
+    fetch(`${BASE}/data/grammar-visual.json?v=55`,{cache:'no-cache'})
       .then(r=>{if(!r.ok)throw new Error(`Grammar data ${r.status}`);return r.json()})
       .then(x=>!dead&&setPayload(x))
       .catch(e=>{if(!dead){setError(String(e));trackError('grammar_data',e)}});

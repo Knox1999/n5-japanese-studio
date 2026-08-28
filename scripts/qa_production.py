@@ -30,10 +30,10 @@ check("Recursive KLC Construction" in kanji and "RecursiveNode" in kanji,"Recurs
 check("Builds into" in kanji and "reverse" in kanji,"Builds-into reverse graph")
 check("data.vocabulary.flatMap" in kanji,"Lesson Kanji derived from vocabulary")
 
-check("const VERSION='v50'" in sw,"V50 service-worker cache version")
+check("const VERSION='v55'" in sw,"V55 service-worker cache version")
 check("nihongo-vibes-" in sw,"The Nihongo Vibes cache namespace")
 check(manifest.get("short_name")=="Nihongo Vibes","PWA brand is Nihongo Vibes")
-check(str(package.get("version"))=="50.0.0","Package version is 50.0.0")
+check(str(package.get("version"))=="55.0.0","Package version is 55.0.0")
 check((ROOT/"styles/v50-production.scss").exists(),"V50 production stylesheet present")
 check((ROOT/"components/DataVault.tsx").exists(),"Backup/restore Data Vault present")
 check((ROOT/"public/robots.txt").exists(),"robots.txt present")
@@ -54,6 +54,14 @@ check("v53-visual-grammar.scss" in (ROOT/"app/layout.tsx").read_text(encoding="u
 check("grammar-visual.json" in (ROOT/"scripts/build_data.py").read_text(encoding="utf-8"),"Grammar data exported during build")
 check("grammar_visual" in (ROOT/"scripts/extract_audio_texts.py").read_text(encoding="utf-8"),"Grammar examples included in audio extraction")
 check("G-FG3JCWGSPR" in (ROOT/"app/layout.tsx").read_text(encoding="utf-8"),"GA4 measurement ID preserved")
+
+grammar_component=(ROOT/"components/GrammarStudio.tsx").read_text(encoding="utf-8")
+vocab_component=(ROOT/"components/Vocabulary.tsx").read_text(encoding="utf-8")
+check("const steps=rule.steps??[];" in grammar_component,"Grammar optional steps TypeScript guard present")
+check("rule.steps.map" not in grammar_component,"Unsafe optional steps access removed")
+check("VerbFormsLab" in vocab_component,"Clean Verb Forms Lab present")
+check("verb-group-memory" not in vocab_component,"Always-visible Verb Group Memory Map removed")
+check("N5 USAGE PATTERNS" in vocab_component,"On-demand N5 verb patterns present")
 
 if post:
     out=ROOT/"out"
