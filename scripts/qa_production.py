@@ -30,10 +30,10 @@ check("Recursive KLC Construction" in kanji and "RecursiveNode" in kanji,"Recurs
 check("Builds into" in kanji and "reverse" in kanji,"Builds-into reverse graph")
 check("data.vocabulary.flatMap" in kanji,"Lesson Kanji derived from vocabulary")
 
-check("const VERSION='v55'" in sw,"V55 service-worker cache version")
+check("const VERSION='v56'" in sw,"V56 service-worker cache version")
 check("nihongo-vibes-" in sw,"The Nihongo Vibes cache namespace")
 check(manifest.get("short_name")=="Nihongo Vibes","PWA brand is Nihongo Vibes")
-check(str(package.get("version"))=="55.0.0","Package version is 55.0.0")
+check(str(package.get("version"))=="56.0.0","Package version is 56.0.0")
 check((ROOT/"styles/v50-production.scss").exists(),"V50 production stylesheet present")
 check((ROOT/"components/DataVault.tsx").exists(),"Backup/restore Data Vault present")
 check((ROOT/"public/robots.txt").exists(),"robots.txt present")
@@ -61,7 +61,27 @@ check("const steps=rule.steps??[];" in grammar_component,"Grammar optional steps
 check("rule.steps.map" not in grammar_component,"Unsafe optional steps access removed")
 check("VerbFormsLab" in vocab_component,"Clean Verb Forms Lab present")
 check("verb-group-memory" not in vocab_component,"Always-visible Verb Group Memory Map removed")
-check("N5 USAGE PATTERNS" in vocab_component,"On-demand N5 verb patterns present")
+check(all(x in vocab_component for x in ["01 · ます FORM","02 · た FORM","03 · ない FORM","04 · DICTIONARY FORM","05 · て FORM"]),"Verb form families ordered and boxed")
+
+# V56 unified UI / mobile / dual-voice / JLPT-style mock QA
+layout=(ROOT/"app/layout.tsx").read_text(encoding="utf-8")
+ui=(ROOT/"styles/v56-unified-ui.scss").read_text(encoding="utf-8")
+conversation=(ROOT/"components/StudyViews.tsx").read_text(encoding="utf-8")
+audio=(ROOT/"lib/audio.ts").read_text(encoding="utf-8")
+extract=(ROOT/"scripts/extract_audio_texts.py").read_text(encoding="utf-8")
+generator=(ROOT/"scripts/generate_audio.py").read_text(encoding="utf-8")
+mock=(ROOT/"components/MockTest.tsx").read_text(encoding="utf-8")
+check("v56-unified-ui.scss" in layout,"V56 unified stylesheet imported last")
+check("--f-bg:#041326" in ui and "#071311" not in ui,"Legacy green palette removed from V56 design layer")
+check("@media(max-width:760px)" in ui and ".future-brand{display:flex!important" in ui,"Mobile header keeps logo/brand visible")
+check("overflow-y:auto!important" in ui,"Page scrolling explicitly preserved")
+check("voice-${voice}" in conversation and "Male" in conversation and "Female" in conversation and "Play full A ↔ B" in conversation,"Two-person conversation UI")
+check("AudioVoiceRole" in audio and "voiceRole==='default'" in audio,"Role-aware audio API present")
+check("voice_role" in extract and "male" in extract and "female" in extract,"Dual-voice dialogue clips extracted")
+check("jm_kumo" in generator and "jf_tebukuro" in generator,"Japanese male/female Kokoro voices configured")
+check("20 Vocabulary + 20 Grammar/Reading + 12 Listening" in mock,"52-item JLPT-style practice blueprint")
+check(all(x in mock for x in ["minutes:20","minutes:40","minutes:30"]),"Current N5 section times encoded")
+check(all(x in mock for x in ["Kanji reading","Orthography","Sentential grammar","Quick response"]),"JLPT N5 item-type families represented")
 
 if post:
     out=ROOT/"out"

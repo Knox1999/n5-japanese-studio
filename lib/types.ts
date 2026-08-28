@@ -68,9 +68,7 @@ export interface StudioMeta {
   lessons: MetaLesson[];
 }
 
-export type KLCNodeRaw = [
-  number, string, string, string, string, string, string, string, string, string, string
-];
+export type KLCNodeRaw = [number, string, string, string, string, string, string, string, string, string, string];
 export type KLCEdgeRaw = [number, number, string, string, string, number | null, string];
 export interface KLCTree { nodes: KLCNodeRaw[]; edges: KLCEdgeRaw[]; stats: Record<string, number>; }
 export type KLCMemory = Record<string, [string, string, string[]]>;
@@ -87,9 +85,10 @@ export interface SrsCardState {
   use_count?: number;
 }
 
-
 export interface MockAttempt {
   lesson: number;
+  scope?: 'lesson' | 'n5-full';
+  label?: string;
   score: number;
   correct: number;
   total: number;

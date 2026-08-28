@@ -162,34 +162,56 @@ function VerbFormsLab({v,onClose}:{v:VocabItem;onClose:()=>void}){
   const forms=verbForms(v);
   if(!forms)return null;
 
-  const polite=[
-    ['ます-form',forms.masu,'Present / Future +'],
-    ['ません-form',forms.masen,'Present / Future −'],
-    ['ました-form',forms.mashita,'Past +'],
-    ['ませんでした',forms.masenDeshita,'Past −'],
-  ];
-  const plain=[
-    ['Dictionary',forms.dictionary,'Plain Present +'],
-    ['ない-form',forms.nai,'Plain Present −'],
-    ['た-form',forms.ta,'Plain Past +'],
-    ['なかった-form',forms.nakatta,'Plain Past −'],
-    ['て-form',forms.te,'Connect / Request base'],
-  ];
   const stem=forms.masu.endsWith('ます')?forms.masu.slice(0,-2):forms.masu;
   const naiStem=forms.nai.endsWith('ない')?forms.nai.slice(0,-2):forms.nai;
-  const useful=[
-    ['〜ています',`${forms.te}います`,'ongoing / state'],
-    ['〜てください',`${forms.te}ください`,'please do'],
-    ['〜てもいいです',`${forms.te}もいいです`,'permission'],
-    ['〜てはいけません',`${forms.te}はいけません`,'prohibition'],
-    ['〜ないでください',`${forms.nai}でください`,'please do not'],
-    ['〜なければなりません',`${naiStem}なければなりません`,'must do'],
-    ['〜なくてもいいです',`${naiStem}なくてもいいです`,'need not do'],
-    ['〜たいです',`${stem}たいです`,'want to do'],
-    ['〜ましょう',`${stem}ましょう`,'let us do'],
-    ['〜ませんか',`${stem}ませんか`,'invitation'],
-  ];
   const play=(text:string,label:string)=>playText(text,1,'verb_form',{}, {lesson_number:v.lesson,word_id:v.id,form_name:label,verb_group:meta.groupId});
+
+  const families=[
+    {
+      id:'masu',eyebrow:'01 · ます FORM',title:'Polite tense box',note:'丁寧形',cls:'family-masu',
+      cells:[
+        ['ます',forms.masu,'Present / Future +'],
+        ['ません',forms.masen,'Present / Future −'],
+        ['ました',forms.mashita,'Past +'],
+        ['ませんでした',forms.masenDeshita,'Past −'],
+      ]
+    },
+    {
+      id:'ta',eyebrow:'02 · た FORM',title:'Plain past box',note:'普通形 · 過去',cls:'family-ta',
+      cells:[
+        ['た-form',forms.ta,'Plain Past +'],
+        ['なかった-form',forms.nakatta,'Plain Past −'],
+      ]
+    },
+    {
+      id:'nai',eyebrow:'03 · ない FORM',title:'Negative family box',note:'否定形',cls:'family-nai',
+      cells:[
+        ['ない-form',forms.nai,'Plain Present −'],
+        ['〜ないでください',`${forms.nai}でください`,'Please do not'],
+        ['〜なければなりません',`${naiStem}なければなりません`,'Must do'],
+        ['〜なくてもいいです',`${naiStem}なくてもいいです`,'Need not do'],
+      ]
+    },
+    {
+      id:'dictionary',eyebrow:'04 · DICTIONARY FORM',title:'Plain base box',note:'辞書形',cls:'family-dictionary',
+      cells:[
+        ['Dictionary',forms.dictionary,'Plain Present +'],
+        ['〜たいです',`${stem}たいです`,'Want to do'],
+        ['〜ましょう',`${stem}ましょう`,'Let us do'],
+        ['〜ませんか',`${stem}ませんか`,'Invitation'],
+      ]
+    },
+    {
+      id:'te',eyebrow:'05 · て FORM',title:'Connect & usage box',note:'接続形',cls:'family-te',
+      cells:[
+        ['て-form',forms.te,'Connect / request base'],
+        ['〜ています',`${forms.te}います`,'Ongoing / state'],
+        ['〜てください',`${forms.te}ください`,'Please do'],
+        ['〜てもいいです',`${forms.te}もいいです`,'Permission'],
+        ['〜てはいけません',`${forms.te}はいけません`,'Prohibition'],
+      ]
+    },
+  ] as const;
 
   return <div className="verb-lab-layer" role="dialog" aria-modal="true" aria-labelledby="verb-lab-title">
     <button className="future-layer-backdrop" onClick={onClose} aria-label="Close Verb Forms Lab"/>
@@ -199,37 +221,22 @@ function VerbFormsLab({v,onClose}:{v:VocabItem;onClose:()=>void}){
         <button onClick={onClose} aria-label="Close"><X/></button>
       </header>
 
-      <div className="verb-lab-group">
-        <span>{meta.group?.replace(' · ',' · ')}</span>
-        <b className="font-jp">{meta.groupJa}</b>
+      <div className="verb-lab-group"><span>{meta.group}</span><b className="font-jp">{meta.groupJa}</b></div>
+
+      <div className="verb-family-stack">
+        {families.map(f=><section className={`verb-family-box ${f.cls}`} key={f.id}>
+          <header><div><span>{f.eyebrow}</span><b className="font-bn">{f.title}</b></div><span className="font-jp">{f.note}</span></header>
+          <div className={`verb-family-grid ${f.cells.length===2?'two':f.cells.length===3?'three':''}`}>
+            {f.cells.map(([label,value,note])=><FormCell key={`${f.id}-${label}`} label={label} value={value} note={note} onPlay={()=>play(value,label)}/>) }
+          </div>
+        </section>)}
       </div>
-
-      <section className="verb-form-section">
-        <div className="verb-form-section-head"><span>POLITE FORMS</span><b>丁寧形 · ます series</b></div>
-        <div className="verb-form-grid">
-          {polite.map(([label,value,note])=><FormCell key={label} label={label} value={value} note={note} onPlay={()=>play(value,label)}/>)}
-        </div>
-      </section>
-
-      <section className="verb-form-section">
-        <div className="verb-form-section-head"><span>PLAIN & CONNECTIVE</span><b>普通形 · core N5 forms</b></div>
-        <div className="verb-form-grid verb-form-grid-plain">
-          {plain.map(([label,value,note])=><FormCell key={label} label={label} value={value} note={note} onPlay={()=>play(value,label)}/>)}
-        </div>
-      </section>
-
-      <section className="verb-form-section verb-usage-section">
-        <div className="verb-form-section-head"><span>N5 USAGE PATTERNS</span><b>Core form থেকে দরকারি pattern</b></div>
-        <div className="verb-form-grid verb-usage-grid">
-          {useful.map(([label,value,note])=><FormCell key={label} label={label} value={value} note={note} onPlay={()=>play(value,label)}/>)}
-        </div>
-      </section>
 
       {meta.irregular&&<section className="verb-exception-panel">
         <AlertTriangle/><div><span>কেন ব্যতিক্রম?</span><b className="font-bn">{meta.irregularTitle}</b><p className="font-bn">{meta.irregularNote}</p></div>
       </section>}
 
-      <footer className="verb-lab-footer font-bn">Vocabulary card clean থাকে। Conjugation কেবল এই Forms Lab-এর ভেতরে দেখানো হচ্ছে।</footer>
+      <footer className="verb-lab-footer font-bn">Vocabulary card clean রাখা হয়েছে। সব conjugation শুধু Verb → Group → Forms খুললে দেখা যাবে।</footer>
     </section>
   </div>
 }

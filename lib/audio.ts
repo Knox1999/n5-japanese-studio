@@ -1,12 +1,20 @@
 import { BASE } from './data';
 import { track, trackError } from './analytics';
 
+export type AudioVoiceRole='default'|'male'|'female';
+
 let activeAudio: HTMLAudioElement | null = null;
 let activeUtterance: SpeechSynthesisUtterance | null = null;
+let activeResolve: (()=>void) | null = null;
 let raf = 0;
 
 function normalize(text: string) {
   return String(text || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+}
+
+function hashText(text:string,voiceRole:AudioVoiceRole='default'){
+  const clean=normalize(text);
+  return voiceRole==='default'?clean:`${voiceRole}|${clean}`;
 }
 
 export async function sha1(text: string) {
@@ -15,8 +23,8 @@ export async function sha1(text: string) {
   return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function audioUrlForText(text: string) {
-  const hash = await sha1(normalize(text));
+export async function audioUrlForText(text: string,voiceRole:AudioVoiceRole='default') {
+  const hash = await sha1(hashText(text,voiceRole));
   return `${BASE}/audio/${hash}.mp3`;
 }
 
@@ -30,20 +38,22 @@ export function stopAudio() {
     try { window.speechSynthesis.cancel(); } catch {}
   }
   activeUtterance = null;
+  const finish=activeResolve;activeResolve=null;finish?.();
 }
 
-function scoreJapaneseVoice(v: SpeechSynthesisVoice) {
+function scoreJapaneseVoice(v: SpeechSynthesisVoice,role:AudioVoiceRole='default') {
   const name = `${v.name} ${v.voiceURI}`.toLowerCase();
   let score = /^ja(-|_)/i.test(v.lang) ? 40 : v.lang.toLowerCase().includes('ja') ? 25 : 0;
-  // Prefer the most natural Japanese voices commonly shipped by modern OS/browser engines.
   if (/nanami|kyoko|haruka|sayaka|google.*日本語|google.*japanese|microsoft.*japanese/.test(name)) score += 32;
   if (/natural|neural|online/.test(name)) score += 22;
   if (/premium|enhanced/.test(name)) score += 12;
+  if(role==='male'&&/male|otoya|ichiro|kumo|masculine/.test(name))score+=30;
+  if(role==='female'&&/female|nanami|kyoko|haruka|sayaka|feminine/.test(name))score+=30;
   if (v.localService) score += 3;
   return score;
 }
 
-async function jpVoice() {
+async function jpVoice(role:AudioVoiceRole='default') {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return undefined;
   const synth = window.speechSynthesis;
   let voices = synth.getVoices();
@@ -56,9 +66,9 @@ async function jpVoice() {
     });
     voices = synth.getVoices();
   }
-  return voices
-    .filter(v => /^ja(-|_)/i.test(v.lang) || v.lang.toLowerCase().includes('ja'))
-    .sort((a,b) => scoreJapaneseVoice(b) - scoreJapaneseVoice(a))[0];
+  const jp=voices.filter(v => /^ja(-|_)/i.test(v.lang) || v.lang.toLowerCase().includes('ja')).sort((a,b) => scoreJapaneseVoice(b,role) - scoreJapaneseVoice(a,role));
+  if(role==='male'&&jp.length>1&&!/male|otoya|ichiro|kumo/i.test(`${jp[0].name} ${jp[0].voiceURI}`))return jp[1];
+  return jp[0];
 }
 
 function naturalFallbackRate(text: string, requested: number) {
@@ -81,17 +91,22 @@ export interface AudioCallbacks {
   onEnd?: () => void;
 }
 
-export async function playText(text: string, rate = 1, type = 'sentence', cb: AudioCallbacks = {}, meta: Record<string, unknown> = {}) {
+export async function playText(
+  text: string,
+  rate = 1,
+  type = 'sentence',
+  cb: AudioCallbacks = {},
+  meta: Record<string, unknown> = {},
+  voiceRole:AudioVoiceRole='default'
+) {
   stopAudio();
   const safeRate = Math.max(0.75, Math.min(1, rate));
   const clean = normalize(text);
   if (!clean) return;
-  track('audio_play', { audio_type: type, playback_rate: safeRate, content_length: clean.length, ...meta });
+  track('audio_play', { audio_type: type, playback_rate: safeRate, content_length: clean.length, voice_role:voiceRole, ...meta });
 
-  // Primary path: pre-generated Kokoro neural MP3. Keeping pitch preserved is important
-  // when the learner chooses 0.75x / 0.90x so the voice does not become artificial.
   try {
-    const hash = await sha1(clean);
+    const hash = await sha1(hashText(clean,voiceRole));
     const url = `${BASE}/audio/${hash}.mp3`;
     const audio = new Audio(url);
     activeAudio = audio;
@@ -103,7 +118,10 @@ export async function playText(text: string, rate = 1, type = 'sentence', cb: Au
 
     await new Promise<void>((resolve, reject) => {
       let started = false;
-      const fail = () => reject(new Error('static-audio-unavailable'));
+      let settled=false;
+      const finish=()=>{if(settled)return;settled=true;if(activeResolve===finish)activeResolve=null;resolve()};
+      activeResolve=finish;
+      const fail = () => {if(activeResolve===finish)activeResolve=null;reject(new Error('static-audio-unavailable'))};
       audio.addEventListener('error', fail, { once: true });
       audio.addEventListener('canplay', async () => {
         if (started) return;
@@ -122,9 +140,9 @@ export async function playText(text: string, rate = 1, type = 'sentence', cb: Au
             if (raf) { cancelAnimationFrame(raf); raf = 0; }
             cb.onProgress?.(1); cb.onEnd?.();
             if (activeAudio === audio) activeAudio = null;
-            resolve();
+            finish();
           }, { once: true });
-        } catch (e) { reject(e); }
+        } catch (e) { if(activeResolve===finish)activeResolve=null;reject(e); }
       }, { once: true });
       audio.load();
     });
@@ -133,18 +151,19 @@ export async function playText(text: string, rate = 1, type = 'sentence', cb: Au
     trackError('audio', e);
   }
 
-  // Fallback for local preview/cache misses. We rank installed Japanese voices instead
-  // of taking the first ja-JP voice, then use a slightly warmer, punctuation-aware pace.
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     await new Promise<void>(async resolve => {
+      let settled=false;
+      const finish=()=>{if(settled)return;settled=true;if(activeResolve===finish)activeResolve=null;resolve()};
+      activeResolve=finish;
       const u = new SpeechSynthesisUtterance(clean);
       activeUtterance = u;
       u.lang = 'ja-JP';
       const fallbackRate = naturalFallbackRate(clean, safeRate);
       u.rate = fallbackRate;
-      u.pitch = 1.01;
+      u.pitch = voiceRole==='male'?.96:voiceRole==='female'?1.04:1.01;
       u.volume = 1;
-      const v = await jpVoice();
+      const v = await jpVoice(voiceRole);
       if (v) u.voice = v;
       const started = performance.now();
       const est = estimatedSpeechMs(clean, fallbackRate);
@@ -159,11 +178,11 @@ export async function playText(text: string, rate = 1, type = 'sentence', cb: Au
       };
       u.onend = () => {
         if (raf) { cancelAnimationFrame(raf); raf = 0; }
-        cb.onProgress?.(1); cb.onEnd?.(); activeUtterance = null; resolve();
+        cb.onProgress?.(1); cb.onEnd?.(); activeUtterance = null; finish();
       };
       u.onerror = () => {
         if (raf) { cancelAnimationFrame(raf); raf = 0; }
-        cb.onEnd?.(); activeUtterance = null; resolve();
+        cb.onEnd?.(); activeUtterance = null; finish();
       };
       window.speechSynthesis.speak(u);
     });

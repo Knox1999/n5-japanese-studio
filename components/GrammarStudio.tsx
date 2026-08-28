@@ -70,7 +70,7 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
 
   useEffect(()=>{
     let dead=false;
-    fetch(`${BASE}/data/grammar-visual.json?v=55`,{cache:'no-cache'})
+    fetch(`${BASE}/data/grammar-visual.json?v=56`,{cache:'no-cache'})
       .then(r=>{if(!r.ok)throw new Error(`Grammar data ${r.status}`);return r.json()})
       .then(x=>!dead&&setPayload(x))
       .catch(e=>{if(!dead){setError(String(e));trackError('grammar_data',e)}});

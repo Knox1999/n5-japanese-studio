@@ -1,6 +1,6 @@
 {
   "name": "the-nihongo-vibes",
-  "version": "55.0.0",
+  "version": "56.0.0",
   "private": true,
   "scripts": {
     "data:build": "python scripts/build_klc_from_csv.py && python scripts/build_data.py",

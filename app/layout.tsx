@@ -10,6 +10,7 @@ import '@/styles/v51-masterpiece.scss';
 import '@/styles/v52-learning-master.scss';
 import '@/styles/v53-visual-grammar.scss';
 import '@/styles/v54-clean-verb-lab.scss';
+import '@/styles/v56-unified-ui.scss';
 
 const SITE='https://knox1999.github.io/n5-japanese-studio/';
 export const metadata: Metadata = {
