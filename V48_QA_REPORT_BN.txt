@@ -1,0 +1,43 @@
+N5 NATURAL JAPANESE STUDIO — V48 QA REPORT
+===========================================
+
+PASS — TypeScript/TSX parser check
+- app/layout.tsx
+- components/AmbientCanvas.tsx
+- components/Dashboard.tsx
+- components/FutureBackdrop.tsx
+- components/HeroScene.tsx
+- components/Listening.tsx
+- components/Shell.tsx
+- components/Vocabulary.tsx
+- lib/audio.ts
+- lib/linguistics.ts
+
+PASS — Python syntax
+- scripts/generate_audio.py (python -m py_compile)
+
+PASS — SCSS structural check
+- opening/closing braces balanced (830 / 830)
+
+PASS — Mobile performance safeguards
+- Three.js canvas disabled <= 640px
+- reduced-motion disables Three.js and exception pulse
+- Three.js render loop throttled and pauses on hidden tabs
+- GSAP page motion respects prefers-reduced-motion
+
+PASS — Listening meaning logic
+- dialogue translation uses [speaker, Japanese, Bangla]
+- reading JP/BN parallel sentence alignment supported
+- reading_extra_pairs alignment supported
+- shadowing de-duplicates and reuses known meanings
+- unavailable exact meanings receive an explicit fallback note instead of invented translation
+
+PASS — Word-class learning logic
+- Verb / i-adjective / na-adjective type mapping
+- filter UI + rule strip
+- irregular markers for する, 来る, 行く, ある, いい/良い, きれい/綺麗, 有名, 嫌い
+- usage_notation / naturalness_note surfaced as learning notes when present
+
+LIMITATION
+- This artifact is a ready-to-merge patch, not a complete local clone of the GitHub repository.
+- A full `npm run build` requires the complete repo + npm dependencies. Parser-level validation was performed on all TS/TSX files included in the patch.

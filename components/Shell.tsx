@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard, BookOpen, PenLine, Brain, MessageCircle, BookOpenText, Headphones, Languages,
   TreePine, ClipboardCheck, History, Menu, X, Search, Sparkles, ChevronDown, Command, Radio
 } from 'lucide-react';
 import type { StudioMeta, ViewName } from '@/lib/types';
 import { loadSearchIndex } from '@/lib/data';
+import AmbientCanvas from './AmbientCanvas';
 
 type NavItem={view:ViewName;label:string;short:string;icon:any};
 const NAV:NavItem[]=[
@@ -30,11 +31,13 @@ export default function Shell({meta,lesson,view,onLesson,onView,children}:{meta:
  const [results,setResults]=useState<any[]>([]);
  const [loading,setLoading]=useState(false);
  const subnavRef=useRef<HTMLDivElement|null>(null);
+ const mainRef=useRef<HTMLElement|null>(null);
 
  const openSearch=async()=>{setSearch(true);if(results.length)return;setLoading(true);try{setResults(await loadSearchIndex())}finally{setLoading(false)}};
  useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch()}if(e.key==='Escape'){setDrawer(false);setSearch(false)}};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey)},[results.length]);
  useEffect(()=>{const locked=drawer||search;if(!locked)return;const prev=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=prev}},[drawer,search]);
  useEffect(()=>{const root=subnavRef.current;if(!root)return;const active=root.querySelector<HTMLButtonElement>('button.active');active?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})},[view]);
+ useLayoutEffect(()=>{const el=mainRef.current;if(!el||typeof window==='undefined'||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;let ctx:any;(async()=>{try{const {gsap}=await import('gsap');ctx=gsap.context(()=>{gsap.fromTo(el,{opacity:.72,y:9,filter:'blur(3px)'},{opacity:1,y:0,filter:'blur(0px)',duration:.46,ease:'power3.out',clearProps:'filter'});gsap.fromTo('.future-subnav button.active',{scale:.94},{scale:1,duration:.34,ease:'back.out(1.7)'})},el.parentElement||el)}catch{}})();return()=>ctx?.revert?.()},[view,lesson]);
 
  const shown=q.trim()?results.filter(x=>[x.j,x.k,x.bn,x.en,x.p].some((v:any)=>String(v||'').toLowerCase().includes(q.toLowerCase()))).slice(0,30):results.slice(0,12);
  const go=(v:ViewName)=>{onView(v);setDrawer(false)};
@@ -57,7 +60,8 @@ export default function Shell({meta,lesson,view,onLesson,onView,children}:{meta:
    <div className="future-drawer-foot"><Sparkles size={16}/><span>Learn → Listen → Recall → Use → Review</span></div>
  </aside>;
 
- return <div className="future-shell" data-view={view}>
+ return <div className="future-shell future-shell-v48" data-view={view}>
+   <div className="future-global-ambient" aria-hidden="true"><AmbientCanvas/></div>
    <header className="future-header">
      <Brand/>
      <nav className="future-primary-nav" aria-label="Primary navigation">
@@ -76,7 +80,7 @@ export default function Shell({meta,lesson,view,onLesson,onView,children}:{meta:
      {NAV.slice(1).map(x=>{const I=x.icon;return <button key={x.view} data-view={x.view} className={view===x.view?'active':''} onClick={()=>go(x.view)} aria-current={view===x.view?'page':undefined}><I size={14}/>{x.short}</button>})}
    </div>
 
-   <main className="future-main" id="main-content">{children}</main>
+   <main ref={mainRef} className="future-main" id="main-content">{children}</main>
 
    <nav className="future-mobile-dock" aria-label="Mobile navigation">
      {([NAV[0],NAV[1],NAV[2],NAV[6]] as NavItem[]).map(x=>{const I=x.icon;return <button key={x.view} onClick={()=>go(x.view)} className={view===x.view?'active':''} aria-current={view===x.view?'page':undefined}><I/><span>{x.short}</span></button>})}

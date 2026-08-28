@@ -38,9 +38,9 @@ const MODES: Array<{
   icon: any;
   tone: string;
 }> = [
-  {view:'vocabulary',glyph:'語',title:'Vocabulary Core',bn:'শব্দভান্ডার',detail:'Meaning · example · voice · mastery',icon:BookOpen,tone:'cyan'},
+  {view:'vocabulary',glyph:'語',title:'Vocabulary Core',bn:'শব্দভান্ডার',detail:'Meaning · word class · exception · voice · mastery',icon:BookOpen,tone:'cyan'},
   {view:'srs',glyph:'憶',title:'Memory Recall',bn:'স্মার্ট রিভিউ',detail:'Adaptive review from your real progress',icon:Brain,tone:'violet'},
-  {view:'listening',glyph:'聴',title:'Listening Lab',bn:'শোনা + শ্যাডোয়িং',detail:'Waveform · live transcript · 0.75×–1×',icon:Headphones,tone:'blue'},
+  {view:'listening',glyph:'聴',title:'Listening Lab',bn:'শোনা + শ্যাডোয়িং',detail:'Waveform · বাংলা meaning · word hints · 0.75×–1×',icon:Headphones,tone:'blue'},
   {view:'spelling',glyph:'書',title:'Active Output',bn:'স্পেলিং প্র্যাকটিস',detail:'Recall the word, then produce it',icon:PenLine,tone:'green'},
   {view:'kanji',glyph:'木',title:'Kanji Matrix',bn:'ভিজ্যুয়াল কাঞ্জি ট্রি',detail:'Component → construction → related forms',icon:TreePine,tone:'gold'},
   {view:'mock',glyph:'試',title:'Exam Simulator',bn:'মক টেস্ট',detail:'Attempt · score · review · retry',icon:ClipboardCheck,tone:'rose'},

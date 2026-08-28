@@ -1,0 +1,130 @@
+{
+  "version": "V48.0",
+  "artifact": "N5_FUTURISTIC_LEARNING_OS_V48_THREE_GSAP_MEANING_GRAMMAR_OPTIMIZED",
+  "file_count": 23,
+  "highlights": [
+    "Three.js global ambient scene",
+    "GSAP view transitions and hero choreography",
+    "Listening line-by-line Bangla meaning and vocabulary hints",
+    "Verb / い-adjective / な-adjective visual classification",
+    "Irregular/exception learning highlights",
+    "Mobile and reduced-motion performance safeguards"
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/deploy-pages.yml",
+      "bytes": 3077,
+      "sha256": "a452276bd9c09edc9edff931c55dea759209645799f95aaf37c910b5564de7cd"
+    },
+    {
+      "path": "V46_1_BUILD_FIX_BN.txt",
+      "bytes": 996,
+      "sha256": "bac7447f0d12b64808c9667092d748a50926ea0b4308b2a9ad1ef45182897b73"
+    },
+    {
+      "path": "V46_1_FIX_QA.txt",
+      "bytes": 278,
+      "sha256": "1fea37354afd4e774314282053ef3e27b1038ec766e301e027cb72ee984528ef"
+    },
+    {
+      "path": "V46_QA_REPORT.txt",
+      "bytes": 351,
+      "sha256": "6da92fd799c22c77ab6b2225bbb1d7fe958a512df9572ddb693715cabd5cd0b3"
+    },
+    {
+      "path": "V46_SETUP_BN.txt",
+      "bytes": 1985,
+      "sha256": "3d378c40b753c9d43620b828b2afb4d0cfffa390b96c21e7a67c2c78e86df956"
+    },
+    {
+      "path": "V47_MANIFEST.json",
+      "bytes": 2574,
+      "sha256": "69bde2a785f128a137a035b908fb7b308a3bc5f26b952fa1010d1ac16b8f269b"
+    },
+    {
+      "path": "V47_QA_REPORT_BN.txt",
+      "bytes": 2093,
+      "sha256": "057da2e94bde5b7cfe88fd0081d33810e95345903143a22e73922fa8de6a5e23"
+    },
+    {
+      "path": "V47_README_BN.txt",
+      "bytes": 4775,
+      "sha256": "c4c81ddd785fcc01ca806ba8ab86a798300c8798a21c2a92060ca00a76e49706"
+    },
+    {
+      "path": "V48_QA_REPORT_BN.txt",
+      "bytes": 1653,
+      "sha256": "0acb8c1a2403ed74d82bac969713f20cdab8c3d52b05d04869c37b4f5fcdc68f"
+    },
+    {
+      "path": "V48_README_BN.txt",
+      "bytes": 3441,
+      "sha256": "48c2fdd8a9d0ad75721626fec705f3a7cc028039f3db92f46a69a9c2115124e4"
+    },
+    {
+      "path": "VERSION.txt",
+      "bytes": 6,
+      "sha256": "100d58c7ce2c3d5b7e7125d81ae8d77161ade3be3b937e00e8dc3fe2f40fd1df"
+    },
+    {
+      "path": "app/layout.tsx",
+      "bytes": 1317,
+      "sha256": "fc08cb18cf44827419d7641a348e89a07704605b9b4149284248c3697b9dda5e"
+    },
+    {
+      "path": "components/AmbientCanvas.tsx",
+      "bytes": 5243,
+      "sha256": "7e937ea499a6e5d3dd2093cd3d08a1b5762322a10aa056b28ecb941d0f649521"
+    },
+    {
+      "path": "components/Dashboard.tsx",
+      "bytes": 17984,
+      "sha256": "5ee36b82d4dfb6c2834d75d18e064903ffc5ca42356283235e0bcc24ff09b092"
+    },
+    {
+      "path": "components/FutureBackdrop.tsx",
+      "bytes": 976,
+      "sha256": "b0f613434a22e0b0c908daa462cf5be799c80ff6c815b57a2bd8fab8c78d05e6"
+    },
+    {
+      "path": "components/HeroScene.tsx",
+      "bytes": 5041,
+      "sha256": "945e767ab549bc85210dce2225ce5a24dc529a683c94bde663578ed5f76f7a6e"
+    },
+    {
+      "path": "components/Listening.tsx",
+      "bytes": 10483,
+      "sha256": "9e378ab4891460d45b68033b5152621bf46f0db475d8738db9f57b154dc7b519"
+    },
+    {
+      "path": "components/Shell.tsx",
+      "bytes": 8410,
+      "sha256": "a7d663a483dd54b0c212954efebd5b82c0e0b7168e01c84c8b7d4517173c32b1"
+    },
+    {
+      "path": "components/Vocabulary.tsx",
+      "bytes": 7174,
+      "sha256": "3553e3d7eb20483b8518318a4447b3586aa2b86aee1d9808b066d5b9d7f69fa9"
+    },
+    {
+      "path": "lib/audio.ts",
+      "bytes": 6526,
+      "sha256": "28337d062d36cf9966d377aed3022fb6ba3fee12fb307c75eb34278838bb04f0"
+    },
+    {
+      "path": "lib/linguistics.ts",
+      "bytes": 5050,
+      "sha256": "f2fdf88617fe33051d6d42680755712bb89c9dbec8e179fcf5066187cb922241"
+    },
+    {
+      "path": "scripts/generate_audio.py",
+      "bytes": 6273,
+      "sha256": "fbddb9ecd1532a99513d05de7940c5c5f8e49b8037d2f3645602894e90e41250"
+    },
+    {
+      "path": "styles/v46-futuristic.scss",
+      "bytes": 77504,
+      "sha256": "4bd4291245cd40a363d55595a5f0d77dddbace34382a9f3ba02f85c87199a8fb"
+    }
+  ]
+}
