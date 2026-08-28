@@ -1,17 +1,69 @@
 import type { LessonPayload, StudioMeta, KLCTree, KLCMemory } from './types';
 
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
-export const DATA_VERSION = '57';
+export const DATA_VERSION = '58';
+
+export class ResourceLoadError extends Error {
+  path:string;
+  attempts:number;
+  status?:number;
+  constructor(path:string, attempts:number, message:string, status?:number){
+    super(message);
+    this.name='ResourceLoadError';
+    this.path=path;
+    this.attempts=attempts;
+    this.status=status;
+  }
+}
 
 function versioned(path: string) {
   const join = path.includes('?') ? '&' : '?';
   return `${BASE}${path}${join}v=${DATA_VERSION}`;
 }
 
-async function getJSON<T>(path: string): Promise<T> {
-  const res = await fetch(versioned(path), { cache: 'no-cache' });
-  if (!res.ok) throw new Error(`Failed to load ${path}: ${res.status}`);
-  return res.json() as Promise<T>;
+const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
+
+function notify(path:string,error:unknown){
+  if(typeof window==='undefined')return;
+  try{
+    window.dispatchEvent(new CustomEvent('nv:resource-error',{
+      detail:{kind:'data',path,message:error instanceof Error?error.message:String(error)}
+    }));
+  }catch{}
+}
+
+async function getJSON<T>(path: string, maxAttempts=3): Promise<T> {
+  let last:unknown=null;
+  for(let attempt=1;attempt<=maxAttempts;attempt++){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),9000);
+    try{
+      const res=await fetch(versioned(path),{
+        cache:'no-cache',
+        signal:controller.signal,
+        headers:{'Accept':'application/json'}
+      });
+      clearTimeout(timer);
+      if(!res.ok){
+        const e=new ResourceLoadError(path,attempt,`Failed to load ${path}: ${res.status}`,res.status);
+        // Retry transient/server failures, but do not hammer a definite 404.
+        if(res.status===404)throw e;
+        last=e;
+      }else{
+        return await res.json() as T;
+      }
+    }catch(e){
+      clearTimeout(timer);
+      last=e;
+      if(e instanceof ResourceLoadError && e.status===404)break;
+    }
+    if(attempt<maxAttempts)await sleep(260*Math.pow(2,attempt-1));
+  }
+  const err=last instanceof ResourceLoadError
+    ?last
+    :new ResourceLoadError(path,maxAttempts,last instanceof Error?last.message:String(last||'Unknown resource error'));
+  notify(path,err);
+  throw err;
 }
 
 export const loadMeta = () => getJSON<StudioMeta>('/data/meta.json');

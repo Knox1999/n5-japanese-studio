@@ -1,11 +1,12 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { BookOpenText, MessageCircle, Volume2, Eye, EyeOff, UserRound, Play, Pause, Sparkles } from 'lucide-react';
 import type { LessonPayload } from '@/lib/types';
 import { playText, stopAudio, type AudioVoiceRole } from '@/lib/audio';
 import { track } from '@/lib/analytics';
-import GrammarStudio from './GrammarStudio';
+const GrammarStudio=dynamic(()=>import('./GrammarStudio'),{ssr:false,loading:()=> <div className="nv58-view-loading">Loading Visual Grammar…</div>});
 
 export function Conversation({data}:{data:LessonPayload}){
   const rows=data.content.dialogue_extended||data.content.dialogue||[];

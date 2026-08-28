@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -36,28 +36,44 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Repository hygiene and reproducible lockfile
+        shell: bash
+        run: |
+          set -e
+          python scripts/repo_hygiene.py
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: archive legacy root files and add package lock"
+            git push || echo "::warning::Could not push hygiene/lockfile commit; build will still use the cleaned workspace."
+          fi
+
       - name: Build and validate study data
         run: |
           python scripts/build_klc_from_csv.py
           python scripts/build_data.py
           python scripts/qa_production.py --prebuild
 
-      - name: Install frontend dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install frontend dependencies from lockfile
+        run: npm ci --no-audit --no-fund
 
       - name: Type-check frontend
         run: npm run lint:types
 
-      - name: Restore V57 neural audio cache
+      - name: Restore V58 neural audio cache
         uses: actions/cache@v4
         with:
           path: _audio_cache
-          key: n5-v57-edge-ja-${{ hashFiles('source/data/studio.json', 'source/data/grammar-visual.json', 'scripts/generate_audio.py', 'scripts/extract_audio_texts.py') }}
+          key: n5-v58-edge-ja-${{ hashFiles('source/data/studio.json', 'source/data/grammar-visual.json', 'scripts/generate_audio.py', 'scripts/extract_audio_texts.py') }}
           restore-keys: |
+            n5-v58-edge-ja-
             n5-v57-edge-ja-
           save-always: true
 
-      - name: Install V57 Japanese neural TTS
+      - name: Install Japanese neural TTS
         shell: bash
         run: |
           set -e
@@ -66,7 +82,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "edge-tts>=7.0,<8.0"
 
-      - name: Generate young-adult Japanese neural audio
+      - name: Generate cached Japanese neural audio
         env:
           N5_TTS_CONCURRENCY: "4"
         run: |
@@ -86,10 +102,13 @@ jobs:
           GITHUB_PAGES: "true"
         run: npm run build
 
-      - name: Final production QA
+      - name: Generate offline app shell
         run: |
+          python scripts/build_sw.py out
           touch out/.nojekyll
-          python scripts/qa_production.py --postbuild
+
+      - name: Final production QA
+        run: python scripts/qa_production.py --postbuild
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

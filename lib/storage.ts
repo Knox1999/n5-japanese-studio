@@ -1,6 +1,6 @@
 import type { MockAttempt, SrsCardState } from './types';
 
-export const STORAGE_VERSION = 50;
+export const STORAGE_VERSION = 58;
 export const KEYS = {
   lesson: 'n5_offline_lesson',
   progress: 'n5_offline_progress',

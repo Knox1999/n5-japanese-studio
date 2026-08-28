@@ -1,6 +1,6 @@
 {
   "name": "the-nihongo-vibes",
-  "version": "57.0.0",
+  "version": "58.0.0",
   "private": true,
   "scripts": {
     "data:build": "python scripts/build_klc_from_csv.py && python scripts/build_data.py",
@@ -8,7 +8,9 @@
     "build": "npm run data:build && next build",
     "start": "next start",
     "lint:types": "tsc --noEmit",
-    "qa": "python scripts/qa_production.py"
+    "qa": "python scripts/qa_production.py",
+    "build:sw": "python scripts/build_sw.py out",
+    "repo:hygiene": "python scripts/repo_hygiene.py"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

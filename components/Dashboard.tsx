@@ -38,6 +38,14 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
   const current=meta.lessons.find(x=>x.lesson===lesson)||meta.lessons[0];
   const currentMastered=mastered(progress,current?.ids||[]);
   const currentPct=Math.round(currentMastered/Math.max(1,current?.count||1)*100);
+  const now=Date.now();
+  const currentDue=(current?.ids||[]).reduce((n,id)=>{
+    const st=srs[String(id)];
+    return n+(st?.due_at&&new Date(st.due_at).getTime()<=now?1:0);
+  },0);
+  const completionTarget=Math.ceil((current?.count||0)*.8);
+  const remainingToCompletion=Math.max(0,completionTarget-currentMastered);
+  const lessonComplete=currentPct>=80&&currentDue===0;
   const health=srsHealth(srs,meta.vocabulary_count);
   const best=history.length?Math.max(...history.map(x=>Number(x.score||0))):0;
   const ring={'--nv57-progress':`${Math.max(0,Math.min(100,overall))*3.6}deg`} as CSSProperties;
@@ -83,6 +91,28 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
         </div>
       </aside>
     </motion.section>
+
+    <section className="today-study-v58">
+      <header>
+        <div><span>TODAY'S STUDY</span><h2 className="font-bn">আজ কী করবেন—এক নজরে</h2></div>
+        <strong className={lessonComplete?'done':''}>{lessonComplete?'LESSON READY':'3-STEP PLAN'}</strong>
+      </header>
+      <div className="today-study-grid-v58">
+        <button onClick={()=>onNavigate('srs')}>
+          <span>01</span><RotateCcw/><div><b>Review due words</b><p className="font-bn">{health.due>0?`পুরো course-এ ${health.due}টি due card আছে।`:'আজ কোনো due card নেই।'}</p></div><em>{health.due}</em>
+        </button>
+        <button onClick={()=>onNavigate('vocabulary')}>
+          <span>02</span><BookOpen/><div><b>Learn current lesson</b><p className="font-bn">{remainingToCompletion>0?`Lesson complete করতে আরও ${remainingToCompletion}টি word mastery দরকার।`:'Vocabulary target পূরণ হয়েছে।'}</p></div><em>{currentPct}%</em>
+        </button>
+        <button onClick={()=>onNavigate('listening')}>
+          <span>03</span><Headphones/><div><b>Listen + shadow once</b><p className="font-bn">Current lesson-এর dialogue শুনে অন্তত একটি shadowing pass করুন।</p></div><em>1×</em>
+        </button>
+      </div>
+      <div className={`lesson-completion-v58 ${lessonComplete?'complete':''}`}>
+        <div><CheckCircle2/><span><small>LESSON COMPLETION RULE</small><b className="font-bn">≥80% vocabulary mastered + current lesson-এ 0 due SRS card</b></span></div>
+        <strong>{lessonComplete?'COMPLETE':`${currentPct}% · ${currentDue} due`}</strong>
+      </div>
+    </section>
 
     <section className="home-flow-v57" aria-label="Learning flow">
       {['LEARN','LISTEN','SHADOW','USE','RECALL'].map((x,i)=><div key={x}><span>{String(i+1).padStart(2,'0')}</span><b>{x}</b>{i<4&&<ArrowRight/>}</div>)}

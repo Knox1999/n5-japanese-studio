@@ -10,7 +10,7 @@ import type { StudioMeta, ViewName } from '@/lib/types';
 import { loadSearchIndex } from '@/lib/data';
 import { track } from '@/lib/analytics';
 import { stopAudio } from '@/lib/audio';
-import AmbientCanvas from './AmbientCanvas';
+import AmbientGate from './AmbientGate';
 
 type NavItem={view:ViewName;label:string;short:string;icon:any};
 const NAV:NavItem[]=[
@@ -24,10 +24,17 @@ const NAV:NavItem[]=[
 
 export default function Shell({meta,lesson,view,onLesson,onView,children}:{meta:StudioMeta;lesson:number;view:ViewName;onLesson:(n:number,v?:ViewName)=>void;onView:(v:ViewName)=>void;children:React.ReactNode}){
  const [drawer,setDrawer]=useState(false),[search,setSearch]=useState(false),[lessonPicker,setLessonPicker]=useState(false);
- const [q,setQ]=useState(''),[results,setResults]=useState<any[]>([]),[loading,setLoading]=useState(false);
+ const [q,setQ]=useState(''),[results,setResults]=useState<any[]>([]),[loading,setLoading]=useState(false),[searchError,setSearchError]=useState('');
  const subnavRef=useRef<HTMLDivElement|null>(null),mainRef=useRef<HTMLElement|null>(null),lessonRef=useRef<HTMLDivElement|null>(null);
 
- const openSearch=async()=>{setSearch(true);setLessonPicker(false);if(results.length)return;setLoading(true);try{setResults(await loadSearchIndex())}finally{setLoading(false)}};
+ const openSearch=async(force=false)=>{
+   setSearch(true);setLessonPicker(false);
+   if(results.length&&!force)return;
+   setLoading(true);setSearchError('');
+   try{setResults(await loadSearchIndex())}
+   catch(e){setSearchError(e instanceof Error?e.message:String(e));}
+   finally{setLoading(false)}
+ };
  useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch()}if(e.key==='Escape'){setDrawer(false);setSearch(false);setLessonPicker(false)}};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey)},[results.length]);
  useEffect(()=>{const onPointer=(e:PointerEvent)=>{if(lessonPicker&&lessonRef.current&&!lessonRef.current.contains(e.target as Node))setLessonPicker(false)};document.addEventListener('pointerdown',onPointer);return()=>document.removeEventListener('pointerdown',onPointer)},[lessonPicker]);
  useEffect(()=>{const html=document.documentElement,body=document.body;const locked=drawer||search;body.style.removeProperty('overflow');body.style.removeProperty('position');body.style.removeProperty('height');html.style.removeProperty('overflow');html.style.removeProperty('height');html.classList.toggle('overlay-open',locked);body.classList.toggle('overlay-open',locked);return()=>{html.classList.remove('overlay-open');body.classList.remove('overlay-open');body.style.removeProperty('overflow');body.style.removeProperty('position');body.style.removeProperty('height');html.style.removeProperty('overflow');html.style.removeProperty('height')}},[drawer,search]);
@@ -56,12 +63,19 @@ export default function Shell({meta,lesson,view,onLesson,onView,children}:{meta:
  const Drawer=()=> <aside className="future-drawer" aria-label="Study navigation"><div className="future-drawer-head"><Brand/><button onClick={()=>setDrawer(false)} aria-label="Close menu"><X size={22}/></button></div><div className="future-drawer-status"><i/><span>SYSTEM ONLINE</span><b>LESSON {String(lesson).padStart(2,'0')}</b></div><div className="future-drawer-lesson"><label>CURRENT LESSON</label><div><select value={lesson} onChange={e=>{onLesson(Number(e.target.value),'dashboard');setDrawer(false)}}>{meta.lessons.map(L=><option value={L.lesson} key={L.lesson}>Lesson {String(L.lesson).padStart(2,'0')} · {L.title}</option>)}</select><ChevronDown size={18}/></div></div><nav>{NAV.map(x=>{const I=x.icon;return <button key={x.view} className={view===x.view?'active':''} onClick={()=>go(x.view)} aria-current={view===x.view?'page':undefined}><I size={21}/><span>{x.label}</span>{x.view==='kanji'&&<small>2300</small>}</button>})}</nav><div className="future-drawer-utilities"><button onClick={()=>window.dispatchEvent(new Event('n5-open-vault'))}><DatabaseBackup size={20}/><span>Backup & Restore</span></button><button onClick={async()=>{try{await navigator.clipboard.writeText(location.href);track('share_link',{section_name:view,lesson_number:lesson})}catch{}}}><Share2 size={20}/><span>Copy current link</span></button></div><div className="future-drawer-foot"><Sparkles size={18}/><span>Learn → Listen → Recall → Use → Review</span></div></aside>;
 
  return <div className="future-shell future-shell-v48 future-shell-v51 future-shell-v52" data-view={view}>
-   <div className="future-global-ambient" aria-hidden="true"><AmbientCanvas/></div>
+   <div className="future-global-ambient" aria-hidden="true"><AmbientGate/></div>
    <header className="future-header"><Brand/><nav className="future-primary-nav" aria-label="Primary navigation">{NAV.slice(0,8).map(x=><button key={x.view} className={view===x.view?'active':''} onClick={()=>go(x.view)} aria-current={view===x.view?'page':undefined}>{x.label}</button>)}<button className={['kanji','mock','history'].includes(view)?'active':''} onClick={()=>setDrawer(true)}>More <ChevronDown size={15}/></button></nav><div className="future-header-tools"><button className="future-search-trigger" onClick={openSearch} aria-label="Search learning content"><Search size={20}/><span>Search</span><kbd>⌘K</kbd></button><LessonNode/><button className="future-menu-trigger" onClick={()=>setDrawer(true)} aria-label="Open menu"><Menu size={23}/></button></div></header>
    <div className="future-subnav" ref={subnavRef} role="navigation" aria-label="Quick access"><span><Command size={16}/> QUICK ACCESS</span>{NAV.slice(1).map(x=>{const I=x.icon;return <button key={x.view} data-view={x.view} className={view===x.view?'active':''} onClick={()=>go(x.view)} aria-current={view===x.view?'page':undefined}><I size={18}/>{x.short}</button>})}</div>
    <main ref={mainRef} className="future-main" id="main-content">{children}</main>
    <nav className="future-mobile-dock" aria-label="Mobile navigation">{([NAV[0],NAV[1],NAV[2],NAV[6]] as NavItem[]).map(x=>{const I=x.icon;return <button key={x.view} onClick={()=>go(x.view)} className={view===x.view?'active':''}><I size={24}/><span>{x.short}</span></button>})}<button onClick={()=>setDrawer(true)}><Menu size={24}/><span>Menu</span></button></nav>
    {drawer&&<div className="future-drawer-layer" role="dialog" aria-modal="true"><button className="future-layer-backdrop" onClick={()=>setDrawer(false)} aria-label="Close menu"/><Drawer/></div>}
-   {search&&<div className="future-search-layer" role="dialog" aria-modal="true"><button className="future-layer-backdrop" onClick={()=>setSearch(false)} aria-label="Close search"/><section className="future-search-dialog"><div className="future-search-head"><Search size={21}/><input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Japanese / Kanji / বাংলা / English…" aria-label="Search"/><button onClick={()=>setSearch(false)}><X size={22}/></button></div><div className="future-search-results">{loading?<p>Indexing learning data…</p>:shown.map(x=><button key={x.id} onClick={()=>{onLesson(x.lesson,'vocabulary');setSearch(false)}}><span className="font-jp">{x.k||x.j}</span><div><b className="font-bn">{x.bn}</b><small>Lesson {x.lesson} · {x.p}</small></div></button>)}</div></section></div>}
+   {search&&<div className="future-search-layer" role="dialog" aria-modal="true"><button className="future-layer-backdrop" onClick={()=>setSearch(false)} aria-label="Close search"/><section className="future-search-dialog"><div className="future-search-head"><Search size={21}/><input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Japanese / Kanji / বাংলা / English…" aria-label="Search"/><button onClick={()=>setSearch(false)}><X size={22}/></button></div><div className="future-search-results">{loading
+ ?<div className="nv58-search-state"><Search/><b>Indexing learning data…</b><span>Please wait</span></div>
+ :searchError
+   ?<div className="nv58-search-state error"><Search/><b>Search index unavailable</b><span>{searchError}</span><button onClick={()=>openSearch(true)}>Retry search</button></div>
+   :shown.length
+     ?shown.map(x=><button key={x.id} onClick={()=>{onLesson(x.lesson,'vocabulary');setSearch(false)}}><span className="font-jp">{x.k||x.j}</span><div><b className="font-bn">{x.bn}</b><small>Lesson {x.lesson} · {x.p}</small></div></button>)
+     :<div className="nv58-search-state"><Search/><b>No matching word found</b><span>Try Japanese, Kanji, বাংলা or English.</span></div>
+ }</div></section></div>}
  </div>
 }

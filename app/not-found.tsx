@@ -1,3 +1,13 @@
+import Link from 'next/link';
+
 export default function NotFound(){
-  return <main style={{minHeight:'70vh',display:'grid',placeItems:'center',padding:24,background:'#F7F4ED',color:'#142638',fontFamily:'system-ui'}}><div style={{textAlign:'center'}}><div style={{fontSize:56}}>日</div><h1>Page not found</h1><p>Return to the N5 Natural Japanese Studio home page.</p><a href="./" style={{display:'inline-flex',minHeight:44,alignItems:'center',padding:'0 16px',borderRadius:12,background:'#102A43',color:'white',textDecoration:'none'}}>Open Studio</a></div></main>
+  return <main className="nv58-not-found">
+    <section>
+      <img src={`${process.env.NEXT_PUBLIC_BASE_PATH||''}/assets/nihongo-vibes-logo.webp`} alt="The Nihongo Vibes"/>
+      <span>404 · PAGE NOT FOUND</span>
+      <h1>পেজটি পাওয়া যায়নি</h1>
+      <p>লিংকটি পুরনো বা ভুল হতে পারে। আপনার study progress নিরাপদ আছে—Studio Home-এ ফিরে যান।</p>
+      <Link href="/?view=dashboard">Open The Nihongo Vibes</Link>
+    </section>
+  </main>
 }

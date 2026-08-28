@@ -12,12 +12,13 @@ import '@/styles/v53-visual-grammar.scss';
 import '@/styles/v54-clean-verb-lab.scss';
 import '@/styles/v56-unified-ui.scss';
 import '@/styles/v57-signature.scss';
+import '@/styles/v58-design-system.scss';
 
 const SITE='https://knox1999.github.io/n5-japanese-studio/';
 export const metadata: Metadata = {
   metadataBase:new URL(SITE),
   title:{default:'The Nihongo Vibes — N5 Japanese Learning Studio',template:'%s · The Nihongo Vibes'},
-  description:'A futuristic Japanese-learning studio with vocabulary classes, verb groups, young-adult Japanese neural audio, smart recall, listening, shadowing, reading, grammar, KLC Kanji and mastery practice.',
+  description:'A futuristic Japanese-learning studio with vocabulary classes, verb groups, young-adult Japanese neural audio, global smart recall, listening, shadowing, reading, grammar, KLC Kanji and mastery practice.',
   applicationName:'The Nihongo Vibes',
   keywords:['JLPT N5','Japanese learning','Japanese verb groups','i adjective','na adjective','Japanese vocabulary','Japanese listening','Kanji','Bangla Japanese learning'],
   alternates:{canonical:SITE},manifest:'./manifest.webmanifest',

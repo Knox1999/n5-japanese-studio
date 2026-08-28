@@ -14,6 +14,16 @@ function normalize(text: string) {
   return String(text || '').normalize('NFC').replace(/\s+/g, ' ').trim();
 }
 
+
+function notifyAudioError(text:string,type:string){
+  if(typeof window==='undefined')return;
+  try{
+    window.dispatchEvent(new CustomEvent('nv:resource-error',{
+      detail:{kind:'audio',path:type,message:`Audio unavailable: ${normalize(text).slice(0,80)}`}
+    }));
+  }catch{}
+}
+
 function hashText(text:string,voiceRole:AudioVoiceRole='default'){
   const clean=normalize(text);
   return voiceRole==='default'?clean:`${voiceRole}|${clean}`;
@@ -144,12 +154,21 @@ export async function playText(
       let settled=false;
       const finish=(status:PlaybackResult)=>{if(settled)return;settled=true;if(activeResolve===finish)activeResolve=null;resolve(status)};
       activeResolve=finish;
+      let staticRetry=0;
       const fail = () => {
         if(requestGeneration!==playbackGeneration){finish('cancelled');return}
+        if(staticRetry<1){
+          staticRetry+=1;
+          try{
+            audio.src=`${url}?retry=${staticRetry}`;
+            audio.load();
+            return;
+          }catch{}
+        }
         if(activeResolve===finish)activeResolve=null;
-        reject(new Error('static-audio-unavailable'));
+        reject(new Error('static-audio-unavailable-after-retry'));
       };
-      audio.addEventListener('error', fail, { once: true });
+      audio.addEventListener('error', fail);
       audio.addEventListener('canplay', async () => {
         if (started) return;
         started = true;
@@ -231,7 +250,7 @@ export async function playText(
       };
       u.onerror = () => {
         if (raf) { cancelAnimationFrame(raf); raf = 0; }
-        if(requestGeneration===playbackGeneration)cb.onEnd?.();
+        if(requestGeneration===playbackGeneration){cb.onEnd?.();notifyAudioError(clean,type)}
         activeUtterance = null;
         finish(requestGeneration===playbackGeneration?'unavailable':'cancelled');
       };
@@ -239,5 +258,6 @@ export async function playText(
       window.speechSynthesis.speak(u);
     });
   }
+  notifyAudioError(clean,type);
   return 'unavailable';
 }

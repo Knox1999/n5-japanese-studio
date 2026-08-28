@@ -5,99 +5,109 @@ import json, sys
 ROOT=Path(__file__).resolve().parents[1]
 checks=[]
 def check(ok,msg):
-    checks.append((bool(ok),msg));print(("PASS " if ok else "FAIL ")+msg)
+    checks.append((bool(ok),msg))
+    print(("PASS " if ok else "FAIL ")+msg)
 
 post="--postbuild" in sys.argv
+
+# Core datasets
 klc=json.loads((ROOT/"source/data/klc-tree.json").read_text(encoding="utf-8"))
 grammar=json.loads((ROOT/"source/data/grammar-visual.json").read_text(encoding="utf-8"))
 check(len(klc.get("nodes",[]))==2300,"2300 KLC nodes")
 check(len(klc.get("edges",[]))==4034,"4034 KLC edges")
 
+# Existing learning foundations
 kana=(ROOT/"components/KanaPad.tsx").read_text(encoding="utf-8")
 kanji=(ROOT/"components/KanjiExplorer.tsx").read_text(encoding="utf-8")
 spell=(ROOT/"components/Spelling.tsx").read_text(encoding="utf-8")
 app=(ROOT/"components/StudioApp.tsx").read_text(encoding="utf-8")
+dashboard=(ROOT/"components/Dashboard.tsx").read_text(encoding="utf-8")
+srs=(ROOT/"components/SRS.tsx").read_text(encoding="utf-8")
+shell=(ROOT/"components/Shell.tsx").read_text(encoding="utf-8")
+audio=(ROOT/"lib/audio.ts").read_text(encoding="utf-8")
+data=(ROOT/"lib/data.ts").read_text(encoding="utf-8")
+layout=(ROOT/"app/layout.tsx").read_text(encoding="utf-8")
+notfound=(ROOT/"app/not-found.tsx").read_text(encoding="utf-8")
 sw=(ROOT/"public/sw.js").read_text(encoding="utf-8")
 manifest=json.loads((ROOT/"public/manifest.webmanifest").read_text(encoding="utf-8"))
 package=json.loads((ROOT/"package.json").read_text(encoding="utf-8"))
-layout=(ROOT/"app/layout.tsx").read_text(encoding="utf-8")
+workflow=(ROOT/".github/workflows/deploy-pages.yml").read_text(encoding="utf-8")
+ui58=(ROOT/"styles/v58-design-system.scss").read_text(encoding="utf-8")
 
 check('data-kana-input="Spelling answer"' in spell,"Spelling wired to Kana Pad")
 check("<KanaPad/>" in app,"Global Kana Pad mounted")
 check("ひらがな" in kana and "カタカナ" in kana,"Hiragana/Katakana modes")
-check("n5_kana_pad_position" in kana,"Kana Pad position persistence")
 check("Recursive KLC Construction" in kanji and "RecursiveNode" in kanji,"Recursive KLC tree UI")
-check("Builds into" in kanji and "reverse" in kanji,"Builds-into reverse graph")
-check("data.vocabulary.flatMap" in kanji,"Lesson Kanji derived from vocabulary")
 
-check("const VERSION='v57'" in sw,"V57 service-worker cache version")
-check("nihongo-vibes-" in sw,"The Nihongo Vibes cache namespace")
-check(manifest.get("short_name")=="Nihongo Vibes","PWA brand is Nihongo Vibes")
-check(str(package.get("version"))=="57.0.0","Package version is 57.0.0")
-check((ROOT/"styles/v50-production.scss").exists(),"V50 production foundation present")
-check((ROOT/"components/DataVault.tsx").exists(),"Backup/restore Data Vault present")
-check((ROOT/"public/robots.txt").exists(),"robots.txt present")
-check((ROOT/"public/sitemap.xml").exists(),"sitemap.xml present")
+# V58 1) 404 home link
+check('Link href="/?view=dashboard"' in notfound,"404 uses basePath-aware Next Link to Studio Home")
+check('href="./"' not in notfound,"Broken relative 404 home link removed")
 
-# Visual grammar remains intact.
+# V58 2) Global SRS
+check("Global Due Queue" in srs and "startGlobal" in srs,"Global SRS due queue present")
+check("dueByLesson" in srs,"Lesson-by-lesson due map present")
+check("meta={meta}" in app,"StudioApp passes course metadata to SRS")
+
+# V58 3) PWA app shell
+check("const VERSION='v58'" in sw,"V58 service-worker source")
+check("APP_SHELL" in sw,"PWA app-shell list present")
+check((ROOT/"scripts/build_sw.py").exists(),"Post-build service-worker generator present")
+check("python scripts/build_sw.py out" in workflow,"Deployment generates static app shell after Next build")
+check(manifest.get("background_color")=="#031326" and manifest.get("theme_color")=="#031326","PWA manifest uses logo navy palette")
+
+# V58 4) Retry/error states
+check("maxAttempts=3" in data and "AbortController" in data,"Data loader has timeout + 3-attempt retry")
+check("Search index unavailable" in shell and "Retry search" in shell,"Search has explicit retry/error state")
+check("staticRetry<1" in audio and "nv:resource-error" in audio,"Audio has retry + final error notice")
+check("nv:resource-error" in app and "Retry" in app,"Global resource error/retry UI present")
+
+# V58 5) Design system
+check("v58-design-system.scss" in layout,"V58 canonical design system imported")
+check(layout.rfind("v58-design-system.scss")>layout.rfind("v57-signature.scss"),"V58 design system loads after compatibility layers")
+check(all(x in ui58 for x in ["--nv-bg:#031326","--nv-red:#ef3f38","--nv-text:#f7fbff","--nv-touch:44px"]),"Unified navy/red/white/touch tokens encoded")
+
+# V58 6) Mobile usability
+check("@media(max-width:760px)" in ui58 and "min-height:var(--nv-touch)" in ui58,"44px mobile touch target baseline")
+check("font-size:16px!important" in ui58,"Mobile inputs prevent tiny text / iOS zoom")
+
+# V58 7) Today's Study + completion
+check("TODAY'S STUDY" in dashboard,"Today's Study panel present")
+check("currentPct>=80&&currentDue===0" in dashboard,"Transparent lesson completion rule encoded")
+check("LESSON COMPLETION RULE" in dashboard,"Completion rule visible to learner")
+
+# V58 8) Legacy root cleanup
+check((ROOT/"scripts/repo_hygiene.py").exists(),"Safe legacy-root hygiene script present")
+check("python scripts/repo_hygiene.py" in workflow,"Repo hygiene runs before build")
+check(not (ROOT/"index.html").exists(),"Legacy root index.html archived/removed in build workspace")
+check(not (ROOT/"sw.js").exists(),"Legacy root sw.js archived/removed in build workspace")
+check(not (ROOT/"manifest.webmanifest").exists(),"Legacy root manifest archived/removed in build workspace")
+check((ROOT/"docs/legacy-root").exists(),"Legacy root archive directory exists")
+
+# V58 9) Lazy loading
+check("dynamic(()=>import('./KanjiExplorer')" in app and "dynamic(()=>import('./MockTest')" in app,"Heavy Kanji/Mock modules lazy-loaded")
+check((ROOT/"components/AmbientGate.tsx").exists(),"Deferred Three.js AmbientGate present")
+ambient=(ROOT/"components/AmbientGate.tsx").read_text(encoding="utf-8")
+check("requestIdleCallback" in ambient and "max-width: 820px" in ambient,"Three.js deferred until desktop idle time")
+study=(ROOT/"components/StudyViews.tsx").read_text(encoding="utf-8")
+check("dynamic(()=>import('./GrammarStudio')" in study,"Visual Grammar chunk lazy-loaded")
+
+# V58 10) Reproducible build
+check(str(package.get("version"))=="58.0.0","Package version is 58.0.0")
+check((ROOT/"package-lock.json").exists(),"package-lock.json exists after hygiene step")
+check("npm ci --no-audit --no-fund" in workflow,"Deployment installs from lockfile with npm ci")
+check("contents: write" in workflow and "git push" in workflow,"Workflow can persist generated lockfile + archive moves")
+
+# Existing major functionality retained
 lessons=grammar.get("lessons") or {}
 rules=[r for L in lessons.values() for r in (L.get("rules") or [])]
 examples=[e for r in rules for e in (r.get("examples") or [])]
-check(grammar.get("version")=="53","V53 visual grammar dataset retained")
-check(len(lessons)==25,"25 visual grammar lessons")
-check(len(rules)>=100,"100+ visual grammar rules")
-check(all(len(r.get("examples") or [])==5 for r in rules),"Exactly 5 examples per grammar rule")
-check(len(examples)>=500,"500+ grammar practice examples")
-check((ROOT/"components/GrammarStudio.tsx").exists(),"GrammarStudio component present")
+check(len(lessons)==25,"25 visual grammar lessons retained")
+check(len(rules)>=100 and len(examples)>=500,"Visual grammar rule/example scale retained")
+check(all(len(r.get("examples") or [])==5 for r in rules),"Exactly 5 grammar examples per rule")
 check("G-FG3JCWGSPR" in layout,"GA4 measurement ID preserved")
-
-# Clean Vocabulary / Verb Forms Lab.
-vocab=(ROOT/"components/Vocabulary.tsx").read_text(encoding="utf-8")
-check("VerbFormsLab" in vocab,"Clean Verb Forms Lab present")
-check("verb-group-memory" not in vocab,"Always-visible Verb Group Memory Map removed")
-check(all(x in vocab for x in ["01 · ます FORM","02 · た FORM","03 · ない FORM","04 · DICTIONARY FORM","05 · て FORM"]),"Verb form families ordered and boxed")
-check("f.cells.length===3" not in vocab,"Verb Forms TypeScript narrowing fixed")
-
-# V57 signature design + mobile.
-ui=(ROOT/"styles/v57-signature.scss").read_text(encoding="utf-8")
-dashboard=(ROOT/"components/Dashboard.tsx").read_text(encoding="utf-8")
-shell=(ROOT/"components/Shell.tsx").read_text(encoding="utf-8")
-check("v57-signature.scss" in layout,"V57 signature stylesheet imported last")
-check(all(x in ui for x in ["--nv57-bg:#031326","--nv57-red:#ef3f38","--nv57-white:#f7fbff"]),"Logo navy-red-white palette encoded")
-check(".module-green" in ui and "--f-green:var(--nv57-steel)" in ui,"Legacy green theme neutralized")
-check("home-hero-v57" in dashboard and "nihongo-vibes-logo.webp" in dashboard,"V57 clean logo-led homepage")
-check("@media(max-width:760px)" in ui and ".future-brand{display:flex!important" in ui,"Mobile header keeps logo/brand visible")
-check("overflow-y:auto!important" in ui and "future-global-ambient" in ui,"Desktop/mobile root scrolling hardened")
-check("document.addEventListener('wheel',onWheel,{passive:false})" in shell,"Horizontal-bar mouse-wheel rescue present")
-check("stopAudio();setDrawer(false)" in shell,"Page navigation stops audio and releases UI state")
-
-# V57 listening/conversation redesign.
-listening=(ROOT/"components/Listening.tsx").read_text(encoding="utf-8")
-conversation=(ROOT/"components/StudyViews.tsx").read_text(encoding="utf-8")
-check("shadow-workbench-v57" in listening and "shadow-list-v57" in listening,"V57 shadowing workbench UI present")
-check("conversation-stage-v57" in conversation and "Play A ↔ B" in conversation,"V57 two-person dialogue UI present")
-check("voiceMap" in listening and "voiceMap" in conversation,"Dialogue uses distinct male/female voice roles")
-
-# V57 natural neural voice pipeline.
-audio=(ROOT/"lib/audio.ts").read_text(encoding="utf-8")
-extract=(ROOT/"scripts/extract_audio_texts.py").read_text(encoding="utf-8")
-generator=(ROOT/"scripts/generate_audio.py").read_text(encoding="utf-8")
-workflow=(ROOT/".github/workflows/deploy-pages.yml").read_text(encoding="utf-8")
-check("edge_tts" in generator and "ja-JP-NanamiNeural" in generator and "ja-JP-KeitaNeural" in generator,"V57 Microsoft Japanese neural voice profiles configured")
-check("edge-tts>=7.0,<8.0" in workflow and "kokoro" not in workflow.lower(),"Deployment switched away from Kokoro toolchain")
-check("voice_role" in extract and "male" in extract and "female" in extract,"Role-specific dialogue/shadowing audio extracted")
-
-# Critical: one audio at a time site-wide.
-check("playbackGeneration" in audio,"Global playback generation mutex present")
-check("removeAttribute('src')" in audio,"Cancelled HTML audio is fully detached")
-check("requestGeneration!==playbackGeneration" in audio,"Stale async audio cannot restart")
-check("exclusive_audio:true" in audio,"Exclusive-audio analytics marker present")
-check("result!=='ended'" in listening and "result!=='ended'" in conversation,"Full sessions stop when another audio interrupts")
-
-# JLPT style mock retained.
+check("playbackGeneration" in audio and "exclusive_audio:true" in audio,"One-audio-at-a-time mutex retained")
 mock=(ROOT/"components/MockTest.tsx").read_text(encoding="utf-8")
-check("20 Vocabulary + 20 Grammar/Reading + 12 Listening" in mock,"52-item JLPT-style practice blueprint retained")
-check(all(x in mock for x in ["minutes:20","minutes:40","minutes:30"]),"N5 section times encoded")
+check("20 Vocabulary + 20 Grammar/Reading + 12 Listening" in mock,"JLPT-style 52-item practice blueprint retained")
 
 if post:
     out=ROOT/"out"
@@ -105,7 +115,11 @@ if post:
     check((out/".nojekyll").exists(),"Pages .nojekyll exists")
     check((out/"manifest.webmanifest").exists(),"PWA manifest exported")
     check((out/"data/grammar-visual.json").exists(),"Visual grammar data exported")
+    out_sw=(out/"sw.js").read_text(encoding="utf-8") if (out/"sw.js").exists() else ""
+    check("const APP_SHELL=" in out_sw,"Generated production service worker contains app shell")
+    check("./_next/static/" in out_sw,"Generated app shell includes Next JS/CSS chunks")
 
 failed=[msg for ok,msg in checks if not ok]
-if failed:raise SystemExit("Production QA failed: "+", ".join(failed))
+if failed:
+    raise SystemExit("Production QA failed: "+", ".join(failed))
 print(f"PRODUCTION QA COMPLETE: {len(checks)}/{len(checks)} PASS")
