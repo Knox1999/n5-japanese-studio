@@ -40,10 +40,49 @@ body{
   color:var(--ink);
   font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Bengali","Noto Sans JP",sans-serif;
   overflow-x:hidden;
-  overflow-y:auto!important;
+  overflow-y:visible!important;
   overscroll-behavior-y:auto;
 }
-html.overlay-open,body.overlay-open{overflow:hidden!important;overscroll-behavior:none}
+
+/* V56.1: only a REAL open drawer/search may lock the viewport. */
+html.overlay-open:has(.future-drawer-layer,.future-search-layer),
+body.overlay-open:has(.future-drawer-layer,.future-search-layer){
+  overflow:hidden!important;
+  overscroll-behavior:none;
+}
+
+/* If an old/stale overlay-open class remains after navigation, release it. */
+html.overlay-open:not(:has(.future-drawer-layer,.future-search-layer)){
+  overflow-y:auto!important;
+  height:auto!important;
+  max-height:none!important;
+  overscroll-behavior-y:auto!important;
+}
+body.overlay-open:not(:has(.future-drawer-layer,.future-search-layer)){
+  overflow-y:visible!important;
+  height:auto!important;
+  min-height:100vh!important;
+  max-height:none!important;
+  position:static!important;
+  overscroll-behavior-y:auto!important;
+}
+html:not(.overlay-open){
+  overflow-y:auto!important;
+  height:auto!important;
+  max-height:none!important;
+}
+body:not(.overlay-open){
+  overflow-y:visible!important;
+  height:auto!important;
+  min-height:100vh!important;
+  max-height:none!important;
+  position:static!important;
+}
+.future-global-ambient,
+.future-global-ambient canvas{
+  pointer-events:none!important;
+}
+
 button,input,select,textarea{font:inherit}
 button{touch-action:manipulation}
 ::selection{background:#F0443E;color:#fff}

@@ -226,7 +226,7 @@ function VerbFormsLab({v,onClose}:{v:VocabItem;onClose:()=>void}){
       <div className="verb-family-stack">
         {families.map(f=><section className={`verb-family-box ${f.cls}`} key={f.id}>
           <header><div><span>{f.eyebrow}</span><b className="font-bn">{f.title}</b></div><span className="font-jp">{f.note}</span></header>
-          <div className={`verb-family-grid ${f.cells.length===2?'two':f.cells.length===3?'three':''}`}>
+          <div className={`verb-family-grid ${f.cells.length===2?'two':''}`}>
             {f.cells.map(([label,value,note])=><FormCell key={`${f.id}-${label}`} label={label} value={value} note={note} onPlay={()=>play(value,label)}/>) }
           </div>
         </section>)}

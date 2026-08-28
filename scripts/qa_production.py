@@ -83,6 +83,15 @@ check("20 Vocabulary + 20 Grammar/Reading + 12 Listening" in mock,"52-item JLPT-
 check(all(x in mock for x in ["minutes:20","minutes:40","minutes:30"]),"Current N5 section times encoded")
 check(all(x in mock for x in ["Kanji reading","Orthography","Sentential grammar","Quick response"]),"JLPT N5 item-type families represented")
 
+
+scroll_shell=(ROOT/"components/Shell.tsx").read_text(encoding="utf-8")
+v56_css=(ROOT/"styles/v56-unified-ui.scss").read_text(encoding="utf-8")
+check("f.cells.length===3" not in vocab_component,"Verb Forms grid TypeScript narrowing fixed")
+check("V56.1 desktop scroll reliability" in v56_css,"Desktop root-scroll hardening present")
+check("future-global-ambient canvas{pointer-events:none!important}" in v56_css,"Ambient canvas cannot capture wheel input")
+check("document.addEventListener('wheel',onWheel,{passive:false})" in scroll_shell,"Horizontal-bar mouse-wheel rescue present")
+check("setDrawer(false);setSearch(false);setLessonPicker(false)" in scroll_shell,"Navigation releases stale overlay locks")
+
 if post:
     out=ROOT/"out"
     check((out/"index.html").exists(),"Next.js static export index exists")

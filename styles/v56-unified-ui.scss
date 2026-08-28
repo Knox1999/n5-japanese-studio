@@ -51,6 +51,26 @@ body.overlay-open{overflow:hidden!important}
 button,input,select,textarea{font:inherit}
 button{touch-action:manipulation}
 
+
+/* ---- V56.1 desktop scroll reliability -----------------------------------
+   Keep exactly one page-level vertical scroll container (the root element),
+   aggressively release stale overlay locks after navigation, and make the
+   ambient/fixed visual layers transparent to mouse-wheel input. */
+html:not(.overlay-open){
+  height:auto!important;min-height:100%!important;max-height:none!important;
+  overflow-x:hidden!important;overflow-y:auto!important;
+  overscroll-behavior-y:auto!important
+}
+body:not(.overlay-open){
+  height:auto!important;min-height:100vh!important;max-height:none!important;
+  overflow-x:hidden!important;overflow-y:visible!important;
+  position:static!important;overscroll-behavior-y:auto!important
+}
+.future-shell,.future-main{height:auto!important;max-height:none!important}
+.future-global-ambient,.future-global-ambient canvas{pointer-events:none!important}
+.future-main{overscroll-behavior-y:auto!important}
+.future-subnav,.future-protocol,.grammar-matrix-scroll,.word-filter-row,.verb-mode-tabs{overscroll-behavior-y:auto!important}
+
 /* ---- Shell / logo / nav -------------------------------------------------- */
 .future-shell{background:transparent!important;min-height:100dvh!important}
 .future-global-ambient{opacity:.30!important;filter:saturate(.86)}
