@@ -1,9 +1,15 @@
 import type { LessonPayload, StudioMeta, KLCTree, KLCMemory } from './types';
 
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
+export const DATA_VERSION = '50';
+
+function versioned(path: string) {
+  const join = path.includes('?') ? '&' : '?';
+  return `${BASE}${path}${join}v=${DATA_VERSION}`;
+}
 
 async function getJSON<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { cache: 'force-cache' });
+  const res = await fetch(versioned(path), { cache: 'no-cache' });
   if (!res.ok) throw new Error(`Failed to load ${path}: ${res.status}`);
   return res.json() as Promise<T>;
 }

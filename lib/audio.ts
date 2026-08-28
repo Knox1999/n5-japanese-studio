@@ -81,12 +81,12 @@ export interface AudioCallbacks {
   onEnd?: () => void;
 }
 
-export async function playText(text: string, rate = 1, type = 'sentence', cb: AudioCallbacks = {}) {
+export async function playText(text: string, rate = 1, type = 'sentence', cb: AudioCallbacks = {}, meta: Record<string, unknown> = {}) {
   stopAudio();
   const safeRate = Math.max(0.75, Math.min(1, rate));
   const clean = normalize(text);
   if (!clean) return;
-  track('audio_play', { audio_type: type, playback_rate: safeRate });
+  track('audio_play', { audio_type: type, playback_rate: safeRate, content_length: clean.length, ...meta });
 
   // Primary path: pre-generated Kokoro neural MP3. Keeping pitch preserved is important
   // when the learner chooses 0.75x / 0.90x so the voice does not become artificial.

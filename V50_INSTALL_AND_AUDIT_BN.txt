@@ -1,0 +1,102 @@
+THE NIHONGO VIBES — V50 PRODUCTION RELEASE
+===========================================
+
+BASE
+----
+Built on the currently deployed V49/V49.1 code audited from GitHub commit:
+c873512027e05988d57067e31484178bdccfc961
+
+WHAT V50 FIXES
+--------------
+1. URL deep-link state
+   - ?lesson=5&view=listening
+   - browser Back/Forward works
+   - current lesson/view can be copied and shared
+
+2. PWA identity
+   - The Nihongo Vibes name/logo
+   - new dark theme/background
+   - correct 192/512 icons
+
+3. Stale-cache protection
+   - Service Worker cache upgraded to V50
+   - data JSON uses ?v=50
+   - JSON is network-first
+   - audio remains cache-first
+
+4. GA4
+   - virtual page_view per learning section
+   - vocabulary_open
+   - roadmap_click
+   - quiz_start / quiz_answer / quiz_complete
+   - shadowing_cancelled vs shadowing_complete
+   - richer audio_play context
+   - backup/export events
+
+5. Backup & Restore
+   - Export mastery + SRS + lesson + history as JSON
+   - Import and restore without account/database
+
+6. Learning-depth upgrades
+   - Conversation role-play / shadow-your-speaker mode
+   - Reading passage vocabulary panel
+   - Mock mistakes can be sent directly to Recall/SRS
+   - Spelling ignores harmless spaces/sentence punctuation
+
+7. Accessibility
+   - Skip-to-content link
+   - more lang="ja" markers
+   - keyboard Escape/return focus for Data Vault
+   - reduced-motion remains supported
+
+8. SEO
+   - canonical URL
+   - Open Graph / Twitter metadata
+   - EducationalApplication JSON-LD
+   - robots.txt + sitemap.xml
+
+9. Performance
+   - Three.js disabled for Save-Data users
+   - content-visibility on long learning surfaces
+   - mobile-specific layouts remain
+
+10. Version consistency
+   - package version 50.0.0
+   - PWA cache V50
+   - audio published manifest V50
+   - VERSION.txt V50.0
+
+INSTALL
+-------
+This is an UPGRADE/OVERLAY package for your current repository.
+
+Upload the files/folders in this ZIP into the repository root and choose Replace
+for files with the same path. Do NOT delete source/data or existing files that
+are not in this ZIP.
+
+Suggested commit:
+Apply V50 production-grade learning platform upgrade
+
+After commit:
+Actions -> Deploy The Nihongo Vibes — V50 Production
+
+Expected critical steps:
+- Build and validate study data
+- Install frontend dependencies
+- Type-check frontend
+- Restore Japanese audio cache
+- Generate cached natural Japanese audio
+- Build KanjiVG
+- Build static Next.js site
+- Final production QA
+- Deploy Pages
+
+Then hard refresh once:
+Ctrl + F5
+
+NOTE ABOUT "10/10"
+------------------
+V50 addresses all high-value issues found in the production audit without
+inventing learning content that is not present in your source materials.
+For example, furigana readings or new grammar explanations are not fabricated
+when the lesson source does not contain them.

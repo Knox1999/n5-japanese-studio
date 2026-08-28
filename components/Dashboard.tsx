@@ -11,6 +11,7 @@ import {
 import type { MockAttempt, StudioMeta, SrsCardState, ViewName } from '@/lib/types';
 import type { ProgressMap, SrsMap } from '@/lib/storage';
 import FutureBackdrop from './FutureBackdrop';
+import { track } from '@/lib/analytics';
 
 function mastered(progress: ProgressMap, ids: number[]) {
   return ids.reduce((n, id) => n + (progress[String(id)] ? 1 : 0), 0);
@@ -98,7 +99,7 @@ export default function Dashboard({
             <img src={`${process.env.NEXT_PUBLIC_BASE_PATH||''}/assets/nihongo-vibes-logo.webp`} alt="The Nihongo Vibes" />
             <div><b>THE NIHONGO VIBES</b><span>Japanese Learning Studio</span></div>
           </div>
-          <div className="future-eyebrow"><Sparkles size={14}/> N5 JAPANESE · THREE.JS · GSAP · FUTURE LEARNING OS</div>
+          <div className="future-eyebrow"><Sparkles size={14}/> VOCABULARY · LISTENING · KANJI · SMART RECALL</div>
           <h1 className="future-display font-bn">
             জাপানি শেখার<br/><em>নতুন ইন্টারফেস।</em>
           </h1>
@@ -252,7 +253,7 @@ export default function Dashboard({
             return <button
               key={L.lesson}
               className={`future-node ${currentNode?'current':''} ${pct===100?'complete':''}`}
-              onClick={()=>onLesson(L.lesson,'vocabulary')}
+              onClick={()=>{track('roadmap_click',{lesson_number:L.lesson,roadmap_position:i+1,target_section:'vocabulary'});onLesson(L.lesson,'vocabulary')}}
               style={{'--node-delay':`${i*14}ms`} as CSSProperties}
             >
               <span className="node-index">L{String(L.lesson).padStart(2,'0')}</span>

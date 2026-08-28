@@ -1,9 +1,30 @@
 {
-  "name":"N5 Natural Japanese Studio",
-  "short_name":"N5 Studio",
-  "start_url":"./",
-  "display":"standalone",
-  "background_color":"#F7F4ED",
-  "theme_color":"#102A43",
-  "icons":[{"src":"./assets/app-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "name": "The Nihongo Vibes — N5 Japanese Learning Studio",
+  "short_name": "Nihongo Vibes",
+  "description": "A futuristic JLPT N5 Japanese learning studio with vocabulary, smart recall, listening, shadowing, reading, grammar, Kanji and mock practice.",
+  "start_url": "./?view=dashboard",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#06120f",
+  "theme_color": "#071311",
+  "lang": "bn",
+  "categories": [
+    "education",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "./assets/nihongo-vibes-logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/nihongo-vibes-logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }

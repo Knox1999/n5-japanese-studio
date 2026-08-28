@@ -1,5 +1,6 @@
 import type { MockAttempt, SrsCardState } from './types';
 
+export const STORAGE_VERSION = 50;
 export const KEYS = {
   lesson: 'n5_offline_lesson',
   progress: 'n5_offline_progress',
@@ -43,3 +44,36 @@ export const readSrs = () => readJSON<SrsMap>(KEYS.srs, {});
 export const saveSrs = (v: SrsMap) => writeJSON(KEYS.srs, v);
 export const readHistory = () => readJSON<MockAttempt[]>(KEYS.history, []);
 export const saveHistory = (v: MockAttempt[]) => writeJSON(KEYS.history, v.slice(0, 100));
+
+export interface StudioBackup {
+  app: 'the-nihongo-vibes';
+  version: number;
+  exported_at: string;
+  lesson: number;
+  progress: ProgressMap;
+  srs: SrsMap;
+  history: MockAttempt[];
+}
+
+export function createBackup(): StudioBackup {
+  return {
+    app: 'the-nihongo-vibes',
+    version: STORAGE_VERSION,
+    exported_at: new Date().toISOString(),
+    lesson: readLesson(),
+    progress: readProgress(),
+    srs: readSrs(),
+    history: readHistory(),
+  };
+}
+
+export function importBackup(value: unknown) {
+  if (!value || typeof value !== 'object') throw new Error('Invalid backup file');
+  const b = value as Partial<StudioBackup>;
+  if (b.app !== 'the-nihongo-vibes') throw new Error('This is not a The Nihongo Vibes backup');
+  const lesson = Math.max(1, Math.min(25, Number(b.lesson || 1)));
+  writeLesson(lesson);
+  saveProgress((b.progress && typeof b.progress === 'object' ? b.progress : {}) as ProgressMap);
+  saveSrs((b.srs && typeof b.srs === 'object' ? b.srs : {}) as SrsMap);
+  saveHistory(Array.isArray(b.history) ? b.history : []);
+}

@@ -74,14 +74,14 @@ function VocabCard({v,mastered,hideMeaning,onToggle,index}:{v:VocabItem;mastered
         </div>
         <h2 className="font-jp">{jp}</h2>{v.kanji&&v.kanji!==v.japanese&&<div className="kana-reading font-jp">{v.japanese}</div>}
       </div>
-      <button className="icon-btn" aria-label={`Play ${v.japanese}`} onClick={()=>playText(v.tts_text||v.japanese,1,'word')}><Volume2 size={19}/></button>
+      <button className="icon-btn" aria-label={`Play ${v.japanese}`} onClick={()=>playText(v.tts_text||v.japanese,1,'word',{}, {lesson_number:v.lesson,word_id:v.id})}><Volume2 size={19}/></button>
     </div>
     <div className="class-rule-strip"><span>{meta.kind==='verb'?'CONJUGATION':meta.kind.includes('adjective')?'ADJECTIVE RULE':'LEARNING NOTE'}</span><b className="font-bn">{meta.rule}</b></div>
     {meta.irregular&&<div className="exception-note"><AlertTriangle size={18}/><div><b className="font-bn">{meta.irregularTitle}</b><p className="font-bn">{meta.irregularNote}</p></div></div>}
     <div className={`meaning-stack ${hideMeaning?'meaning-hidden':''}`}>
       <b className="font-bn">{v.bangla_meaning}</b><span>{v.english_meaning}</span><small className="font-bn">উচ্চারণ: {v.pronunciation_bn}</small>
     </div>
-    {ex&&<div className="example-block"><div className="flex items-start justify-between gap-3"><p className="font-jp">{ex}</p><button className="mini-audio" onClick={()=>playText(ex,1,'sentence')} aria-label="Play example sentence"><Headphones size={16}/></button></div><span className={`font-bn ${hideMeaning?'blur-sm select-none':''}`}>{v.example?.bn}</span></div>}
+    {ex&&<div className="example-block"><div className="flex items-start justify-between gap-3"><p className="font-jp">{ex}</p><button className="mini-audio" onClick={()=>playText(ex,1,'sentence',{}, {lesson_number:v.lesson,word_id:v.id})} aria-label="Play example sentence"><Headphones size={16}/></button></div><span className={`font-bn ${hideMeaning?'blur-sm select-none':''}`}>{v.example?.bn}</span></div>}
     <button className={`mastery-button ${mastered?'done':''}`} onClick={()=>{onToggle(v.id);track('vocabulary_mastered',{lesson_number:v.lesson,word_id:v.id,mastered:!mastered})}}><Check size={17}/>{mastered?'Mastered':'Mark mastered'}</button>
   </motion.article>
 }

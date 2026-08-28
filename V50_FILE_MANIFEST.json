@@ -1,0 +1,255 @@
+{
+  "version": "V50.0",
+  "files": [
+    {
+      "path": ".github/workflows/deploy-pages.yml",
+      "bytes": 3161,
+      "sha256": "b2efdcf4235ee1f04ec8bc1d395bc25d9cd28cd08855524198c12b8dfcd7ca43"
+    },
+    {
+      "path": "V46_1_BUILD_FIX_BN.txt",
+      "bytes": 996,
+      "sha256": "bac7447f0d12b64808c9667092d748a50926ea0b4308b2a9ad1ef45182897b73"
+    },
+    {
+      "path": "V46_1_FIX_QA.txt",
+      "bytes": 278,
+      "sha256": "1fea37354afd4e774314282053ef3e27b1038ec766e301e027cb72ee984528ef"
+    },
+    {
+      "path": "V46_QA_REPORT.txt",
+      "bytes": 351,
+      "sha256": "6da92fd799c22c77ab6b2225bbb1d7fe958a512df9572ddb693715cabd5cd0b3"
+    },
+    {
+      "path": "V46_SETUP_BN.txt",
+      "bytes": 1985,
+      "sha256": "3d378c40b753c9d43620b828b2afb4d0cfffa390b96c21e7a67c2c78e86df956"
+    },
+    {
+      "path": "V47_MANIFEST.json",
+      "bytes": 2574,
+      "sha256": "69bde2a785f128a137a035b908fb7b308a3bc5f26b952fa1010d1ac16b8f269b"
+    },
+    {
+      "path": "V47_QA_REPORT_BN.txt",
+      "bytes": 2093,
+      "sha256": "057da2e94bde5b7cfe88fd0081d33810e95345903143a22e73922fa8de6a5e23"
+    },
+    {
+      "path": "V47_README_BN.txt",
+      "bytes": 4775,
+      "sha256": "c4c81ddd785fcc01ca806ba8ab86a798300c8798a21c2a92060ca00a76e49706"
+    },
+    {
+      "path": "V48_MANIFEST.json",
+      "bytes": 4067,
+      "sha256": "6a26e8e03e1b182f3ae365276de44ac0534ca2162cf2014fb0ad371c75694592"
+    },
+    {
+      "path": "V48_QA_REPORT_BN.txt",
+      "bytes": 1653,
+      "sha256": "0acb8c1a2403ed74d82bac969713f20cdab8c3d52b05d04869c37b4f5fcdc68f"
+    },
+    {
+      "path": "V48_README_BN.txt",
+      "bytes": 3441,
+      "sha256": "48c2fdd8a9d0ad75721626fec705f3a7cc028039f3db92f46a69a9c2115124e4"
+    },
+    {
+      "path": "V49_AUDIT_QA_BN.txt",
+      "bytes": 4520,
+      "sha256": "02759936ed327975f87ffcfdc25857c951c6f1154c6a4ff103aa74dcc140c47b"
+    },
+    {
+      "path": "V49_FILE_MANIFEST.json",
+      "bytes": 5051,
+      "sha256": "454db7b3dabda90ab0d2cd223d6174077b53e1825cff1eaecf56754733b3e0b7"
+    },
+    {
+      "path": "V49_INSTALL_BN.txt",
+      "bytes": 1705,
+      "sha256": "48cd911b11b7d218050d292154c65b76a6790f02938fcdd0600a52821fcb7863"
+    },
+    {
+      "path": "V49_MANIFEST.json",
+      "bytes": 1277,
+      "sha256": "a008b4e674350bae8d2666099c28d8e2f02c7cc510bf60d0b5b5c465a4c5f1b9"
+    },
+    {
+      "path": "V49_STRUCTURAL_QA.txt",
+      "bytes": 645,
+      "sha256": "8f4b3700affbc01b81b206e001613d49ef86da737e5458ef8e8a2f0161ef36df"
+    },
+    {
+      "path": "V50_INSTALL_AND_AUDIT_BN.txt",
+      "bytes": 2818,
+      "sha256": "7b59923d51dd165669b36ff3a55c938fe84aab36d504ed43e6e299e98de2d022"
+    },
+    {
+      "path": "V50_QA.txt",
+      "bytes": 523,
+      "sha256": "67d9587c1fdad524eb70222077357ec438367bb72564c4486e9f23f6b633f5a1"
+    },
+    {
+      "path": "VERSION.txt",
+      "bytes": 6,
+      "sha256": "18eae15334b79bd02850dbf1c2b352847049c4dbd803bfaea684d441cfc3732f"
+    },
+    {
+      "path": "app/layout.tsx",
+      "bytes": 3151,
+      "sha256": "f1cb058cfb236653a48de8dd259fe5a4e6d0ad8fc5a4bd2ea06c560940460f1c"
+    },
+    {
+      "path": "components/AmbientCanvas.tsx",
+      "bytes": 5393,
+      "sha256": "fe2d53dbce154326df164c3359bee664b95ccea87ea34128beb0517cbf30d307"
+    },
+    {
+      "path": "components/Dashboard.tsx",
+      "bytes": 18400,
+      "sha256": "411776cc74f6991de392211b22bce6d18d8112648c0ce33bd03ff130100ec41d"
+    },
+    {
+      "path": "components/DataVault.tsx",
+      "bytes": 3408,
+      "sha256": "b070584ce9f6bd81d2f9340183992748e3f394b934ae8b8e2cf8af91f5254099"
+    },
+    {
+      "path": "components/FutureBackdrop.tsx",
+      "bytes": 976,
+      "sha256": "b0f613434a22e0b0c908daa462cf5be799c80ff6c815b57a2bd8fab8c78d05e6"
+    },
+    {
+      "path": "components/HeroScene.tsx",
+      "bytes": 5041,
+      "sha256": "945e767ab549bc85210dce2225ce5a24dc529a683c94bde663578ed5f76f7a6e"
+    },
+    {
+      "path": "components/Listening.tsx",
+      "bytes": 10822,
+      "sha256": "08e69e77cd7f7ee6d425d80d404adf37788fa9a35d3e95ca8b89c0f1eaaa11bf"
+    },
+    {
+      "path": "components/MockTest.tsx",
+      "bytes": 6764,
+      "sha256": "e1f0b8c9373c7a51afd00930cd3cab6822e6b821dfd89a2188c9c3cc71afcc69"
+    },
+    {
+      "path": "components/Shell.tsx",
+      "bytes": 9827,
+      "sha256": "9c5257d4b3ad92faeb3459d64ff73ab9f03e64d5613fa44c80162be269540766"
+    },
+    {
+      "path": "components/Spelling.tsx",
+      "bytes": 3304,
+      "sha256": "54d367fbd1d8e37c1feda39e879d893d9ece20be1b15fbddc5113dc1dd6d2c29"
+    },
+    {
+      "path": "components/StudioApp.tsx",
+      "bytes": 6658,
+      "sha256": "bf4cb9eca53ce94b43370df4ce30277648123c02cc5aa1464dbb2d065343d999"
+    },
+    {
+      "path": "components/StudyViews.tsx",
+      "bytes": 6148,
+      "sha256": "01c107605a42923ff57d980eb4603db609201b54e333cba6bba385e6633e8e11"
+    },
+    {
+      "path": "components/Vocabulary.tsx",
+      "bytes": 7258,
+      "sha256": "9d97fd1cd1a84ed7dd65707df55844c429728cd8a611434544853b6bcaba2c76"
+    },
+    {
+      "path": "lib/analytics.ts",
+      "bytes": 907,
+      "sha256": "4fee0bfb468e33ad1ad0543b6ba2c265fa9a69da017449b749980b229215273f"
+    },
+    {
+      "path": "lib/audio.ts",
+      "bytes": 6601,
+      "sha256": "a24d53de3e75673b62190608fb1e40756871664590c1922960024058cd44f807"
+    },
+    {
+      "path": "lib/data.ts",
+      "bytes": 966,
+      "sha256": "b67954ffd13b5a93ac4ffdf82bdd06cda40c6ae32ffaebeebc4c3fb0e05f1fa3"
+    },
+    {
+      "path": "lib/linguistics.ts",
+      "bytes": 5050,
+      "sha256": "f2fdf88617fe33051d6d42680755712bb89c9dbec8e179fcf5066187cb922241"
+    },
+    {
+      "path": "lib/storage.ts",
+      "bytes": 2701,
+      "sha256": "4bdf32a5370498ba444200f51b1c282867194f9a813c819c639230c4b0abd1dd"
+    },
+    {
+      "path": "package.json",
+      "bytes": 911,
+      "sha256": "8d3c0f8b4503f0e63d93e0513f5df58bed3f3c372b69ed716611a15b998e2f54"
+    },
+    {
+      "path": "public/assets/nihongo-vibes-logo-192.png",
+      "bytes": 53061,
+      "sha256": "265ef84e876a2ba783c598c688a1c8190335fc0a286411033bec0a3750504b1b"
+    },
+    {
+      "path": "public/assets/nihongo-vibes-logo-512.png",
+      "bytes": 306893,
+      "sha256": "de14b8348f031f7f23463a406bdd2774aaeb7fcd02700982ea8b7c3d4f258626"
+    },
+    {
+      "path": "public/assets/nihongo-vibes-logo.webp",
+      "bytes": 42892,
+      "sha256": "406e41516cfb859527b6fed8d17df90f9ef0de799d616e96c46945847378bab4"
+    },
+    {
+      "path": "public/manifest.webmanifest",
+      "bytes": 817,
+      "sha256": "5cf51de133e85d29fa1178bfb2596de9aab3a26adaf21a5737902fb840d49e40"
+    },
+    {
+      "path": "public/robots.txt",
+      "bytes": 90,
+      "sha256": "afa9e3ad9bb143da64379da24df9e1b541dcc075b35552b228eb6c9fbae97e9e"
+    },
+    {
+      "path": "public/sitemap.xml",
+      "bytes": 254,
+      "sha256": "6cca89bb61255662b1fe5cf94c71530d06ab5cf00d8e09094bf9e2d514eeebc0"
+    },
+    {
+      "path": "public/sw.js",
+      "bytes": 2362,
+      "sha256": "14460de80734b414ba98dd75fb492b47598de840faae8e1b71f0ecc18f7eb9e5"
+    },
+    {
+      "path": "scripts/build_audio_manifest.py",
+      "bytes": 1000,
+      "sha256": "58bc81acb91f9fbb2ef1a8fb4dd392bbabce4e165ec49cceb5767ac2ac8bc921"
+    },
+    {
+      "path": "scripts/generate_audio.py",
+      "bytes": 8140,
+      "sha256": "398af6d16bdd634349dc5e2038c1afb087c3b925b3756046311f70ffd214645e"
+    },
+    {
+      "path": "styles/v46-futuristic.scss",
+      "bytes": 77504,
+      "sha256": "4bd4291245cd40a363d55595a5f0d77dddbace34382a9f3ba02f85c87199a8fb"
+    },
+    {
+      "path": "styles/v49-full-system.scss",
+      "bytes": 27581,
+      "sha256": "498df4d3e6f3559f75c2449b7681bec1685a360b5ff21dbe7a38292a529c363b"
+    },
+    {
+      "path": "styles/v50-production.scss",
+      "bytes": 4799,
+      "sha256": "90a2b59e8f89cf3f731ec8c1e7fb51dcb41162222047c620b4be829c01e88b5a"
+    }
+  ]
+}

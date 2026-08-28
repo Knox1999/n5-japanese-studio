@@ -1,0 +1,36 @@
+THE NIHONGO VIBES — V50 STRUCTURAL QA
+======================================
+[PASS] V49.1 nullable Listening fix
+[PASS] PWA brand updated
+[PASS] SW V50
+[PASS] Data versioning
+[PASS] Deep-link URL state
+[PASS] Virtual page views
+[PASS] Backup component
+[PASS] Roadmap analytics
+[PASS] Shadowing cancellation fix
+[PASS] Mock mistakes -> SRS
+[PASS] Conversation roleplay
+[PASS] Reading vocab panel
+[PASS] SEO robots
+[PASS] SEO sitemap
+[PASS] JSON-LD
+[PASS] Skip link
+[PASS] Audio metadata V50
+[PASS] Save-Data Three.js guard
+
+PRE-DEPLOY PREFLIGHT
+====================
+[PASS] TypeScript/TSX transpile syntax check: 18 files, 0 syntax errors
+[PASS] scripts/generate_audio.py: py_compile
+[PASS] scripts/build_audio_manifest.py: py_compile
+[PASS] styles/v49-full-system.scss: balanced braces
+[PASS] styles/v50-production.scss: balanced braces
+[PASS] URL initial state made hydration-safe
+[PASS] GA automatic page_view disabled to prevent duplicate virtual pageviews
+
+IMPORTANT
+=========
+This package is an overlay for the current GitHub repository.
+The repository's existing source/data, generated-data scripts, SRS component,
+Kanji assets, and other unchanged files remain in place.

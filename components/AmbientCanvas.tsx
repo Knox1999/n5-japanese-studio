@@ -9,7 +9,8 @@ export default function AmbientCanvas() {
     if (!canvas || typeof window === 'undefined') return;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const tiny = window.matchMedia('(max-width: 640px)').matches;
-    if (reduced) return;
+    const saveData = Boolean((navigator as any).connection?.saveData);
+    if (reduced || saveData) return;
     let cleanup = () => {};
     let disposed = false;
     (async () => {

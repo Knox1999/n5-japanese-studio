@@ -3,10 +3,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard, BookOpen, PenLine, Brain, MessageCircle, BookOpenText, Headphones, Languages,
-  TreePine, ClipboardCheck, History, Menu, X, Search, Sparkles, ChevronDown, Command, Radio
+  TreePine, ClipboardCheck, History, Menu, X, Search, Sparkles, ChevronDown, Command, Radio, DatabaseBackup, Share2
 } from 'lucide-react';
 import type { StudioMeta, ViewName } from '@/lib/types';
 import { loadSearchIndex } from '@/lib/data';
+import { track } from '@/lib/analytics';
 import AmbientCanvas from './AmbientCanvas';
 
 type NavItem={view:ViewName;label:string;short:string;icon:any};
@@ -68,6 +69,10 @@ export default function Shell({meta,lesson,view,onLesson,onView,children}:{meta:
    <div className="future-drawer-status"><i/><span>SYSTEM ONLINE</span><b>LESSON {String(lesson).padStart(2,'0')}</b></div>
    <div className="future-drawer-lesson"><label>CURRENT LESSON</label><div><select value={lesson} onChange={e=>{onLesson(Number(e.target.value),'dashboard');setDrawer(false)}}>{meta.lessons.map(L=><option value={L.lesson} key={L.lesson}>Lesson {String(L.lesson).padStart(2,'0')} · {L.title}</option>)}</select><ChevronDown size={15}/></div></div>
    <nav>{NAV.map(x=>{const I=x.icon;return <button key={x.view} className={view===x.view?'active':''} onClick={()=>go(x.view)} aria-current={view===x.view?'page':undefined}><I size={18}/><span>{x.label}</span>{x.view==='kanji'&&<small>2300</small>}</button>})}</nav>
+   <div className="future-drawer-utilities">
+     <button onClick={()=>window.dispatchEvent(new Event('n5-open-vault'))}><DatabaseBackup size={16}/><span>Backup & Restore</span></button>
+     <button onClick={async()=>{try{await navigator.clipboard.writeText(location.href);track('share_link',{section_name:view,lesson_number:lesson})}catch{}}}><Share2 size={16}/><span>Copy current link</span></button>
+   </div>
    <div className="future-drawer-foot"><Sparkles size={16}/><span>Learn → Listen → Recall → Use → Review</span></div>
  </aside>;
 
