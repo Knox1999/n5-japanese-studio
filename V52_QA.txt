@@ -1,0 +1,14 @@
+V52 STRUCTURAL QA
+==================
+[PASS] Generic adjective inference
+[PASS] [な] inference
+[PASS] Verb Group 1
+[PASS] Verb Group 2
+[PASS] Verb Group 3
+[PASS] Dictionary form
+[PASS] Clickable adjective filters
+[PASS] Clickable group filters
+[PASS] Custom lesson picker
+[PASS] No native header select
+[PASS] GA4 preserved
+[PASS] V52 CSS imported
