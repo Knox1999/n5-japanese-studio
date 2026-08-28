@@ -1,4 +1,4 @@
-name: Deploy N5 Studio — V47 Natural Voice + Responsive UI
+name: Deploy The Nihongo Vibes — V49 Full System
 
 on:
   push:
@@ -47,9 +47,9 @@ jobs:
           path: _audio_cache
           # Include the generator itself in the key so voice/prosody changes cannot
           # silently reuse an older robotic MP3 cache.
-          key: n5-v47-kokoro-natural-${{ hashFiles('source/data/studio.json', 'scripts/generate_audio.py') }}
+          key: n5-v49-kokoro-emotive-${{ hashFiles('source/data/studio.json', 'scripts/generate_audio.py') }}
           restore-keys: |
-            n5-v47-kokoro-natural-
+            n5-v49-kokoro-emotive-
             n5-v42-kokoro-
             n5-kokoro-jf-alpha-
 
@@ -90,6 +90,9 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm install --no-audit --no-fund
+
+      - name: Type-check frontend
+        run: npm run lint:types
 
       - name: Build static Next.js site
         env:

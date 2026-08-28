@@ -1,0 +1,50 @@
+{
+  "version": "V49.0",
+  "brand": "THE NIHONGO VIBES",
+  "subtitle": "N5 FUTURE LEARNING STUDIO",
+  "base": "User-supplied V48 package",
+  "current_github_failure_fixed": "components/Listening.tsx TypeScript map(norm) nullable value",
+  "visual_stack": [
+    "HTML",
+    "CSS/SCSS",
+    "JavaScript/TypeScript",
+    "Three.js",
+    "GSAP",
+    "React",
+    "Next.js"
+  ],
+  "optimized_pages": [
+    "Dashboard",
+    "Vocabulary",
+    "SRS",
+    "Spelling",
+    "Conversation",
+    "Reading",
+    "Listening / Shadowing",
+    "Grammar",
+    "Kanji Matrix",
+    "Mock Test",
+    "History",
+    "Kana Pad"
+  ],
+  "voice": {
+    "engine": "Kokoro neural TTS",
+    "profile": "v49-natural-emotive-ja-1",
+    "dialogue_voice": "jf_tebukuro",
+    "clear_learning_voice": "jf_alpha",
+    "neutral_voice": "jf_alpha,jf_tebukuro",
+    "contextual_pacing": true,
+    "cache_regeneration": true
+  },
+  "responsive": {
+    "desktop": "full ambient Three.js + GSAP",
+    "tablet": "reduced density",
+    "phone": "20 particles / 7 petals / lower pixel ratio / ~20fps budget",
+    "reduced_motion": "animations minimized"
+  },
+  "logo_assets": [
+    "public/assets/nihongo-vibes-logo.webp",
+    "public/assets/nihongo-vibes-logo-512.png",
+    "public/assets/nihongo-vibes-logo-192.png"
+  ]
+}

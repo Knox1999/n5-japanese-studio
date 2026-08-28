@@ -1,0 +1,58 @@
+THE NIHONGO VIBES — V49 INSTALL GUIDE
+=====================================
+
+Recommended base:
+Your current repository after V48.
+
+UPLOAD / REPLACE
+----------------
+Replace:
+- components/Shell.tsx
+- components/Dashboard.tsx
+- components/AmbientCanvas.tsx
+- components/Listening.tsx
+- scripts/generate_audio.py
+- app/layout.tsx
+- .github/workflows/deploy-pages.yml
+
+Add:
+- styles/v49-full-system.scss
+- public/assets/nihongo-vibes-logo.webp
+- public/assets/nihongo-vibes-logo-512.png
+- public/assets/nihongo-vibes-logo-192.png
+- V49_AUDIT_QA_BN.txt
+- V49_INSTALL_BN.txt
+- VERSION.txt
+
+The ZIP also contains the V48 files it was built from, so you may upload the complete package over the repository while preserving your source/data and other existing files.
+
+COMMIT
+------
+Suggested:
+Apply The Nihongo Vibes V49 full-system futuristic optimization
+
+WHY THE FIRST BUILD MAY TAKE LONGER
+-----------------------------------
+V49 changes the TTS voice profile/cache key.
+That intentionally forces regeneration of old cached voice clips so the website does not continue serving the older flatter voice.
+
+CHECK AFTER COMMIT
+------------------
+Actions must pass:
+1. Build/validate data
+2. Generate natural Japanese audio
+3. Build KanjiVG
+4. Install frontend
+5. Type-check frontend
+6. Build static Next.js site
+7. Final QA
+8. Deploy Pages
+
+Then hard refresh the live site:
+Ctrl + F5
+
+NOTE
+----
+The site still uses your existing Next.js/React application architecture.
+That is intentional: converting this feature-rich app back to one giant static HTML file would make it harder to maintain.
+The browser output is still HTML + CSS + JavaScript, while Three.js and GSAP provide the futuristic visual/motion layer.

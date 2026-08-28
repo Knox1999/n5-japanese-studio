@@ -37,14 +37,25 @@ export default function Shell({meta,lesson,view,onLesson,onView,children}:{meta:
  useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch()}if(e.key==='Escape'){setDrawer(false);setSearch(false)}};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey)},[results.length]);
  useEffect(()=>{const locked=drawer||search;if(!locked)return;const prev=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=prev}},[drawer,search]);
  useEffect(()=>{const root=subnavRef.current;if(!root)return;const active=root.querySelector<HTMLButtonElement>('button.active');active?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})},[view]);
- useLayoutEffect(()=>{const el=mainRef.current;if(!el||typeof window==='undefined'||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;let ctx:any;(async()=>{try{const {gsap}=await import('gsap');ctx=gsap.context(()=>{gsap.fromTo(el,{opacity:.72,y:9,filter:'blur(3px)'},{opacity:1,y:0,filter:'blur(0px)',duration:.46,ease:'power3.out',clearProps:'filter'});gsap.fromTo('.future-subnav button.active',{scale:.94},{scale:1,duration:.34,ease:'back.out(1.7)'})},el.parentElement||el)}catch{}})();return()=>ctx?.revert?.()},[view,lesson]);
+ useLayoutEffect(()=>{const el=mainRef.current;if(!el||typeof window==='undefined'||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;let ctx:any;(async()=>{try{const {gsap}=await import('gsap');ctx=gsap.context(()=>{
+   const mobile=window.matchMedia('(max-width: 700px)').matches;
+   gsap.fromTo(el,{opacity:.72,y:mobile?5:10,filter:mobile?'none':'blur(3px)'},{opacity:1,y:0,filter:'blur(0px)',duration:mobile?.32:.48,ease:'power3.out',clearProps:'filter'});
+   gsap.fromTo('.future-subnav button.active',{scale:.94},{scale:1,duration:.34,ease:'back.out(1.7)'});
+   const hero=el.querySelectorAll('.study-header,.future-page-hero');
+   if(hero.length)gsap.fromTo(hero,{opacity:.55,y:mobile?5:12},{opacity:1,y:0,duration:mobile?.34:.55,ease:'power3.out'});
+   const cards=el.querySelectorAll('.vocab-premium-card,.metric-card,.action-panel,.grammar-premium-card,.dialogue-row,.reading-paper,.audio-console,.transcript-panel,.srs-card-premium,.practice-card,.premium-panel,.mock-start,.mock-question,.history-card,.lesson-kanji-strip,.kanji-identity');
+   if(cards.length)gsap.fromTo(cards,{opacity:0,y:mobile?5:12},{opacity:1,y:0,duration:mobile?.28:.44,stagger:mobile?.015:.035,ease:'power2.out',clearProps:'transform'});
+ },el)}catch{}})();return()=>ctx?.revert?.()},[view,lesson]);
 
  const shown=q.trim()?results.filter(x=>[x.j,x.k,x.bn,x.en,x.p].some((v:any)=>String(v||'').toLowerCase().includes(q.toLowerCase()))).slice(0,30):results.slice(0,12);
  const go=(v:ViewName)=>{onView(v);setDrawer(false)};
 
- const Brand=()=> <button className="future-brand" onClick={()=>go('dashboard')} aria-label="Go to dashboard">
-   <span className="future-brand-mark"><i/><b className="font-jp">日</b></span>
-   <span><strong>N5 Natural Japanese</strong><small>FUTURE LEARNING OS</small></span>
+ const Brand=()=> <button className="future-brand future-brand-v49" onClick={()=>go('dashboard')} aria-label="Go to The Nihongo Vibes dashboard">
+   <span className="future-brand-logo-wrap">
+     <img className="future-brand-logo" src={`${process.env.NEXT_PUBLIC_BASE_PATH||''}/assets/nihongo-vibes-logo.webp`} alt="" />
+     <i className="future-brand-pulse"/>
+   </span>
+   <span><strong>THE NIHONGO VIBES</strong><small>N5 FUTURE LEARNING STUDIO</small></span>
  </button>;
 
  const LessonNode=({drawerMode=false}:{drawerMode?:boolean})=> drawerMode ? null : <div className="future-header-node" title={`Current lesson: ${lesson}`}>

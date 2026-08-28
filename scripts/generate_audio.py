@@ -28,10 +28,15 @@ OUT.mkdir(exist_ok=True)
 
 SR = 24000
 BASE_SPEED = float(os.getenv('N5_TTS_SPEED', '0.93'))
-PROFILE_VERSION = 'v47-natural-ja-2'
+PROFILE_VERSION = 'v49-natural-emotive-ja-1'
 PROFILE_FILE = OUT / '_voice_profile.json'
 VOICE_ENV = os.getenv('N5_TTS_VOICE', '').strip()
 VOICE_CANDIDATES = [x for x in [VOICE_ENV, 'jf_alpha,jf_tebukuro', 'jf_tebukuro', 'jf_alpha'] if x]
+VOICE_STYLES = {
+    'neutral': 'jf_alpha,jf_tebukuro',
+    'dialogue': 'jf_tebukuro',
+    'clear': 'jf_alpha',
+}
 
 
 def expressive_speed(text: str) -> float:
@@ -64,6 +69,43 @@ def pause_seconds(text: str) -> float:
     return 0.105
 
 
+def style_for_row(row: dict) -> str:
+    kinds = set(row.get('kinds') or [])
+    text = str(row.get('text') or '')
+    if kinds.intersection({'conversation', 'shadow'}):
+        return 'dialogue'
+    if kinds.intersection({'vocab', 'spelling', 'grammar'}):
+        return 'clear'
+    if text.endswith(('！', '!')) or any(x in text for x in ('ありがとう', 'おめでとう', 'すごい')):
+        return 'dialogue'
+    return 'neutral'
+
+
+def contextual_speed(row: dict) -> float:
+    text = str(row.get('text') or '')
+    kinds = set(row.get('kinds') or [])
+    speed = expressive_speed(text)
+    if 'shadow' in kinds:
+        speed -= 0.018
+    if 'conversation' in kinds:
+        speed -= 0.010
+    if 'vocab' in kinds and len(text) <= 10:
+        speed -= 0.018
+    if 'reading_full' in kinds and len(text) > 40:
+        speed += 0.012
+    return max(0.82, min(1.0, speed))
+
+
+def contextual_pause(row: dict) -> float:
+    text = str(row.get('text') or '')
+    kinds = set(row.get('kinds') or [])
+    p = pause_seconds(text)
+    if 'conversation' in kinds:
+        p += 0.025
+    if 'shadow' in kinds:
+        p += 0.035
+    return min(.24, p)
+
 def load_profile() -> dict:
     try:
         return json.loads(PROFILE_FILE.read_text(encoding='utf-8'))
@@ -71,10 +113,11 @@ def load_profile() -> dict:
         return {}
 
 
-def save_profile(voice: str) -> None:
+def save_profile(voice: str, voices: dict[str, str]) -> None:
     PROFILE_FILE.write_text(json.dumps({
         'version': PROFILE_VERSION,
         'voice': voice,
+        'voices': voices,
         'base_speed': BASE_SPEED,
         'sample_rate': SR,
     }, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -105,10 +148,17 @@ def main() -> None:
     torch.set_num_threads(max(1, os.cpu_count() or 2))
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     pipeline = KPipeline(lang_code='j', device=device)
-    voice = select_voice(pipeline)
+    default_voice = select_voice(pipeline)
+    supported_voices = {'neutral': default_voice, 'dialogue': default_voice, 'clear': default_voice}
+    for style, candidate in VOICE_STYLES.items():
+        try:
+            pipeline.load_voice(candidate)
+            supported_voices[style] = candidate
+        except Exception:
+            supported_voices[style] = default_voice
 
     old_profile = load_profile()
-    current_profile = {'version': PROFILE_VERSION, 'voice': voice, 'base_speed': BASE_SPEED, 'sample_rate': SR}
+    current_profile = {'version': PROFILE_VERSION, 'voice': default_voice, 'voices': supported_voices, 'base_speed': BASE_SPEED, 'sample_rate': SR}
     regenerate = old_profile != current_profile
     if regenerate:
         print('TTS profile changed; regenerating cached Japanese audio:', current_profile, flush=True)
@@ -125,7 +175,9 @@ def main() -> None:
         try:
             parts: list[np.ndarray] = []
             with torch.inference_mode():
-                for _, _, audio in pipeline(row['text'], voice=voice, speed=expressive_speed(row['text'])):
+                style = style_for_row(row)
+                voice = supported_voices.get(style, default_voice)
+                for _, _, audio in pipeline(row['text'], voice=voice, speed=contextual_speed(row)):
                     if audio is None:
                         continue
                     if hasattr(audio, 'detach'):
@@ -136,7 +188,7 @@ def main() -> None:
             if not parts:
                 raise RuntimeError('no audio')
 
-            pause = np.zeros(int(SR * pause_seconds(row['text'])), dtype=np.float32)
+            pause = np.zeros(int(SR * contextual_pause(row)), dtype=np.float32)
             joined: list[np.ndarray] = []
             for j, part in enumerate(parts):
                 if j:
@@ -169,8 +221,8 @@ def main() -> None:
     if len(failed) > 20:
         raise SystemExit(f'Too many audio failures: {len(failed)}')
 
-    save_profile(voice)
-    print({'generated': generated, 'reused': reused, 'failed': len(failed), 'voice': voice, 'device': device})
+    save_profile(default_voice, supported_voices)
+    print({'generated': generated, 'reused': reused, 'failed': len(failed), 'voice': default_voice, 'voice_styles': supported_voices, 'device': device})
 
 
 if __name__ == '__main__':

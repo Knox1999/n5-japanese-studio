@@ -94,7 +94,11 @@ export default function Dashboard({
 
         <div className="future-hero-copy">
           <div className="future-status-pill"><i/><span>LEARNING SYSTEM ONLINE</span><b>N5</b></div>
-          <div className="future-eyebrow"><Sparkles size={14}/> N5 NATURAL JAPANESE STUDIO · FUTURE LEARNING OS</div>
+          <div className="future-hero-brand-v49">
+            <img src={`${process.env.NEXT_PUBLIC_BASE_PATH||''}/assets/nihongo-vibes-logo.webp`} alt="The Nihongo Vibes" />
+            <div><b>THE NIHONGO VIBES</b><span>Japanese Learning Studio</span></div>
+          </div>
+          <div className="future-eyebrow"><Sparkles size={14}/> N5 JAPANESE · THREE.JS · GSAP · FUTURE LEARNING OS</div>
           <h1 className="future-display font-bn">
             জাপানি শেখার<br/><em>নতুন ইন্টারফেস।</em>
           </h1>

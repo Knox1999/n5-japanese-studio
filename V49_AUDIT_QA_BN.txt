@@ -1,0 +1,144 @@
+THE NIHONGO VIBES — V49 FULL-SYSTEM AUDIT / OPTIMIZATION
+=========================================================
+
+AUDIT BASIS
+-----------
+- Current V48 package supplied in this chat
+- Current GitHub main architecture: Next.js 15 / React 19 / Three.js / GSAP / SCSS
+- Current deployment failure log
+- User-supplied The Nihongo Vibes logo
+
+CONFIRMED CURRENT BUILD FAILURE FIXED
+-------------------------------------
+Latest GitHub Action reached:
+  ✓ Next.js compiled successfully
+then failed during TypeScript checking in:
+  components/Listening.tsx
+
+Problem:
+  [v.kanji, v.japanese].map(norm)
+where `v.kanji` can be undefined.
+
+V49:
+  .map(x => norm(x))
+so undefined is safely accepted by norm().
+
+PAGE-BY-PAGE POLISH
+-------------------
+1. HOME / DASHBOARD
+   - Uploaded logo + The Nihongo Vibes branding
+   - Three.js ambient field
+   - GSAP entrance choreography
+   - responsive hero, bento modules, learning orbit, route map
+
+2. VOCABULARY
+   - futuristic cards
+   - clearer Japanese hierarchy
+   - sticky desktop tools / normal mobile tools
+   - audio/mastery controls touch-optimized
+   - existing grammar/word-class/exception information preserved
+
+3. SRS / MEMORY RECALL
+   - large active-recall card
+   - futuristic phase/status rail
+   - rating buttons optimized for phones
+   - audio actions and revealed answers redesigned
+
+4. SPELLING
+   - centered active-output workspace
+   - larger Japanese input
+   - phone-safe input/buttons
+   - Kana Pad remains available
+
+5. CONVERSATION
+   - speaker identity chips
+   - readable chat bubbles
+   - audio control per line
+   - mobile layout becomes one-column dialogue without clipping
+
+6. READING
+   - distraction-free reading surface
+   - Japanese line-height optimized
+   - Bangla translation separated visually
+   - full passage audio preserved
+
+7. LISTENING / SHADOWING
+   - current TypeScript build bug fixed
+   - natural voice indicator
+   - Bangla line meaning + vocabulary hints
+   - waveform / current line / transcript hierarchy improved
+   - desktop sticky player; phone stacks cleanly
+   - 0.75 / 0.90 / 1.00 speed preserved
+
+8. GRAMMAR
+   - consistent futuristic cards
+   - pattern > explanation > example hierarchy
+   - example audio preserved
+
+9. KANJI MATRIX / KLC
+   - dataset metrics, lesson Kanji, search browser and tree get one design language
+   - desktop split workspace
+   - phone collapses to one column
+   - stroke-order studio preserved
+
+10. MOCK TEST
+    - start screen, progress, question, options and result states unified
+    - touch target size improved
+    - correct/wrong contrast improved
+
+11. HISTORY
+    - score orb + progress bar styling
+    - phone layout optimized
+
+12. KANA PAD
+    - desktop floating behavior preserved
+    - phone becomes bottom-sheet style above the mobile dock
+    - smaller screen grids adapt 8 → 7 → 6 columns
+
+VOICE / EMOTION V49
+-------------------
+Existing V48 natural voice profile was already stronger than the old robotic voice.
+V49 adds context-based delivery:
+- Dialogue / shadowing → warmer `jf_tebukuro`
+- Vocabulary / grammar / spelling → clearer `jf_alpha`
+- Reading / neutral sentence → blended `jf_alpha,jf_tebukuro`
+- questions, exclamation, politeness, shadowing get different pacing/pause timing
+- profile version changed to force cached old audio regeneration
+- browser fallback still ranks the best installed Japanese neural/natural voice
+
+Important:
+Kokoro is an offline neural TTS engine; it does not expose full actor-style emotion controls.
+V49 therefore improves naturalness through voice selection + contextual pacing + pauses.
+For true cinematic emotional acting later, a dedicated expressive cloud TTS can be added as an optional provider.
+
+PERFORMANCE
+-----------
+Desktop:
+- richer Three.js scene
+- GSAP staggered transitions
+Phone:
+- Three.js still visible but only 20 particles / 7 petals
+- pixel ratio capped at 1
+- approx. 20 FPS animation budget
+- shorter GSAP transitions
+- heavy sticky layouts disabled where they hurt usability
+Reduced Motion:
+- WebGL/animations disabled or minimized
+
+BRAND
+-----
+Primary:
+  THE NIHONGO VIBES
+Secondary:
+  N5 FUTURE LEARNING STUDIO
+
+Logo:
+  public/assets/nihongo-vibes-logo.webp
+  public/assets/nihongo-vibes-logo-512.png
+  public/assets/nihongo-vibes-logo-192.png
+
+
+VOICE CACHE REUSE
+-----------------
+V49 saves the selected contextual voice map inside `_voice_profile.json`.
+First V49 build regenerates the old flat audio; subsequent unchanged builds can reuse the V49 cache instead of regenerating all 2,669 clips.

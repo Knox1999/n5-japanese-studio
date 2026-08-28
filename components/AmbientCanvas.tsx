@@ -9,7 +9,7 @@ export default function AmbientCanvas() {
     if (!canvas || typeof window === 'undefined') return;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const tiny = window.matchMedia('(max-width: 640px)').matches;
-    if (reduced || tiny) return;
+    if (reduced) return;
     let cleanup = () => {};
     let disposed = false;
     (async () => {
@@ -17,14 +17,14 @@ export default function AmbientCanvas() {
         const THREE = await import('three');
         if (disposed || !canvas) return;
         const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: 'low-power' });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35));
+        renderer.setPixelRatio(tiny ? 1 : Math.min(window.devicePixelRatio || 1, 1.35));
         renderer.setClearColor(0x000000,0);
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(44,1,.1,100);
         camera.position.z=7.4;
 
         const mobile=window.matchMedia('(max-width: 900px)').matches;
-        const count=mobile?42:92;
+        const count=tiny?20:mobile?42:92;
         const geometry=new THREE.BufferGeometry();
         const points=new Float32Array(count*3);
         const speed=new Float32Array(count);
@@ -42,7 +42,7 @@ export default function AmbientCanvas() {
         scene.add(particles);
 
         const petalGeo=new THREE.BufferGeometry();
-        const petalCount=mobile?18:34;
+        const petalCount=tiny?7:mobile?18:34;
         const petals=new Float32Array(petalCount*3);
         for(let i=0;i<petalCount;i++){petals[i*3]=(Math.random()-.5)*8;petals[i*3+1]=(Math.random()-.5)*4.8;petals[i*3+2]=(Math.random()-.5)*2.5}
         petalGeo.setAttribute('position',new THREE.BufferAttribute(petals,3));
@@ -61,8 +61,9 @@ export default function AmbientCanvas() {
         if(!mobile)window.addEventListener('pointermove',pointer,{passive:true});
         const resize=()=>{const rect=canvas.getBoundingClientRect();const w=Math.max(1,Math.floor(rect.width)),h=Math.max(1,Math.floor(rect.height));renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()};
         const ro=new ResizeObserver(resize);ro.observe(canvas);resize();
+        const frameMs=tiny?52:mobile?36:28;
         const animate=(now=performance.now())=>{
-          if(!running)return;raf=requestAnimationFrame(animate);if(now-last<28)return;last=now;
+          if(!running)return;raf=requestAnimationFrame(animate);if(now-last<frameMs)return;last=now;
           mx+=(tx-mx)*.035;my+=(ty-my)*.035;camera.position.x=mx;camera.position.y=-my;
           const pos=geometry.getAttribute('position') as any;
           for(let i=0;i<count;i++){pos.array[i*3+1]-=speed[i];pos.array[i*3]+=Math.sin(now*.00045+phase[i])*.00048;if(pos.array[i*3+1]<-2.9)pos.array[i*3+1]=2.9}
