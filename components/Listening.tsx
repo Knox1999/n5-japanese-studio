@@ -10,7 +10,7 @@ type ListeningLine={jp:string;bn:string;source:'Dialogue'|'Reading'|'Shadowing';
 
 function sentenceChunks(text:string){return String(text||'').split(/(?<=[。！？])/).map(s=>s.trim()).filter(Boolean)}
 function banglaChunks(text:string){return String(text||'').split(/(?<=[।!?])/).map(s=>s.trim()).filter(Boolean)}
-function norm(text:string){return String(text||'').replace(/\s+/g,'').replace(/[“”‘’'"「」『』]/g,'').trim()}
+function norm(text?:string){return String(text||'').replace(/\s+/g,'').replace(/[“”‘’'"「」『』]/g,'').trim()}
 function tokens(text:string){const spaced=text.trim().split(/\s+/).filter(Boolean);if(spaced.length>1)return spaced;return Array.from(text).reduce<string[]>((a,ch)=>{if(/[、。！？]/.test(ch)){if(a.length)a[a.length-1]+=ch;else a.push(ch)}else if(a.length&&a[a.length-1].length<3)a[a.length-1]+=ch;else a.push(ch);return a},[])}
 function hintsFor(jp:string,vocab:VocabItem[]){const n=norm(jp);const seen=new Set<string>();return vocab.filter(v=>{const forms=[v.kanji,v.japanese].map(x=>norm(x)).filter(x=>x.length>1);return forms.some(f=>n.includes(f))}).map(v=>({jp:v.kanji||v.japanese,bn:v.bangla_meaning})).filter(x=>{const k=`${x.jp}|${x.bn}`;if(seen.has(k))return false;seen.add(k);return true}).slice(0,5)}
 function addParallel(map:Map<string,string>,jpText:string,bnText:string){const ja=sentenceChunks(jpText),bn=banglaChunks(bnText);if(ja.length&&ja.length===bn.length)ja.forEach((x,i)=>map.set(norm(x),bn[i]));}
