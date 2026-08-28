@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import json, re, hashlib
+import json, hashlib, shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,6 +13,7 @@ LESSONS.mkdir(parents=True, exist_ok=True)
 studio = json.loads((SRC / "studio.json").read_text(encoding="utf-8"))
 klc = json.loads((SRC / "klc-tree.json").read_text(encoding="utf-8"))
 memory = json.loads((SRC / "klc-memory.json").read_text(encoding="utf-8"))
+grammar_visual = json.loads((SRC / "grammar-visual.json").read_text(encoding="utf-8"))
 
 vocab = studio.get("vocabulary") or []
 lesson_content = ((studio.get("content") or {}).get("lessons") or {})
@@ -24,6 +25,8 @@ if len(lesson_content) != 25:
     raise SystemExit(f"Expected 25 lessons, found {len(lesson_content)}")
 if len(klc.get("nodes") or []) != 2300:
     raise SystemExit(f"Expected 2300 KLC nodes, found {len(klc.get('nodes') or [])}")
+if len(grammar_visual.get("lessons") or {}) != 25:
+    raise SystemExit("Expected 25 visual grammar lessons")
 
 summary = []
 search = []
@@ -59,7 +62,7 @@ for lesson in range(1, 26):
         })
 
 meta = {
-    "version": "42",
+    "version": "53",
     "source_version": studio.get("version"),
     "vocabulary_count": len(vocab),
     "lesson_count": 25,
@@ -71,10 +74,16 @@ meta = {
 (OUT / "search-index.json").write_text(json.dumps(search, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 (OUT / "klc-tree.json").write_text(json.dumps(klc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 (OUT / "klc-memory.json").write_text(json.dumps(memory, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+(OUT / "grammar-visual.json").write_text(
+    json.dumps(grammar_visual, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+)
 
-# Small deterministic build fingerprint for cache busting / QA.
 h = hashlib.sha256()
-for p in [SRC / "studio.json", SRC / "klc-tree.json", SRC / "klc-memory.json"]:
+for p in [SRC / "studio.json", SRC / "klc-tree.json", SRC / "klc-memory.json", SRC / "grammar-visual.json"]:
     h.update(p.read_bytes())
-(OUT / "build.json").write_text(json.dumps({"version":"42","fingerprint":h.hexdigest()[:16]}, separators=(",", ":")), encoding="utf-8")
-print(f"Built {len(summary)} lesson files, {len(search)} search records, {len(klc['nodes'])} KLC nodes")
+(OUT / "build.json").write_text(
+    json.dumps({"version":"53","fingerprint":h.hexdigest()[:16]}, separators=(",", ":")), encoding="utf-8"
+)
+rules=sum(len(v.get("rules") or []) for v in (grammar_visual.get("lessons") or {}).values())
+examples=sum(len(r.get("examples") or []) for v in (grammar_visual.get("lessons") or {}).values() for r in (v.get("rules") or []))
+print(f"Built {len(summary)} lesson files, {len(search)} search records, {len(klc['nodes'])} KLC nodes, {rules} grammar rules, {examples} grammar examples")

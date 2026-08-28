@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { BookOpenText, Languages, MessageCircle, Volume2, Eye, EyeOff, UserRound, Sparkles } from 'lucide-react';
+import { BookOpenText, MessageCircle, Volume2, Eye, EyeOff, UserRound } from 'lucide-react';
 import type { LessonPayload } from '@/lib/types';
 import { playText } from '@/lib/audio';
 import { track } from '@/lib/analytics';
+import GrammarStudio from './GrammarStudio';
 
 export function Conversation({data}:{data:LessonPayload}){
   const rows=data.content.dialogue_extended||data.content.dialogue||[];
@@ -45,6 +46,5 @@ export function Reading({data}:{data:LessonPayload}){
 }
 
 export function Grammar({data}:{data:LessonPayload}){
-  const rows=data.content.grammar||[];
-  return <div className="space-y-5"><section className="study-header tone-grammar"><div><div className="section-kicker">Grammar Patterns</div><h1>Pattern → Meaning → Natural Example</h1><p className="font-bn">Source lesson-এ থাকা grammar-কে pattern, অর্থ এবং example হিসেবে পরিষ্কার hierarchy-তে সাজানো হয়েছে।</p></div><Languages className="header-big-icon"/></section><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{rows.map((g,i)=><article key={i} className="grammar-premium-card"><span>{String(i+1).padStart(2,'0')}</span><small className="grammar-label">PATTERN</small><h2 className="font-jp" lang="ja">{g[0]}</h2><small className="grammar-label">MEANING</small><p className="font-bn">{g[1]}</p><div className="grammar-example"><div><small className="grammar-label">EXAMPLE</small><b className="font-jp" lang="ja">{g[2]}</b></div><button className="mini-audio" onClick={()=>playText(g[2],1,'grammar',{}, {lesson_number:data.lesson,grammar_index:i+1})}><Volume2 size={16}/></button></div></article>)}</div>{!rows.length&&<div className="empty-state"><Sparkles/><b>No grammar records in this lesson source</b></div>}</div>
+  return <GrammarStudio data={data}/>;
 }

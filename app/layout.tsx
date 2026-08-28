@@ -8,6 +8,7 @@ import '@/styles/v49-full-system.scss';
 import '@/styles/v50-production.scss';
 import '@/styles/v51-masterpiece.scss';
 import '@/styles/v52-learning-master.scss';
+import '@/styles/v53-visual-grammar.scss';
 
 const SITE='https://knox1999.github.io/n5-japanese-studio/';
 export const metadata: Metadata = {

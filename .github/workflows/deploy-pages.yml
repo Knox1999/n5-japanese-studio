@@ -52,8 +52,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: _audio_cache
-          key: n5-v50-kokoro-emotive-${{ hashFiles('source/data/studio.json', 'scripts/generate_audio.py') }}
+          key: n5-v53-grammar-kokoro-${{ hashFiles('source/data/studio.json', 'source/data/grammar-visual.json', 'scripts/generate_audio.py', 'scripts/extract_audio_texts.py') }}
           restore-keys: |
+            n5-v53-grammar-kokoro-
             n5-v50-kokoro-emotive-
             n5-v49-kokoro-emotive-
             n5-v42-kokoro-
