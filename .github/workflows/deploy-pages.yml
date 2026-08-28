@@ -1,4 +1,4 @@
-name: Deploy N5 Studio — Feature Recovery v42
+name: Deploy N5 Studio — V47 Natural Voice + Responsive UI
 
 on:
   push:
@@ -21,7 +21,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,8 +45,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: _audio_cache
-          key: n5-v42-kokoro-${{ hashFiles('source/data/studio.json') }}
+          # Include the generator itself in the key so voice/prosody changes cannot
+          # silently reuse an older robotic MP3 cache.
+          key: n5-v47-kokoro-natural-${{ hashFiles('source/data/studio.json', 'scripts/generate_audio.py') }}
           restore-keys: |
+            n5-v47-kokoro-natural-
             n5-v42-kokoro-
             n5-kokoro-jf-alpha-
 

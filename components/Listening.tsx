@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Headphones, Pause, Play, RotateCcw, Square, Volume2 } from 'lucide-react';
+import { Headphones, Play, SkipBack, SkipForward, Sparkles, Square, Volume2 } from 'lucide-react';
 import type { LessonPayload } from '@/lib/types';
 import { audioUrlForText, playText, stopAudio } from '@/lib/audio';
 import { track } from '@/lib/analytics';
@@ -12,33 +11,57 @@ function tokens(text:string){const spaced=text.trim().split(/\s+/).filter(Boolea
 
 function Waveform({text,progress}:{text:string;progress:number}){
   const [peaks,setPeaks]=useState<number[]>(Array.from({length:72},(_,i)=>.25+((i*17)%13)/18));
-  useEffect(()=>{let dead=false;let ctx:AudioContext|undefined;(async()=>{try{const url=await audioUrlForText(text);const r=await fetch(url);if(!r.ok)return;const b=await r.arrayBuffer();ctx=new (window.AudioContext||((window as any).webkitAudioContext))( );const audio=await ctx.decodeAudioData(b);const ch=audio.getChannelData(0),n=72,step=Math.max(1,Math.floor(ch.length/n));const vals=[];for(let i=0;i<n;i++){let m=0;const start=i*step,end=Math.min(ch.length,start+step);for(let j=start;j<end;j++)m=Math.max(m,Math.abs(ch[j]));vals.push(Math.max(.12,Math.min(1,m*2.3)))}if(!dead)setPeaks(vals)}catch{}finally{ctx?.close().catch(()=>{})}})();return()=>{dead=true;ctx?.close().catch(()=>{})}},[text]);
+  useEffect(()=>{let dead=false;let ctx:AudioContext|undefined;(async()=>{try{if(!text)return;const url=await audioUrlForText(text);const r=await fetch(url);if(!r.ok)return;const b=await r.arrayBuffer();ctx=new (window.AudioContext||((window as any).webkitAudioContext))();const audio=await ctx.decodeAudioData(b);const ch=audio.getChannelData(0),n=72,step=Math.max(1,Math.floor(ch.length/n));const vals=[];for(let i=0;i<n;i++){let m=0;const start=i*step,end=Math.min(ch.length,start+step);for(let j=start;j<end;j++)m=Math.max(m,Math.abs(ch[j]));vals.push(Math.max(.12,Math.min(1,m*2.3)))}if(!dead)setPeaks(vals)}catch{}finally{ctx?.close().catch(()=>{})}})();return()=>{dead=true;ctx?.close().catch(()=>{})}},[text]);
   return <div className="waveform" aria-label="Audio waveform">{peaks.map((p,i)=><i key={i} className={i/peaks.length<=progress?'played':''} style={{height:`${Math.round(12+p*36)}px`}}/> )}</div>
 }
 
 export default function Listening({data}:{data:LessonPayload}){
-  const [rate,setRate]=useState<.75|.9|1>(1);const [active,setActive]=useState(0);const [progress,setProgress]=useState(0);const [playing,setPlaying]=useState(false);const run=useRef(0);
+  const [rate,setRate]=useState<.75|.9|1>(1);
+  const [active,setActive]=useState(0);
+  const [progress,setProgress]=useState(0);
+  const [playing,setPlaying]=useState(false);
+  const run=useRef(0);
+  const activeRow=useRef<HTMLButtonElement|null>(null);
+
   const lines=useMemo(()=>{const c=data.content;const dialogue=(c.dialogue_extended||c.dialogue||[]).map(x=>x[1]);const shadow=c.shadowing_chunks||[];const reading=sentenceChunks(c.reading_extended||c.reading||'');return Array.from(new Set([...dialogue,...shadow,...reading])).filter(Boolean)},[data]);
-  const current=lines[active]||'';const currentTokens=tokens(current);const tokenIndex=Math.min(currentTokens.length-1,Math.floor(progress*Math.max(1,currentTokens.length)));
+  const current=lines[active]||'';
+  const currentTokens=tokens(current);
+  const tokenIndex=Math.min(currentTokens.length-1,Math.floor(progress*Math.max(1,currentTokens.length)));
+
+  const stop=()=>{run.current++;stopAudio();setPlaying(false);setProgress(0)};
   const playOne=async(index=active)=>{if(!lines[index])return;run.current++;const token=run.current;setActive(index);setPlaying(true);setProgress(0);await playText(lines[index],rate,'listening',{onProgress:r=>token===run.current&&setProgress(r),onEnd:()=>token===run.current&&setPlaying(false)});};
   const playSequence=async()=>{run.current++;const token=run.current;setPlaying(true);for(let i=0;i<lines.length;i++){if(token!==run.current)break;setActive(i);setProgress(0);await playText(lines[i],rate,'listening',{onProgress:r=>token===run.current&&setProgress(r)});}if(token===run.current)setPlaying(false);track('shadowing_complete',{lesson_number:data.lesson,segment_count:lines.length})};
-  const stop=()=>{run.current++;stopAudio();setPlaying(false);setProgress(0)};
-  useEffect(()=>stop,[]);
+  const selectOnly=(index:number)=>{stopAudio();run.current++;setPlaying(false);setProgress(0);setActive(Math.max(0,Math.min(lines.length-1,index)))};
 
-  return <div className="space-y-5 pb-8"><section className="study-header tone-listen"><div><div className="section-kicker">Premium Listening Lab · Lesson {String(data.lesson).padStart(2,'0')}</div><h1>Hear → Follow → Shadow</h1><p className="font-bn">Natural Japanese audio, real waveform, live transcript এবং সর্বোচ্চ 1× speed.</p></div><Headphones className="header-big-icon"/></section>
+  useEffect(()=>stop,[]);
+  useEffect(()=>{activeRow.current?.scrollIntoView({behavior:'smooth',block:'nearest'})},[active]);
+
+  return <div className="space-y-5 pb-8 listening-view-v47">
+    <section className="study-header tone-listen">
+      <div><div className="section-kicker">Premium Listening Lab · Lesson {String(data.lesson).padStart(2,'0')}</div><h1>Hear → Follow → Shadow</h1><p className="font-bn">Natural Japanese neural audio, real waveform, live transcript এবং learner-friendly speed.</p></div>
+      <Headphones className="header-big-icon"/>
+    </section>
+
     <section className="listening-grid">
       <article className="audio-console">
-        <div className="console-top"><span className="now-playing">NOW PLAYING</span><span>{active+1}/{lines.length}</span></div>
+        <div className="console-top"><span className="now-playing">NOW PLAYING</span><span>{Math.min(active+1,Math.max(1,lines.length))}/{lines.length}</span></div>
+        <div className="natural-voice-pill"><Sparkles size={13}/><span>Natural neural voice</span><b>JA</b></div>
         <div className="current-jp font-jp">{current||'Select a transcript line'}</div>
         <Waveform text={current} progress={progress}/>
         <div className="progress-time"><span>Progress</span><b>{Math.round(progress*100)}%</b></div>
-        <div className="transport"><button className="transport-btn" onClick={()=>{setActive(Math.max(0,active-1));setProgress(0)}} aria-label="Previous line"><RotateCcw size={18}/></button><button className="transport-main" onClick={()=>playing?stop():playOne()} aria-label={playing?'Stop audio':'Play audio'}>{playing?<Square/>:<Play fill="currentColor"/>}</button><button className="transport-btn" onClick={()=>{setActive(Math.min(lines.length-1,active+1));setProgress(0)}} aria-label="Next line"><Play size={18}/></button></div>
+        <div className="transport">
+          <button className="transport-btn" onClick={()=>selectOnly(active-1)} disabled={active<=0} aria-label="Previous line"><SkipBack size={18}/></button>
+          <button className="transport-main" onClick={()=>playing?stop():playOne()} disabled={!current} aria-label={playing?'Stop audio':'Play audio'}>{playing?<Square/>:<Play fill="currentColor"/>}</button>
+          <button className="transport-btn" onClick={()=>selectOnly(active+1)} disabled={active>=lines.length-1} aria-label="Next line"><SkipForward size={18}/></button>
+        </div>
         <div className="speed-control"><span>Playback speed</span><div>{([.75,.9,1] as const).map(x=><button key={x} onClick={()=>setRate(x)} className={rate===x?'active':''}>{x}×</button>)}</div></div>
-        <div className="grid grid-cols-2 gap-2"><button className="premium-btn premium-btn-secondary" onClick={()=>playOne()}><Volume2 size={16}/> Current line</button><button className="premium-btn premium-btn-primary" onClick={playSequence}><Headphones size={16}/> Full session</button></div>
+        <div className="listening-actions"><button className="premium-btn premium-btn-secondary" onClick={()=>playOne()} disabled={!current}><Volume2 size={16}/> Current line</button><button className="premium-btn premium-btn-primary" onClick={playSequence} disabled={!lines.length}><Headphones size={16}/> Full session</button></div>
       </article>
-      <article className="transcript-panel"><div className="sticky-transcript-head"><div><div className="section-kicker">Live transcript</div><h2>Follow the spoken line</h2></div><span className="live-dot"><i/> LIVE</span></div>
+
+      <article className="transcript-panel">
+        <div className="sticky-transcript-head"><div><div className="section-kicker">Live transcript</div><h2>Follow the spoken line</h2></div><span className={`live-dot ${playing?'is-live':''}`}><i/> {playing?'LIVE':'READY'}</span></div>
         <div className="transcript-current font-jp" aria-live="polite">{currentTokens.map((t,i)=><span key={`${t}-${i}`} className={i===tokenIndex&&playing?'active':''}>{t}</span>)}</div>
-        <div className="transcript-list">{lines.map((line,i)=><button key={i} onClick={()=>playOne(i)} className={i===active?'active':''}><span>{String(i+1).padStart(2,'0')}</span><p className="font-jp">{line}</p><Play size={14}/></button>)}</div>
+        <div className="transcript-list">{lines.map((line,i)=><button ref={i===active?activeRow:undefined} key={i} onClick={()=>playOne(i)} className={i===active?'active':''} aria-current={i===active?'true':undefined}><span>{String(i+1).padStart(2,'0')}</span><p className="font-jp">{line}</p><Play size={14}/></button>)}</div>
       </article>
     </section>
   </div>

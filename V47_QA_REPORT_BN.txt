@@ -1,0 +1,66 @@
+V47 QA REPORT — 2026-08-28
+==========================
+
+Scope
+-----
+- Shared application shell/navigation
+- Mobile top header + lesson control
+- Quick-access navigation
+- Mobile bottom dock / drawer / search
+- All production study-surface style selectors
+- Listening playback UI and behavior
+- Static neural audio playback + Web Speech fallback
+- Kokoro build-time audio generator
+- GitHub Pages audio cache strategy
+
+Responsive coverage
+-------------------
+Desktop: >= 981px
+Tablet/compact desktop: <= 980px
+Mobile: <= 700px
+Small mobile: <= 480px
+Very narrow mobile: <= 360px
+Safe-area: env(safe-area-inset-top/right/bottom/left)
+
+Study surfaces covered
+----------------------
+Dashboard
+Vocabulary
+Adaptive SRS
+Spelling
+Conversation
+Reading
+Listening
+Grammar
+Kanji / KLC
+Mock Test
+History
+KanaPad / KLC auxiliary panels
+
+Voice pipeline improvements
+---------------------------
+- static Kokoro neural MP3 remains preferred (better consistency than browser TTS)
+- default current Kokoro voice candidate: jf_alpha,jf_tebukuro blend
+- fallback candidates: jf_tebukuro, jf_alpha
+- punctuation-aware tempo
+- polite-expression soft slowdown
+- sentence-ending pauses
+- pitch preservation for 0.75x / 0.90x playback
+- ranked Japanese OS/browser voice fallback
+- cache profile invalidation
+- CI cache key includes generate_audio.py hash
+
+Validation executed
+-------------------
+1. python -m py_compile scripts/generate_audio.py -> PASS
+2. SCSS brace count -> 732 / 732 -> PASS
+3. TS/TSX compiler parse -> no syntax/parser errors
+   Expected unresolved-module errors occurred because this workspace contains the patch only,
+   not repository node_modules/source aliases.
+
+Known validation boundary
+-------------------------
+The complete GitHub repository could be inspected through its public source, but the runtime
+workspace did not contain a full clone/node_modules. Therefore a complete `npm run build` and
+browser-device screenshot regression run were not executed here. The patch is structured as a
+repository-root overlay so those final checks can run in the repo's existing GitHub Actions CI.
