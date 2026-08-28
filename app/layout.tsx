@@ -6,24 +6,23 @@ import '@/styles/v44-editorial.scss';
 import '@/styles/v46-futuristic.scss';
 import '@/styles/v49-full-system.scss';
 import '@/styles/v50-production.scss';
+import '@/styles/v51-masterpiece.scss';
 
 const SITE='https://knox1999.github.io/n5-japanese-studio/';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
   title: { default:'The Nihongo Vibes — N5 Japanese Learning Studio', template:'%s · The Nihongo Vibes' },
-  description: 'A futuristic JLPT N5 Japanese learning studio with vocabulary, smart recall, natural Japanese audio, shadowing, reading, grammar, Kanji KLC and lesson mastery tests.',
+  description: 'A futuristic Japanese-learning studio with natural Japanese audio, vocabulary, smart recall, listening, shadowing, reading, grammar, KLC Kanji and mastery practice.',
   applicationName: 'The Nihongo Vibes',
-  keywords: ['JLPT N5','Japanese learning','Japanese vocabulary','Japanese listening','Kanji','Bangla Japanese learning'],
+  keywords: ['JLPT N5','Japanese learning','Japanese vocabulary','Japanese listening','Japanese shadowing','Kanji','Bangla Japanese learning'],
   alternates: { canonical: SITE },
   manifest: './manifest.webmanifest',
   icons: { icon: './assets/nihongo-vibes-logo-192.png', apple: './assets/nihongo-vibes-logo-192.png' },
   openGraph: {
-    type:'website',
-    url:SITE,
-    siteName:'The Nihongo Vibes',
+    type:'website', url:SITE, siteName:'The Nihongo Vibes',
     title:'The Nihongo Vibes — N5 Japanese Learning Studio',
-    description:'Vocabulary, listening, shadowing, reading, grammar, Kanji and smart recall in one connected N5 learning system.',
+    description:'Vocabulary, listening, shadowing, reading, grammar, Kanji and smart recall in one connected Japanese learning system.',
     images:[{url:'./assets/nihongo-vibes-logo-512.png',width:512,height:512,alt:'The Nihongo Vibes'}],
   },
   twitter: {
@@ -36,23 +35,19 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  viewportFit: 'cover',
-  themeColor: '#071311',
+  width:'device-width',
+  initialScale:1,
+  viewportFit:'cover',
+  themeColor:'#06172D',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  /* Keep the user's GA4 Measurement ID unchanged. */
   const ga = process.env.NEXT_PUBLIC_GA_ID || 'G-FG3JCWGSPR';
   const schema={
-    '@context':'https://schema.org',
-    '@type':'EducationalApplication',
-    name:'The Nihongo Vibes',
-    url:SITE,
-    applicationCategory:'EducationalApplication',
-    operatingSystem:'Web',
-    educationalLevel:'JLPT N5',
-    inLanguage:['bn','ja','en'],
+    '@context':'https://schema.org','@type':'EducationalApplication',
+    name:'The Nihongo Vibes',url:SITE,applicationCategory:'EducationalApplication',
+    operatingSystem:'Web',educationalLevel:'JLPT N5',inLanguage:['bn','ja','en'],
     description:'A Japanese N5 learning application for vocabulary, listening, shadowing, reading, grammar, Kanji and recall practice.'
   };
   return (

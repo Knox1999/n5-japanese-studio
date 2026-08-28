@@ -3,32 +3,62 @@
 @tailwind utilities;
 
 :root{
-  --ink:#17221f;
-  --navy:#0B100F;
-  --navy-2:#13211e;
-  --ivory:#F2EEE5;
-  --paper:#FCFAF5;
-  --sakura:#C94753;
-  --sakura-soft:#F5E2E3;
-  --sage:#405C54;
-  --sage-soft:#E4ECE7;
-  --gold:#C99B52;
-  --gold-soft:#F1E5CF;
-  --blue:#18384D;
-  --blue-soft:#E5EDF1;
-  --violet:#665B80;
-  --violet-soft:#ECE8F2;
-  --mist:#D8D0C3;
-  --muted:#61706B;
-  --shadow:0 18px 50px rgba(11,16,15,.08);
+  --ink:#EAF3FA;
+  --navy:#06172D;
+  --navy-2:#0A2747;
+  --ivory:#F7FAFD;
+  --paper:#0A203A;
+  --sakura:#F0443E;
+  --sakura-soft:rgba(240,68,62,.14);
+  --sage:#4EBAC7;
+  --sage-soft:rgba(78,186,199,.10);
+  --gold:#DDB66A;
+  --gold-soft:rgba(221,182,106,.12);
+  --blue:#123C66;
+  --blue-soft:rgba(18,60,102,.22);
+  --violet:#786CB6;
+  --violet-soft:rgba(120,108,182,.12);
+  --mist:rgba(196,218,235,.14);
+  --muted:#8BA6BA;
+  --shadow:0 22px 70px rgba(0,0,0,.28);
 }
 *{box-sizing:border-box}
-html{background:var(--ivory);scroll-behavior:smooth;text-rendering:optimizeLegibility}
-body{margin:0;min-width:320px;background:var(--ivory);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Bengali","Noto Sans JP",sans-serif;overflow-x:hidden}
+html{
+  min-height:100%;
+  background:var(--navy);
+  scroll-behavior:smooth;
+  text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+  overflow-y:auto!important;
+  scrollbar-gutter:stable;
+}
+body{
+  margin:0;
+  min-width:320px;
+  min-height:100%;
+  background:var(--navy);
+  color:var(--ink);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Bengali","Noto Sans JP",sans-serif;
+  overflow-x:hidden;
+  overflow-y:auto!important;
+  overscroll-behavior-y:auto;
+}
+html.overlay-open,body.overlay-open{overflow:hidden!important;overscroll-behavior:none}
 button,input,select,textarea{font:inherit}
 button{touch-action:manipulation}
-::selection{background:#d8b373;color:#171b18}
-:focus-visible{outline:2px solid #C99B52;outline-offset:3px}
+::selection{background:#F0443E;color:#fff}
+:focus-visible{outline:2px solid #63D4E5;outline-offset:3px}
 .font-jp{font-family:"Noto Sans JP","Yu Gothic","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
 .font-bn{font-family:"Hind Siliguri","Noto Sans Bengali","Nirmala UI",system-ui,sans-serif}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
+
+/* Premium native scrollbar — mouse wheel remains normal page scrolling */
+*{scrollbar-width:thin;scrollbar-color:#E24B46 #071A31}
+*::-webkit-scrollbar{width:11px;height:9px}
+*::-webkit-scrollbar-track{background:#071A31}
+*::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#F0443E,#A92D31);border:3px solid #071A31;border-radius:999px}
+*::-webkit-scrollbar-thumb:hover{background:#F45B55}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+}
