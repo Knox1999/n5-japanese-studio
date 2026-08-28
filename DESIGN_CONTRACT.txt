@@ -1,0 +1,10 @@
+TOP NOTCH v40 DESIGN CONTRACT
+Fonts: Hind Siliguri / Noto Sans JP / Inter
+Palette: #0B0F19, #0D1117, #F3F4F6, #9CA3AF, #FF2E63
+Glass: rgba(255,255,255,.035), blur 16px+
+Radius: 12–16px
+Motion: cubic-bezier(.16,1,.3,1)
+Modal: opacity 0 + scale(.95) -> opacity 1 + scale(1)
+Mobile: 44px minimum interactive targets
+Hero metric: ১,০১১+ শব্দ
+Safety: additive namespaced TN40 layer; original JS untouched
