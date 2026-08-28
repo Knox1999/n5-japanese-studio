@@ -1,0 +1,15 @@
+THE NIHONGO VIBES — FINAL RECOVERY PATCH
+
+Upload the ZIP contents to repository ROOT and replace:
+- scripts/qa_production.py
+- scripts/repo_hygiene.py
+
+Commit message:
+Fix production QA and clean repository root
+
+Do NOT re-run the old red workflow.
+Creating this new commit will start a new workflow automatically.
+
+This patch fixes the current false QA failure caused by exact string matching
+against JSX formatting/entities, and archives helper documents from the repo root
+into docs/helper-docs/ on the next workflow run.
