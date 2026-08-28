@@ -1,9 +1,0 @@
-N5 v46.1 Build Fix QA
-======================
-[PASS] React computes dot left
-[PASS] React computes dot top
-[PASS] SCSS invalid modulo removed
-[PASS] SCSS invalid dot calc removed
-[PASS] GA4 ID preserved
-[PASS] 25-lesson route preserved
-[PASS] Futuristic stylesheet still imported
