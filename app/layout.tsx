@@ -14,7 +14,7 @@ import '@/styles/v54-clean-verb-lab.scss';
 import '@/styles/v56-unified-ui.scss';
 import '@/styles/v57-signature.scss';
 import '@/styles/v58-design-system.scss';
-import '@/styles/v59-full-redesign.scss';
+import '@/styles/v60-ultimate.scss';
 
 const SITE = 'https://knox1999.github.io/n5-japanese-studio/';
 
@@ -25,20 +25,20 @@ export const metadata: Metadata = {
     template: '%s · The Nihongo Vibes',
   },
   description:
-    'A premium Japanese-learning studio with vocabulary classes, verb groups, smart recall, listening, shadowing, reading, grammar, KLC Kanji and mastery practice.',
+    'A focused Japanese-learning studio for JLPT N5 vocabulary, smart recall, listening, shadowing, reading, conversation, grammar, Kanji and mock practice.',
   applicationName: 'The Nihongo Vibes',
   keywords: [
     'JLPT N5',
     'Japanese learning',
-    'Japanese verb groups',
-    'i adjective',
-    'na adjective',
     'Japanese vocabulary',
     'Japanese listening',
+    'Japanese grammar',
     'Kanji',
     'Bangla Japanese learning',
   ],
-  alternates: { canonical: SITE },
+  alternates: {
+    canonical: SITE,
+  },
   manifest: './manifest.webmanifest',
   icons: {
     icon: './assets/nihongo-vibes-logo-192.png',
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     siteName: 'The Nihongo Vibes',
     title: 'The Nihongo Vibes — N5 Japanese Learning Studio',
     description:
-      'Vocabulary, verb groups, adjectives, listening, shadowing, reading, grammar, Kanji and smart recall in one connected Japanese learning system.',
+      'Vocabulary, listening, shadowing, reading, conversation, grammar, Kanji and smart recall in one connected Japanese learning system.',
     images: [
       {
         url: './assets/nihongo-vibes-logo-512.png',
@@ -97,7 +97,7 @@ export default function RootLayout({
     educationalLevel: 'JLPT N5',
     inLanguage: ['bn', 'ja', 'en'],
     description:
-      'A Japanese N5 learning application for vocabulary, verb groups, adjectives, listening, shadowing, reading, grammar, Kanji and recall practice.',
+      'A Japanese N5 learning application for vocabulary, recall, listening, shadowing, reading, conversation, grammar, Kanji and mock practice.',
   };
 
   return (
