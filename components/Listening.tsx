@@ -110,7 +110,7 @@ function Waveform({text,progress}:{text:string;progress:number}){
   return <div className="shadow-wave-shell-v82" aria-label={`Audio progress ${played}%`}>
     <div className="shadow-wave-v57">{peaks.map((p,i)=><i key={i} className={i/peaks.length<=progress?'played':''} style={{height:`${Math.round(10+p*38)}px`}}/>)}</div>
     <div className="shadow-wave-readout-v82"><span>VOICE SIGNAL</span><b>{played}%</b></div>
-  </div>
+  </div>;
 }
 
 function Transcript({text,playing,activeCue}:{text:string;playing:boolean;activeCue:number|null}){
@@ -203,7 +203,7 @@ export default function Listening({data}:{data:LessonPayload}){
   };
 
   const selectOnly=(index:number)=>{stopAudio();run.current++;setPlaying(false);setProgress(0);resetSync();setActive(Math.max(0,Math.min(lines.length-1,index)))};
-  useEffect(()=>stop,[]);
+  useEffect(()=>()=>{run.current+=1;stopAudio()},[]);
 
   const persona=currentLine?.voiceRole==='male'?'A · MALE':currentLine?.voiceRole==='female'?'B · FEMALE':'NARRATOR';
 
