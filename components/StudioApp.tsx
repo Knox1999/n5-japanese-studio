@@ -33,6 +33,7 @@ const Reading=dynamic(()=>import('./StudyViews').then(m=>m.Reading),{ssr:false,l
 const Grammar=dynamic(()=>import('./StudyViews').then(m=>m.Grammar),{ssr:false,loading:LoadingView});
 
 const VIEWS:ViewName[]=['dashboard','vocabulary','srs','spelling','conversation','reading','listening','grammar','kanji','kana','arcade','mock','history'];
+const SESSION_STARTED_AT=Date.now();
 const isView=(x:string|null):x is ViewName=>!!x&&VIEWS.includes(x as ViewName);
 
 function urlState(){
@@ -191,10 +192,7 @@ export default function StudioApp(){
  const currentMeta=meta?.lessons.find(x=>x.lesson===lesson);
  const currentMastered=(currentMeta?.ids||[]).reduce((count,id)=>count+(progress[String(id)]?1:0),0);
  const lessonPct=Math.round(currentMastered/Math.max(1,currentMeta?.count||1)*100);
- const dueSrs=useMemo(()=>{
-   const now=Date.now();
-   return Object.values(srs).reduce((count,state)=>count+(state.due_at&&new Date(state.due_at).getTime()<=now?1:0),0);
- },[srs]);
+ const dueSrs=useMemo(()=>Object.values(srs).reduce((count,state)=>count+(state.due_at&&new Date(state.due_at).getTime()<=SESSION_STARTED_AT?1:0),0),[srs]);
  const lastMockScore=historyRows[0]?.score;
  const recommendations=useMemo(()=>buildDailyRecommendations({lesson,lessonPercent:lessonPct,dueSrs,mistakes:learning.mistakes,dailyMinutes:Number(learning.studyPlan.dailyMinutes||20),lastMockScore}),[lesson,lessonPct,dueSrs,learning.mistakes,learning.studyPlan.dailyMinutes,lastMockScore]);
  const repairCount=useMemo(()=>getRepairQueue(learning.mistakes,500).length,[learning.mistakes]);
