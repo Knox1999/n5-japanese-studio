@@ -6,7 +6,7 @@ import {
   Square, Volume2, MessageCircle, Mic2, Waves, UserRound, Gauge, CheckCircle2
 } from 'lucide-react';
 import type { LessonPayload, VocabItem } from '@/lib/types';
-import { audioUrlForText, playText, stopAudio, type AudioVoiceRole } from '@/lib/audio';
+import { playText, stopAudio, type AudioVoiceRole } from '@/lib/audio';
 import { track } from '@/lib/analytics';
 
 type Source='Dialogue'|'Reading'|'Shadowing';
@@ -63,8 +63,11 @@ function buildListeningLines(data:LessonPayload):ListeningLine[]{
 }
 
 function Waveform({text,progress,voiceRole}:{text:string;progress:number;voiceRole:AudioVoiceRole}){
-  const [peaks,setPeaks]=useState<number[]>(Array.from({length:64},(_,i)=>.2+((i*17)%13)/18));
-  useEffect(()=>{let dead=false;let ctx:AudioContext|undefined;(async()=>{try{if(!text)return;const url=await audioUrlForText(text,voiceRole);const r=await fetch(url);if(!r.ok)return;const b=await r.arrayBuffer();ctx=new (window.AudioContext||((window as any).webkitAudioContext))();const audio=await ctx.decodeAudioData(b);const ch=audio.getChannelData(0),n=64,step=Math.max(1,Math.floor(ch.length/n));const vals=[];for(let i=0;i<n;i++){let m=0;const start=i*step,end=Math.min(ch.length,start+step);for(let j=start;j<end;j++)m=Math.max(m,Math.abs(ch[j]));vals.push(Math.max(.12,Math.min(1,m*2.2)))}if(!dead)setPeaks(vals)}catch{}finally{ctx?.close().catch(()=>{})}})();return()=>{dead=true;ctx?.close().catch(()=>{})}},[text,voiceRole]);
+  const peaks=useMemo(()=>Array.from({length:64},(_,i)=>{
+    const code=text.charCodeAt(i%Math.max(1,text.length))||31;
+    const roleOffset=voiceRole==='male'?7:voiceRole==='female'?13:3;
+    return .18+((code*(i+roleOffset))%67)/100;
+  }),[text,voiceRole]);
   return <div className="shadow-wave-v57" aria-label="Audio waveform">{peaks.map((p,i)=><i key={i} className={i/peaks.length<=progress?'played':''} style={{height:`${Math.round(9+p*32)}px`}}/>)}</div>
 }
 
@@ -113,7 +116,7 @@ export default function Listening({data}:{data:LessonPayload}){
 
   return <div className="space-y-5 pb-8 shadowing-view-v57">
     <section className="study-header tone-listen">
-      <div><div className="section-kicker">HUMAN-LIKE LISTENING · LESSON {String(data.lesson).padStart(2,'0')}</div><h1>Hear → Follow → Shadow</h1><p className="font-bn">Clean transcript, young-adult Japanese voices, বাংলা support এবং একটাই focused practice flow।</p></div>
+      <div><div className="section-kicker">FREE JAPANESE LISTENING · LESSON {String(data.lesson).padStart(2,'0')}</div><h1>Hear → Follow → Shadow</h1><p className="font-bn">Browser/Windows-এর Japanese voice, বাংলা support এবং একটাই focused practice flow—কোনো paid API ছাড়াই।</p></div>
       <Headphones className="header-big-icon"/>
     </section>
 

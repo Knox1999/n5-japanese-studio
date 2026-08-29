@@ -21,14 +21,13 @@ Approved phases: 7A, 7B, 7C, 7D, 7E, 7F, 7G, 7H
 - Lesson completion: >=80% vocabulary mastery + 0 due SRS
 - KLC: 2,300 nodes / 4,034 edges
 - Visual construction is not presented as historical etymology
-- Phase 7D V7 natural Japanese audio
-  - Keita male
-  - Nanami chat female
-  - OGG/Opus
-  - no MP3
+- Phase 7D free Japanese browser audio
+  - Web Speech API with installed Japanese device voices
+  - separate A/B voice preference and pitch
+  - no API key or per-character billing
+  - voice name and quality vary by browser/operating system
   - 0.75 / 0.9 / 1 speed
-  - pitch preservation
-  - multi-voice full dialogue
+  - full dialogue sequencing
 
 ## What this package replaces
 

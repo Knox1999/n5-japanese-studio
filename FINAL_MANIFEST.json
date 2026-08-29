@@ -14,16 +14,17 @@
   ],
   "official_logo": "user supplied IMG_8327.PNG",
   "audio": {
-    "engine": "Azure Speech build-time",
-    "male": "ja-JP-KeitaNeural",
-    "female_conversation": "ja-JP-NanamiNeural chat",
-    "format": "OGG/Opus",
+    "engine": "Web Speech API with device Japanese voices",
+    "male": "preferred Japanese voice A with lower pitch",
+    "female_conversation": "preferred Japanese voice B with higher pitch",
+    "format": "runtime browser synthesis",
     "speeds": [
       0.75,
       0.9,
       1.0
     ],
-    "mp3": false
+    "mp3": false,
+    "billed_api": false
   },
   "mock": {
     "quick": 10,
@@ -42,8 +43,5 @@
     768
   ],
   "style_patch": "existing styles/v60-ultimate.scss is patched in place; no V61/V62 stylesheet",
-  "requires_github_secrets": [
-    "AZURE_SPEECH_KEY",
-    "AZURE_SPEECH_REGION"
-  ]
+  "requires_github_secrets": []
 }

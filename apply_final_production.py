@@ -91,13 +91,11 @@ def main():
             run(["npm","ci","--no-audit","--no-fund"],repo_root)
         run(["npm","run","lint:types"],repo_root)
 
-        # Local build does not have GitHub Azure secrets by default.
-        # Next build itself can still validate the frontend; workflow generates audio in CI.
+        # Voice playback uses the browser/OS at runtime, so no speech credentials are needed.
         run(["npm","run","build"],repo_root)
 
     if args.push:
-        # Refuse to push if GitHub Action secrets cannot be checked locally.
-        print("\nIMPORTANT: Ensure AZURE_SPEECH_KEY and AZURE_SPEECH_REGION are configured in GitHub Actions.")
+        print("\nNo speech API key or GitHub Actions speech secret is required.")
         run(["git","add","-A"],repo_root)
         status=subprocess.run(["git","status","--porcelain"],cwd=repo_root,text=True,capture_output=True,check=True).stdout
         if not status.strip():
