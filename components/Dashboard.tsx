@@ -14,8 +14,6 @@ import {
   MessageCircle,
   PenLine,
   RotateCcw,
-  Sparkles,
-  Target,
   TreePine,
   Waves,
   type LucideIcon,
@@ -23,6 +21,7 @@ import {
 
 import type { MockAttempt, SrsCardState, StudioMeta, ViewName } from '@/lib/types';
 import type { ProgressMap, SrsMap } from '@/lib/storage';
+import LearningLabLauncher from './LearningLabLauncher';
 
 type DashboardProps = {
   meta: StudioMeta;
@@ -78,8 +77,6 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
   const currentPct=Math.round(currentMastered/Math.max(1,current?.count||1)*100);
   const health=getSrsHealth(srs,meta.vocabulary_count);
   const best=history.length?Math.max(...history.map(x=>Number(x.score||0))):0;
-  const completionTarget=Math.ceil((current?.count||0)*.8);
-  const remaining=Math.max(0,completionTarget-currentMastered);
 
   const lessonMap=useMemo(()=>meta.lessons.map(item=>{
     const count=mastered(progress,item.ids||[]);
@@ -87,123 +84,51 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
     return {lesson:item.lesson,title:item.title,scenario:item.scenario,pct,complete:pct>=80,active:item.lesson===lesson};
   }),[lesson,meta.lessons,progress]);
 
-  const nextLesson=Math.min(meta.lesson_count||25,lesson+1);
-
   return (
-    <div className="v63-dashboard">
-      <section className="v63-course-overview" aria-labelledby="course-overview-title">
-        <div className="v63-overview-copy">
-          <div className="v63-overview-kicker"><Waves size={15}/><span>YOUR N5 JOURNEY</span></div>
-          <div className="v63-overview-titleline">
-            <span className="v63-lesson-seal">{String(lesson).padStart(2,'0')}</span>
-            <div>
-              <small>CURRENT LESSON</small>
-              <h2 id="course-overview-title">{current?.title}</h2>
-              <p className="font-bn">{current?.scenario||'আজকের lesson-এর vocabulary, grammar এবং listening একসাথে practice করুন।'}</p>
-            </div>
+    <div className="v67-dashboard-core">
+      <section className="v67-course-pulse" aria-labelledby="course-pulse-title">
+        <div className="v67-pulse-main">
+          <div className="v67-pulse-kicker"><Waves size={15}/><span>COURSE PULSE</span></div>
+          <div className="v67-pulse-title">
+            <span>{String(lesson).padStart(2,'0')}</span>
+            <div><small>CURRENT LESSON</small><h2 id="course-pulse-title">{current?.title}</h2><p className="font-bn">{current?.scenario}</p></div>
           </div>
-
-          <div className="v63-current-progress">
-            <div><span>Lesson mastery</span><b>{currentPct}%</b></div>
-            <div className="v63-progress-track"><i style={{width:`${Math.max(2,currentPct)}%`}}/></div>
-            <p className="font-bn">{remaining>0?`80% mastery target-এ যেতে আরও ${remaining}টি vocabulary item বাকি।`:'এই lesson-এর vocabulary mastery target পূরণ হয়েছে।'}</p>
-          </div>
-
-          <div className="v63-overview-actions">
-            <button className="primary" onClick={()=>onLesson(lesson,'vocabulary')}>
-              <BookOpen size={18}/><span className="font-bn">Lesson চালিয়ে যান</span><ArrowRight size={17}/>
-            </button>
-            <button onClick={()=>onNavigate('srs')}>
-              <RotateCcw size={17}/><span className="font-bn">{health.due?`${health.due}টি due review`:'Smart Recall খুলুন'}</span>
-            </button>
-          </div>
+          <div className="v67-pulse-progress"><div><span>Lesson mastery</span><b>{currentPct}%</b></div><i><em style={{width:`${Math.max(2,currentPct)}%`}}/></i></div>
+          <div className="v67-pulse-actions"><button onClick={()=>onLesson(lesson,'vocabulary')}><BookOpen size={17}/><span className="font-bn">Lesson খুলুন</span><ArrowRight size={16}/></button><button onClick={()=>onNavigate('srs')}><RotateCcw size={16}/><span className="font-bn">{health.due?`${health.due} due review`:'Smart Recall'}</span></button></div>
         </div>
-
-        <aside className="v63-overview-stats" aria-label="Course overview statistics">
-          <div className="v63-orbit">
-            <div><small>COURSE</small><strong>{overall}%</strong><span>mastery</span></div>
-          </div>
-          <div className="v63-stat-grid">
-            <div><span>Mastered</span><b>{totalMastered}</b><small>{meta.vocabulary_count} words</small></div>
-            <div><span>Due now</span><b>{health.due}</b><small>review cards</small></div>
-            <div><span>Mature</span><b>{health.mature}</b><small>memory cards</small></div>
-            <div><span>Best mock</span><b>{best}%</b><small>practice score</small></div>
-          </div>
-        </aside>
-      </section>
-
-      <section id="course-map" className="v63-course-map" aria-label="25 lesson course path">
-        <header className="v63-section-heading">
-          <div>
-            <span>COURSE PATH</span>
-            <h2 className="font-bn">২৫টি lesson · একটাই পরিষ্কার progression</h2>
-          </div>
-          <p className="font-bn">কোন lesson-এ আছেন, কতটুকু শেষ হয়েছে এবং এরপর কোথায় যাবেন—এক নজরে দেখুন।</p>
-        </header>
-
-        <div className="v63-lesson-grid">
-          {lessonMap.map(item=>(
-            <button
-              key={item.lesson}
-              className={[item.active?'active':'',item.complete?'complete':''].filter(Boolean).join(' ')}
-              onClick={()=>onLesson(item.lesson,'vocabulary')}
-              aria-label={`Lesson ${item.lesson}: ${item.title}, ${item.pct}% mastered`}
-            >
-              <span className="v63-lesson-number">{String(item.lesson).padStart(2,'0')}</span>
-              <div className="v63-lesson-copy"><small>LESSON</small><b>{item.title}</b><em className="font-bn">{item.scenario||'Japanese foundation'}</em></div>
-              <div className="v63-lesson-progress"><i style={{width:`${Math.max(3,item.pct)}%`}}/></div>
-              <strong>{item.complete?<CheckCircle2 size={16}/>:`${item.pct}%`}</strong>
-            </button>
-          ))}
+        <div className="v67-pulse-stats">
+          <article><span>Course mastery</span><b>{overall}%</b><small>{totalMastered}/{meta.vocabulary_count} words</small></article>
+          <article><span>Due now</span><b>{health.due}</b><small>review cards</small></article>
+          <article><span>Mature</span><b>{health.mature}</b><small>memory cards</small></article>
+          <article><span>Best mock</span><b>{best}%</b><small>saved score</small></article>
         </div>
       </section>
 
-      <section className="v63-module-section">
-        <header className="v63-section-heading">
-          <div>
-            <span>LEARNING STUDIO</span>
-            <h2 className="font-bn">এক lesson · অনেক skill · একই progress system</h2>
-          </div>
-          <p className="font-bn">যে skill practice করবেন, সেটাই আপনার journey, mistakes এবং review loop-এর সাথে connected থাকবে।</p>
-        </header>
-
-        <div className="v63-module-grid">
-          {MODULES.map(({view:moduleView,glyph,title,bangla,detailBn,icon:Icon},index)=>(
-            <motion.button
-              key={moduleView}
-              onClick={()=>onNavigate(moduleView)}
-              initial={{opacity:0,y:10}}
-              whileInView={{opacity:1,y:0}}
-              viewport={{once:true,margin:'-30px'}}
-              transition={{delay:Math.min(index,6)*.025}}
-            >
-              <div className="v63-module-top"><span className="font-jp">{glyph}</span><Icon size={18}/></div>
-              <small>{String(index+1).padStart(2,'0')} · {title}</small>
-              <h3 className="font-bn">{bangla}</h3>
-              <p className="font-bn">{detailBn}</p>
-              <em>Open studio <ArrowRight size={15}/></em>
-            </motion.button>
-          ))}
+      <section id="course-map" className="v67-course-map" aria-label="25 lesson course path">
+        <header className="v67-section-head"><div><span>COURSE PATH</span><h2 className="font-bn">২৫টি lesson · এক নজরে পুরো progression</h2></div><p className="font-bn">Current lesson, completed lesson এবং next destination—একই জায়গা থেকে দেখুন।</p></header>
+        <div className="v67-lesson-grid">
+          {lessonMap.map(item=><button key={item.lesson} className={[item.active?'active':'',item.complete?'complete':''].filter(Boolean).join(' ')} onClick={()=>onLesson(item.lesson,'vocabulary')} aria-label={`Lesson ${item.lesson}: ${item.title}, ${item.pct}% mastered`}>
+            <span className="v67-lesson-no">{String(item.lesson).padStart(2,'0')}</span>
+            <div><small>LESSON</small><b>{item.title}</b><em className="font-bn">{item.scenario||'Japanese foundation'}</em></div>
+            <strong>{item.complete?<CheckCircle2 size={15}/>:`${item.pct}%`}</strong>
+            <i><em style={{width:`${Math.max(3,item.pct)}%`}}/></i>
+          </button>)}
         </div>
       </section>
 
-      <section className="v63-learning-loop" aria-label="Connected learning loop">
-        <div className="v63-loop-intro"><Sparkles/><span><small>THE NIHONGO VIBES METHOD</small><b className="font-bn">শুধু পড়া নয়—শেখা থেকে repair পর্যন্ত এক continuous loop</b></span></div>
-        <div className="v63-loop-steps">
-          {[
-            ['01','LEARN','বুঝুন'],
-            ['02','PRACTICE','চর্চা করুন'],
-            ['03','REPAIR','ভুল ঠিক করুন'],
-            ['04','RECALL','মনে করুন'],
-            ['05','USE','বাস্তবে ব্যবহার করুন'],
-            ['06','TEST','নিজেকে যাচাই করুন'],
-          ].map(([n,en,bn],index)=><div key={en}><span>{n}</span><b>{en}</b><small className="font-bn">{bn}</small>{index<5&&<ArrowRight/>}</div>)}
-        </div>
-      </section>
+      <LearningLabLauncher onNavigate={onNavigate}/>
 
-      <section className="v63-next-lesson">
-        <div><Target/><span><small>NEXT MILESTONE</small><b className="font-bn">Lesson {String(lesson).padStart(2,'0')} শেষ হলে Lesson {String(nextLesson).padStart(2,'0')} প্রস্তুত</b></span></div>
-        <button onClick={()=>onLesson(nextLesson,'vocabulary')}><span className="font-bn">পরের lesson দেখুন</span><ArrowRight/></button>
+      <section className="v67-module-section">
+        <header className="v67-section-head"><div><span>LEARNING STUDIO</span><h2 className="font-bn">এক lesson · সব core skill connected</h2></div><p className="font-bn">শেখা, শোনা, বলা, পড়া, লেখা, recall এবং test—সব একই progress system-এর অংশ।</p></header>
+        <div className="v67-module-grid">
+          {MODULES.map(({view:moduleView,glyph,title,bangla,detailBn,icon:Icon},index)=><motion.button key={moduleView} onClick={()=>onNavigate(moduleView)} initial={{opacity:0,y:8}} whileInView={{opacity:1,y:0}} viewport={{once:true,margin:'-30px'}} transition={{delay:Math.min(index,6)*.02}}>
+            <div className="v67-module-top"><span className="font-jp">{glyph}</span><Icon size={17}/></div>
+            <small>{String(index+1).padStart(2,'0')} · {title}</small>
+            <h3 className="font-bn">{bangla}</h3>
+            <p className="font-bn">{detailBn}</p>
+            <em>Open <ArrowRight size={14}/></em>
+          </motion.button>)}
+        </div>
       </section>
     </div>
   );
