@@ -1,6 +1,6 @@
 export type ViewName =
   | 'dashboard' | 'vocabulary' | 'srs' | 'spelling' | 'conversation'
-  | 'reading' | 'listening' | 'grammar' | 'kanji' | 'mock' | 'history';
+  | 'reading' | 'listening' | 'grammar' | 'kanji' | 'kana' | 'arcade' | 'mock' | 'history';
 
 export type LearningLevel = 'N5' | 'N4' | 'N3' | (string & {});
 export type LearningSkill =
