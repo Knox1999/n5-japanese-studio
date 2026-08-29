@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Loader2, RefreshCcw, WifiOff, X } from 'lucide-react';
-import type { LessonPayload, MockAttempt, StudioMeta, ViewName } from '@/lib/types';
+import type { ConfidenceLevel, LessonPayload, MockAttempt, StudioMeta, ViewName } from '@/lib/types';
 import { loadLesson, loadMeta } from '@/lib/data';
 import { readHistory, readLearningState, readLesson, readProgress, readSrs, saveHistory, saveLearningState, saveProgress, saveSrs, writeLesson, type ProgressMap, type SrsMap } from '@/lib/storage';
 import { buildDailyRecommendations, buildLessonJourney, getRepairQueue, upsertMistake, type LearningState } from '@/lib/learning';
@@ -51,6 +51,7 @@ function syncUrl(lesson:number,view:ViewName,replace=false){
 
 type FatalState={scope:'meta'|'lesson';message:string}|null;
 type ResourceNotice={kind:string;path?:string;message:string}|null;
+type SpellingAttempt={itemId:number;lesson:number;userAnswer:string;correctAnswer:string;correct:boolean;confidence:ConfidenceLevel};
 
 export default function StudioApp(){
  const [meta,setMeta]=useState<StudioMeta|null>(null);
@@ -160,6 +161,18 @@ export default function StudioApp(){
    track('mistake_recorded',{lesson_number:lesson,mistake_count:ids.length,source:'mock'});
  };
 
+ const recordSpellingAttempt=(attempt:SpellingAttempt)=>{
+   const shouldRepair=!attempt.correct || attempt.confidence==='guess';
+   if(!shouldRepair)return;
+   updateLearning(prev=>({
+     ...prev,
+     mistakes:upsertMistake(prev.mistakes,{
+       itemId:String(attempt.itemId),lessonId:String(attempt.lesson),level:'N5',skill:'spelling',questionType:'listen-type',userAnswer:attempt.userAnswer,correctAnswer:attempt.correctAnswer,confidence:attempt.confidence,severity:!attempt.correct&&attempt.confidence==='confident'?'high':attempt.correct?'low':'medium',sourceId:'spelling'
+     }),
+   }));
+   track('mistake_recorded',{lesson_number:attempt.lesson,item_id:attempt.itemId,source:'spelling',confidence:attempt.confidence,was_correct:attempt.correct});
+ };
+
  const currentMeta=meta?.lessons.find(x=>x.lesson===lesson);
  const currentMastered=(currentMeta?.ids||[]).reduce((count,id)=>count+(progress[String(id)]?1:0),0);
  const lessonPct=Math.round(currentMastered/Math.max(1,currentMeta?.count||1)*100);
@@ -206,7 +219,7 @@ export default function StudioApp(){
      case'dashboard':return <><DailyCoachPanel plan={learning.studyPlan} recommendations={recommendations} unresolvedMistakes={repairCount} onMinutes={setDailyMinutes} onNavigate={changeView}/>{journey&&<LessonJourneyPanel journey={journey} completed={completedJourney} onOpen={openJourneyStage} onToggleComplete={toggleJourneyStage}/>}<Dashboard meta={meta} lesson={lesson} progress={progress} srs={srs} history={historyRows} onNavigate={changeView} onLesson={changeLesson}/></>;
      case'vocabulary':return <Vocabulary data={data} progress={progress} onToggle={toggleMastery}/>;
      case'srs':return <SRS data={data} meta={meta} srs={srs} progress={progress} onSrsChange={updateSrs} onProgressChange={updateProgress}/>;
-     case'spelling':return <Spelling data={data}/>;
+     case'spelling':return <Spelling data={data} onAttempt={recordSpellingAttempt}/>;
      case'conversation':return <Conversation data={data}/>;
      case'reading':return <Reading data={data}/>;
      case'listening':return <Listening data={data}/>;
