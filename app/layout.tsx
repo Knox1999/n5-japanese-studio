@@ -1,45 +1,8 @@
 import type { Metadata, Viewport } from 'next';
-import Script from 'next/script';
 import AnalyticsConsent from '@/components/AnalyticsConsent';
 
 import './globals.css';
-import '@/styles/premium.scss';
-import '@/styles/v46-futuristic.scss';
-import '@/styles/v53-visual-grammar.scss';
-import '@/styles/v54-clean-verb-lab.scss';
-import '@/styles/v57-signature.scss';
-import '@/styles/v58-design-system.scss';
-import '@/styles/v60-ultimate.scss';
-import '@/styles/v62-connected-learning.scss';
-import '@/styles/v62-dashboard-context.scss';
-import '@/styles/v63-brand-experience.scss';
-import '@/styles/v64-learning-labs.scss';
-import '@/styles/v65-production-qa.scss';
-import '@/styles/v66-shell-correction.scss';
-import '@/styles/v67-home-perfect.scss';
-import '@/styles/v68-vocabulary-perfect.scss';
-import '@/styles/v69-srs-perfect.scss';
-import '@/styles/v70-spelling-perfect.scss';
-import '@/styles/v71-conversation-perfect.scss';
-import '@/styles/v72-reading-perfect.scss';
-import '@/styles/v73-listening-perfect.scss';
-import '@/styles/v74-grammar-perfect.scss';
-import '@/styles/v75-kanji-perfect.scss';
-import '@/styles/v76-kana-perfect.scss';
-import '@/styles/v77-arcade-perfect.scss';
-import '@/styles/v78-mock-perfect.scss';
-import '@/styles/v79-history-perfect.scss';
-import '@/styles/v80-privacy-perfect.scss';
-import '@/styles/v81-not-found-perfect.scss';
-import '@/styles/v82-listening-red-studio.scss';
-import '@/styles/v83-scroll-hardening.scss';
-import '@/styles/v84-final-responsive-polish.scss';
-import '@/styles/v85-interaction-sync-polish.scss';
-import '@/styles/v86-global-detail-second-pass.scss';
-import '@/styles/v87-mobile-native-and-reactive-dashboard.scss';
-import '@/styles/v88-universal-phone-compat.scss';
-import '@/styles/v89-overall-production-polish.scss';
-import '@/styles/v90-audit-hardening.scss';
+import '@/styles/index.scss';
 
 const SITE = 'https://knox1999.github.io/n5-japanese-studio/';
 
@@ -52,6 +15,7 @@ export const metadata: Metadata = {
   description:
     'A focused Japanese-learning studio for JLPT N5 vocabulary, smart recall, listening, shadowing, reading, conversation, grammar, Kanji and mock practice.',
   applicationName: 'The Nihongo Vibes',
+  category: 'education',
   keywords: [
     'JLPT N5',
     'Japanese learning',
@@ -61,10 +25,9 @@ export const metadata: Metadata = {
     'Kanji',
     'Bangla Japanese learning',
   ],
-  alternates: {
-    canonical: SITE,
-  },
+  alternates: { canonical: SITE },
   manifest: './manifest.webmanifest',
+  robots: { index: true, follow: true },
   icons: {
     icon: './assets/nihongo-vibes-logo-192.png',
     apple: './assets/nihongo-vibes-logo-192.png',
@@ -76,14 +39,12 @@ export const metadata: Metadata = {
     title: 'The Nihongo Vibes — N5 Japanese Learning Studio',
     description:
       'Vocabulary, listening, shadowing, reading, conversation, grammar, Kanji and smart recall in one connected Japanese learning system.',
-    images: [
-      {
-        url: './assets/nihongo-vibes-logo-512.png',
-        width: 512,
-        height: 512,
-        alt: 'The Nihongo Vibes',
-      },
-    ],
+    images: [{
+      url: './assets/nihongo-vibes-logo-512.png',
+      width: 512,
+      height: 512,
+      alt: 'The Nihongo Vibes',
+    }],
   },
   twitter: {
     card: 'summary',
@@ -102,16 +63,12 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#071421',
+  themeColor: '#06172d',
+  colorScheme: 'dark',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const ga = process.env.NEXT_PUBLIC_GA_ID || 'G-FG3JCWGSPR';
-
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'EducationalApplication',
@@ -121,27 +78,21 @@ export default function RootLayout({
     operatingSystem: 'Web',
     educationalLevel: 'JLPT N5',
     inLanguage: ['bn', 'ja', 'en'],
+    isAccessibleForFree: true,
     description:
       'A Japanese N5 learning application for vocabulary, recall, listening, shadowing, reading, conversation, grammar, Kanji and mock practice.',
   };
+  const schemaJson = JSON.stringify(schema).replace(/</g, '\\u003c');
 
   return (
     <html lang="bn">
       <body>
-        <a className="skip-link" href="#main-content">
-          মূল কনটেন্টে যান
-        </a>
-
+        <a className="skip-link" href="#main-content">মূল কনটেন্টে যান</a>
         {children}
-
-        <Script
-          id="nihongo-schema"
+        <script
           type="application/ld+json"
-          strategy="afterInteractive"
-        >
-          {JSON.stringify(schema)}
-        </Script>
-
+          dangerouslySetInnerHTML={{ __html: schemaJson }}
+        />
         <AnalyticsConsent gaId={ga}/>
       </body>
     </html>
