@@ -6,14 +6,14 @@ import {
   Square, MessageCircle, Mic2, Waves, UserRound, Gauge, CheckCircle2
 } from 'lucide-react';
 import type { LessonPayload, VocabItem } from '@/lib/types';
-import { playText, stopAudio, type AudioBoundary, type AudioVoiceRole } from '@/lib/audio';
+import { playText, stopAudio, type AudioVoiceRole, type PlaybackResult } from '@/lib/audio';
 import { track } from '@/lib/analytics';
 
 type Source='Dialogue'|'Reading'|'Shadowing';
 type ListeningLine={jp:string;bn:string;source:Source;speaker?:string;voiceRole:AudioVoiceRole;hints:Array<{jp:string;bn:string}>};
 type Filter='All'|Source;
-type ActiveBoundary={charIndex:number}|null;
 type SegmentRange={text:string;start:number;end:number;wordLike:boolean};
+type SpeechCue={speech:string;start:number;end:number};
 
 function sentenceChunks(text:string){return String(text||'').split(/(?<=[。！？])/).map(s=>s.trim()).filter(Boolean)}
 function banglaChunks(text:string){return String(text||'').split(/(?<=[।!?])/).map(s=>s.trim()).filter(Boolean)}
@@ -73,7 +73,7 @@ function segmentJapanese(text:string):SegmentRange[]{
           text:row.segment,
           start:row.index,
           end:index+1<rows.length?rows[index+1].index:text.length,
-          wordLike:row.isWordLike!==false && !/^\s+$/.test(row.segment),
+          wordLike:row.isWordLike!==false&&!/^\s+$/.test(row.segment)&&!(/^[、。！？,.!?]$/.test(row.segment)),
         }));
       }
     }
@@ -86,6 +86,18 @@ function segmentJapanese(text:string):SegmentRange[]{
     ranges.push({text:match[0],start:match.index,end:match.index+match[0].length,wordLike:!/^\s+$/.test(match[0])&&!/^[、。！？,.!?]$/.test(match[0])});
   }
   return ranges.length?ranges:[{text,start:0,end:text.length,wordLike:true}];
+}
+
+function speechCues(text:string):SpeechCue[]{
+  const segments=segmentJapanese(text);
+  const words=segments.filter(segment=>segment.wordLike);
+  if(!words.length)return text?[{speech:text,start:0,end:text.length}]:[];
+  return words.map((word,index)=>{
+    const next=words[index+1];
+    const end=next?.start??text.length;
+    const speech=text.slice(word.start,end).trim()||word.text;
+    return {speech,start:word.start,end};
+  });
 }
 
 function Waveform({text,progress}:{text:string;progress:number}){
@@ -101,17 +113,14 @@ function Waveform({text,progress}:{text:string;progress:number}){
   </div>
 }
 
-function Transcript({text,playing,progress,boundary,boundaryReliable}:{text:string;playing:boolean;progress:number;boundary:ActiveBoundary;boundaryReliable:boolean}){
+function Transcript({text,playing,activeCue}:{text:string;playing:boolean;activeCue:number|null}){
   const segments=useMemo(()=>segmentJapanese(text),[text]);
-  const wordSegments=useMemo(()=>segments.filter(x=>x.wordLike),[segments]);
-  const fallbackIndex=Math.min(Math.max(0,wordSegments.length-1),Math.floor(progress*Math.max(1,wordSegments.length)));
-  const fallbackStart=wordSegments[fallbackIndex]?.start??0;
-  const activeIndex=boundaryReliable&&boundary?boundary.charIndex:fallbackStart;
-
+  const cues=useMemo(()=>speechCues(text),[text]);
+  const cue=activeCue===null?null:cues[activeCue];
   return <div className="shadow-token-line-v57 font-jp" lang="ja" aria-live="off">
     {segments.length?segments.map((segment,index)=>{
-      const isActive=playing&&segment.wordLike&&activeIndex>=segment.start&&activeIndex<segment.end;
-      const isSpoken=playing&&segment.wordLike&&segment.end<=activeIndex;
+      const isActive=!!cue&&playing&&segment.wordLike&&segment.start>=cue.start&&segment.start<cue.end;
+      const isSpoken=!!cue&&playing&&segment.wordLike&&segment.end<=cue.start;
       return <span key={`${segment.start}-${index}`} className={`${isActive?'active':''} ${isSpoken?'spoken':''}`}>{segment.text}</span>;
     }):'Select a transcript line'}
   </div>;
@@ -125,9 +134,7 @@ export default function Listening({data}:{data:LessonPayload}){
   const [showMeaning,setShowMeaning]=useState(true);
   const [filter,setFilter]=useState<Filter>('All');
   const [completed,setCompleted]=useState<Record<number,boolean>>({});
-  const [boundary,setBoundary]=useState<ActiveBoundary>(null);
-  const [boundaryReliable,setBoundaryReliable]=useState(false);
-  const lastBoundary=useRef(0);
+  const [activeCue,setActiveCue]=useState<number|null>(null);
   const run=useRef(0);
 
   const lines=useMemo(()=>buildListeningLines(data),[data]);
@@ -136,44 +143,65 @@ export default function Listening({data}:{data:LessonPayload}){
   const counts=useMemo(()=>({Dialogue:lines.filter(x=>x.source==='Dialogue').length,Reading:lines.filter(x=>x.source==='Reading').length,Shadowing:lines.filter(x=>x.source==='Shadowing').length}),[lines]);
   const visible=useMemo(()=>lines.map((line,index)=>({line,index})).filter(x=>filter==='All'||x.line.source===filter),[lines,filter]);
 
-  const resetSync=()=>{setBoundary(null);setBoundaryReliable(false);lastBoundary.current=0};
-  const applyBoundary=(text:string,event:AudioBoundary)=>{
-    const start=Math.max(0,Math.min(text.length,event.charIndex));
-    if(start>lastBoundary.current)setBoundaryReliable(true);
-    lastBoundary.current=start;
-    setBoundary({charIndex:start});
-  };
+  const resetSync=()=>setActiveCue(null);
   const stop=()=>{run.current++;stopAudio();setPlaying(false);setProgress(0);resetSync()};
+
+  const speakLine=async(line:ListeningLine,index:number,token:number,sessionMode='single'):Promise<PlaybackResult>=>{
+    const cues=speechCues(line.jp);
+    if(!cues.length)return'unavailable';
+    for(let cueIndex=0;cueIndex<cues.length;cueIndex+=1){
+      if(token!==run.current)return'cancelled';
+      const cue=cues[cueIndex];
+      setActiveCue(cueIndex);
+      const result=await playText(cue.speech,rate,'listening',{
+        onProgress:r=>{
+          if(token!==run.current)return;
+          setProgress(Math.min(.999,(cueIndex+r)/cues.length));
+        },
+      },{
+        lesson_number:data.lesson,
+        segment_number:index+1,
+        source:line.source,
+        session_mode:sessionMode,
+        cue_number:cueIndex+1,
+        cue_count:cues.length,
+        synchronized_transcript:true,
+      },line.voiceRole);
+      if(result!=='ended')return result;
+    }
+    if(token===run.current){setProgress(1);setActiveCue(null)}
+    return'ended';
+  };
+
   const playOne=async(index=active)=>{
     if(!lines[index])return;
-    run.current++;const token=run.current;
+    stopAudio();
+    run.current+=1;const token=run.current;
     setActive(index);setPlaying(true);setProgress(0);resetSync();
     const line=lines[index];
-    const result=await playText(line.jp,rate,'listening',{
-      onProgress:r=>token===run.current&&setProgress(r),
-      onBoundary:event=>token===run.current&&applyBoundary(line.jp,event),
-      onEnd:()=>{if(token===run.current){setPlaying(false);resetSync();setCompleted(x=>({...x,[index]:true}))}}
-    },{lesson_number:data.lesson,segment_number:index+1,source:line.source},line.voiceRole);
-    if(token===run.current&&result!=='ended'){setPlaying(false);resetSync()}
+    const result=await speakLine(line,index,token,'single');
+    if(token!==run.current)return;
+    setPlaying(false);resetSync();
+    if(result==='ended')setCompleted(x=>({...x,[index]:true}));
   };
+
   const playSequence=async()=>{
-    run.current++;const token=run.current;setPlaying(true);resetSync();
+    stopAudio();
+    run.current+=1;const token=run.current;
+    setPlaying(true);setProgress(0);resetSync();
     const sequence=filter==='All'?lines.map((_,i)=>i):visible.map(x=>x.index);
     let completedRun=true;
     for(const index of sequence){
       if(token!==run.current){completedRun=false;break}
       setActive(index);setProgress(0);resetSync();
-      const line=lines[index];
-      const result=await playText(line.jp,rate,'listening',{
-        onProgress:r=>token===run.current&&setProgress(r),
-        onBoundary:event=>token===run.current&&applyBoundary(line.jp,event)
-      },{lesson_number:data.lesson,segment_number:index+1,source:line.source,session_mode:'full_shadowing'},line.voiceRole);
+      const result=await speakLine(lines[index],index,token,'full_shadowing');
       if(result!=='ended'){completedRun=false;break}
       if(token===run.current)setCompleted(x=>({...x,[index]:true}));
     }
-    if(token===run.current){setPlaying(false);resetSync()}
+    if(token===run.current){setPlaying(false);setProgress(completedRun?1:0);resetSync()}
     track(completedRun?'shadowing_complete':'shadowing_cancelled',{lesson_number:data.lesson,segment_count:sequence.length});
   };
+
   const selectOnly=(index:number)=>{stopAudio();run.current++;setPlaying(false);setProgress(0);resetSync();setActive(Math.max(0,Math.min(lines.length-1,index)))};
   useEffect(()=>stop,[]);
 
@@ -181,7 +209,7 @@ export default function Listening({data}:{data:LessonPayload}){
 
   return <div className="space-y-5 pb-8 shadowing-view-v57 listening-v82">
     <section className="study-header tone-listen">
-      <div><div className="section-kicker">JAPANESE LISTENING · LESSON {String(data.lesson).padStart(2,'0')}</div><h1>Hear → Follow → Shadow</h1><p className="font-bn">শুনুন, চলতি শব্দ চোখে follow করুন, তারপর একই rhythm-এ shadow করুন।</p></div>
+      <div><div className="section-kicker">JAPANESE LISTENING · LESSON {String(data.lesson).padStart(2,'0')}</div><h1>Hear → Follow → Shadow</h1><p className="font-bn">শুনুন, যে অংশটি voice বলছে ঠিক সেটাই follow করুন, তারপর একই rhythm-এ shadow করুন।</p></div>
       <Headphones className="header-big-icon"/>
     </section>
 
@@ -200,7 +228,7 @@ export default function Listening({data}:{data:LessonPayload}){
         </header>
 
         <div className="shadow-current-v57">
-          <Transcript text={current} playing={playing} progress={progress} boundary={boundary} boundaryReliable={boundaryReliable}/>
+          <Transcript text={current} playing={playing} activeCue={activeCue}/>
           {showMeaning&&currentLine&&<p className="font-bn">{currentLine.bn}</p>}
         </div>
 
@@ -221,7 +249,7 @@ export default function Listening({data}:{data:LessonPayload}){
       </article>
 
       <article className="shadow-library-v57">
-        <header><div><span>SHADOWING LIBRARY</span><h2>Pick one line. Repeat it well.</h2><p className="font-bn">একটি line বাছুন, active transcript follow করুন, তারপর imitate করুন।</p></div><button onClick={()=>setShowMeaning(x=>!x)}>{showMeaning?<EyeOff/>:<Eye/>}<span>{showMeaning?'অর্থ লুকান':'অর্থ দেখান'}</span></button></header>
+        <header><div><span>SHADOWING LIBRARY</span><h2>Pick one line. Repeat it well.</h2><p className="font-bn">একটি line বাছুন, live cue follow করুন, তারপর imitate করুন।</p></div><button onClick={()=>setShowMeaning(x=>!x)}>{showMeaning?<EyeOff/>:<Eye/>}<span>{showMeaning?'অর্থ লুকান':'অর্থ দেখান'}</span></button></header>
         <div className="shadow-filters-v57">{(['All','Dialogue','Reading','Shadowing'] as Filter[]).map(f=><button key={f} className={filter===f?'active':''} onClick={()=>setFilter(f)}>{f}<span>{f==='All'?lines.length:counts[f]}</span></button>)}</div>
         <div className="shadow-list-v57">{visible.map(({line,index})=><button key={`${line.source}-${index}-${norm(line.jp)}`} className={`${index===active?'active':''} ${completed[index]?'done':''}`} onClick={()=>playOne(index)}>
           <span className={`shadow-list-avatar-v57 ${line.voiceRole}`}>{line.voiceRole==='male'?'A':line.voiceRole==='female'?'B':'読'}</span>
