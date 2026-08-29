@@ -1,18 +1,27 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CheckCircle2, DatabaseBackup, Download, Upload, X } from 'lucide-react';
 import { createBackup, importBackup } from '@/lib/storage';
 import { track } from '@/lib/analytics';
 
 export default function DataVault(){
   const [open,setOpen]=useState(false);
+  const [mounted,setMounted]=useState(false);
   const [status,setStatus]=useState('');
   const fileRef=useRef<HTMLInputElement>(null);
   const closeRef=useRef<HTMLButtonElement>(null);
 
+  useEffect(()=>setMounted(true),[]);
+
   useEffect(()=>{
-    const show=()=>{setStatus('');setOpen(true)};
+    const show=()=>{
+      // Close drawer/search overlays first so only one modal layer is active.
+      window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}));
+      setStatus('');
+      requestAnimationFrame(()=>setOpen(true));
+    };
     window.addEventListener('n5-open-vault',show);
     return()=>window.removeEventListener('n5-open-vault',show);
   },[]);
@@ -20,10 +29,20 @@ export default function DataVault(){
   useEffect(()=>{
     if(!open)return;
     const prev=document.activeElement as HTMLElement|null;
+    const previousOverflow=document.body.style.overflow;
+    document.body.style.overflow='hidden';
+    document.documentElement.classList.add('overlay-open');
+    document.body.classList.add('overlay-open');
     requestAnimationFrame(()=>closeRef.current?.focus());
     const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape')setOpen(false)};
     window.addEventListener('keydown',onKey);
-    return()=>{window.removeEventListener('keydown',onKey);prev?.focus?.()};
+    return()=>{
+      window.removeEventListener('keydown',onKey);
+      document.body.style.overflow=previousOverflow;
+      document.documentElement.classList.remove('overlay-open');
+      document.body.classList.remove('overlay-open');
+      prev?.focus?.();
+    };
   },[open]);
 
   const download=()=>{
@@ -52,10 +71,29 @@ export default function DataVault(){
     }
   };
 
-  if(!open)return null;
-  return <div className="vault-layer" role="dialog" aria-modal="true" aria-labelledby="vault-title">
-    <button className="future-layer-backdrop" onClick={()=>setOpen(false)} aria-label="Close backup center"/>
-    <section className="vault-dialog">
+  if(!mounted||!open)return null;
+
+  const modal=<div
+    className="vault-layer"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="vault-title"
+    style={{
+      position:'fixed',inset:0,zIndex:10000,display:'grid',placeItems:'center',
+      padding:'max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))',
+      isolation:'isolate'
+    }}
+  >
+    <button
+      className="future-layer-backdrop"
+      onClick={()=>setOpen(false)}
+      aria-label="Close backup center"
+      style={{position:'absolute',inset:0,width:'100%',height:'100%',border:0,background:'rgba(1,8,14,.82)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)'}}
+    />
+    <section
+      className="vault-dialog"
+      style={{position:'relative',zIndex:2,width:'min(620px, 100%)',maxHeight:'min(760px, calc(100dvh - 24px))',overflow:'auto',margin:0}}
+    >
       <div className="vault-head">
         <div><span>LOCAL DATA VAULT</span><h2 id="vault-title">Backup & Restore Progress</h2></div>
         <button ref={closeRef} onClick={()=>setOpen(false)} aria-label="Close"><X/></button>
@@ -69,5 +107,7 @@ export default function DataVault(){
       {status&&<div className="vault-status"><CheckCircle2/>{status}</div>}
       <div className="vault-note"><DatabaseBackup/><span>No account required. Your study state stays in your browser unless you export it.</span></div>
     </section>
-  </div>
+  </div>;
+
+  return createPortal(modal,document.body);
 }
