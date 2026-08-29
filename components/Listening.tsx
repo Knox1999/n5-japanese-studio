@@ -12,7 +12,8 @@ import { track } from '@/lib/analytics';
 type Source='Dialogue'|'Reading'|'Shadowing';
 type ListeningLine={jp:string;bn:string;source:Source;speaker?:string;voiceRole:AudioVoiceRole;hints:Array<{jp:string;bn:string}>};
 type Filter='All'|Source;
-type BoundaryRange={start:number;end:number}|null;
+type ActiveBoundary={charIndex:number}|null;
+type SegmentRange={text:string;start:number;end:number;wordLike:boolean};
 
 function sentenceChunks(text:string){return String(text||'').split(/(?<=[。！？])/).map(s=>s.trim()).filter(Boolean)}
 function banglaChunks(text:string){return String(text||'').split(/(?<=[।!?])/).map(s=>s.trim()).filter(Boolean)}
@@ -61,6 +62,32 @@ function buildListeningLines(data:LessonPayload):ListeningLine[]{
   return rows.map(x=>({...x,bn:x.bn||'এই line-এর আলাদা বাংলা অর্থ lesson data-তে নেই। Context দেখে practice করুন।'}));
 }
 
+function segmentJapanese(text:string):SegmentRange[]{
+  if(!text)return[];
+  try{
+    const Segmenter=(Intl as typeof Intl & {Segmenter?:new(locales?:string|string[],options?:{granularity?:string})=>{segment:(input:string)=>Iterable<{segment:string;index:number;isWordLike?:boolean}>}}).Segmenter;
+    if(Segmenter){
+      const rows=[...new Segmenter('ja',{granularity:'word'}).segment(text)];
+      if(rows.length){
+        return rows.map((row,index)=>({
+          text:row.segment,
+          start:row.index,
+          end:index+1<rows.length?rows[index+1].index:text.length,
+          wordLike:row.isWordLike!==false && !/^\s+$/.test(row.segment),
+        }));
+      }
+    }
+  }catch{}
+
+  const ranges:SegmentRange[]=[];
+  const regex=/[一-龯々〆ヵヶ]+|[ぁ-ゖー]+|[ァ-ヺー]+|[A-Za-z0-9]+|\s+|[^\s]/g;
+  let match:RegExpExecArray|null;
+  while((match=regex.exec(text))){
+    ranges.push({text:match[0],start:match.index,end:match.index+match[0].length,wordLike:!/^\s+$/.test(match[0])&&!/^[、。！？,.!?]$/.test(match[0])});
+  }
+  return ranges.length?ranges:[{text,start:0,end:text.length,wordLike:true}];
+}
+
 function Waveform({text,progress}:{text:string;progress:number}){
   const peaks=useMemo(()=>Array.from({length:72},(_,i)=>{
     const code=text.charCodeAt(i%Math.max(1,text.length))||31;
@@ -74,15 +101,18 @@ function Waveform({text,progress}:{text:string;progress:number}){
   </div>
 }
 
-function Transcript({text,playing,progress,boundary}:{text:string;playing:boolean;progress:number;boundary:BoundaryRange}){
-  const chars=useMemo(()=>Array.from(text),[text]);
-  const fallback=Math.max(0,Math.min(chars.length-1,Math.floor(progress*Math.max(1,chars.length))));
+function Transcript({text,playing,progress,boundary,boundaryReliable}:{text:string;playing:boolean;progress:number;boundary:ActiveBoundary;boundaryReliable:boolean}){
+  const segments=useMemo(()=>segmentJapanese(text),[text]);
+  const wordSegments=useMemo(()=>segments.filter(x=>x.wordLike),[segments]);
+  const fallbackIndex=Math.min(Math.max(0,wordSegments.length-1),Math.floor(progress*Math.max(1,wordSegments.length)));
+  const fallbackStart=wordSegments[fallbackIndex]?.start??0;
+  const activeIndex=boundaryReliable&&boundary?boundary.charIndex:fallbackStart;
+
   return <div className="shadow-token-line-v57 font-jp" lang="ja" aria-live="off">
-    {chars.length?chars.map((char,index)=>{
-      const inBoundary=!!boundary&&index>=boundary.start&&index<boundary.end;
-      const fallbackActive=playing&&!boundary&&index===fallback;
-      const spoken=playing&&index<fallback;
-      return <span key={`${index}-${char}`} className={`${inBoundary||fallbackActive?'active':''} ${spoken?'spoken':''}`}>{char}</span>;
+    {segments.length?segments.map((segment,index)=>{
+      const isActive=playing&&segment.wordLike&&activeIndex>=segment.start&&activeIndex<segment.end;
+      const isSpoken=playing&&segment.wordLike&&segment.end<=activeIndex;
+      return <span key={`${segment.start}-${index}`} className={`${isActive?'active':''} ${isSpoken?'spoken':''}`}>{segment.text}</span>;
     }):'Select a transcript line'}
   </div>;
 }
@@ -95,7 +125,9 @@ export default function Listening({data}:{data:LessonPayload}){
   const [showMeaning,setShowMeaning]=useState(true);
   const [filter,setFilter]=useState<Filter>('All');
   const [completed,setCompleted]=useState<Record<number,boolean>>({});
-  const [boundary,setBoundary]=useState<BoundaryRange>(null);
+  const [boundary,setBoundary]=useState<ActiveBoundary>(null);
+  const [boundaryReliable,setBoundaryReliable]=useState(false);
+  const lastBoundary=useRef(0);
   const run=useRef(0);
 
   const lines=useMemo(()=>buildListeningLines(data),[data]);
@@ -104,32 +136,33 @@ export default function Listening({data}:{data:LessonPayload}){
   const counts=useMemo(()=>({Dialogue:lines.filter(x=>x.source==='Dialogue').length,Reading:lines.filter(x=>x.source==='Reading').length,Shadowing:lines.filter(x=>x.source==='Shadowing').length}),[lines]);
   const visible=useMemo(()=>lines.map((line,index)=>({line,index})).filter(x=>filter==='All'||x.line.source===filter),[lines,filter]);
 
+  const resetSync=()=>{setBoundary(null);setBoundaryReliable(false);lastBoundary.current=0};
   const applyBoundary=(text:string,event:AudioBoundary)=>{
-    const length=Array.from(text).length;
-    const start=Math.max(0,Math.min(length,event.charIndex));
-    const highlightLength=Math.max(1,event.charLength||1);
-    setBoundary({start,end:Math.min(length,start+highlightLength)});
+    const start=Math.max(0,Math.min(text.length,event.charIndex));
+    if(start>lastBoundary.current)setBoundaryReliable(true);
+    lastBoundary.current=start;
+    setBoundary({charIndex:start});
   };
-  const stop=()=>{run.current++;stopAudio();setPlaying(false);setProgress(0);setBoundary(null)};
+  const stop=()=>{run.current++;stopAudio();setPlaying(false);setProgress(0);resetSync()};
   const playOne=async(index=active)=>{
     if(!lines[index])return;
     run.current++;const token=run.current;
-    setActive(index);setPlaying(true);setProgress(0);setBoundary(null);
+    setActive(index);setPlaying(true);setProgress(0);resetSync();
     const line=lines[index];
     const result=await playText(line.jp,rate,'listening',{
       onProgress:r=>token===run.current&&setProgress(r),
       onBoundary:event=>token===run.current&&applyBoundary(line.jp,event),
-      onEnd:()=>{if(token===run.current){setPlaying(false);setBoundary(null);setCompleted(x=>({...x,[index]:true}))}}
+      onEnd:()=>{if(token===run.current){setPlaying(false);resetSync();setCompleted(x=>({...x,[index]:true}))}}
     },{lesson_number:data.lesson,segment_number:index+1,source:line.source},line.voiceRole);
-    if(token===run.current&&result!=='ended'){setPlaying(false);setBoundary(null)}
+    if(token===run.current&&result!=='ended'){setPlaying(false);resetSync()}
   };
   const playSequence=async()=>{
-    run.current++;const token=run.current;setPlaying(true);setBoundary(null);
+    run.current++;const token=run.current;setPlaying(true);resetSync();
     const sequence=filter==='All'?lines.map((_,i)=>i):visible.map(x=>x.index);
     let completedRun=true;
     for(const index of sequence){
       if(token!==run.current){completedRun=false;break}
-      setActive(index);setProgress(0);setBoundary(null);
+      setActive(index);setProgress(0);resetSync();
       const line=lines[index];
       const result=await playText(line.jp,rate,'listening',{
         onProgress:r=>token===run.current&&setProgress(r),
@@ -138,10 +171,10 @@ export default function Listening({data}:{data:LessonPayload}){
       if(result!=='ended'){completedRun=false;break}
       if(token===run.current)setCompleted(x=>({...x,[index]:true}));
     }
-    if(token===run.current){setPlaying(false);setBoundary(null)}
+    if(token===run.current){setPlaying(false);resetSync()}
     track(completedRun?'shadowing_complete':'shadowing_cancelled',{lesson_number:data.lesson,segment_count:sequence.length});
   };
-  const selectOnly=(index:number)=>{stopAudio();run.current++;setPlaying(false);setProgress(0);setBoundary(null);setActive(Math.max(0,Math.min(lines.length-1,index)))};
+  const selectOnly=(index:number)=>{stopAudio();run.current++;setPlaying(false);setProgress(0);resetSync();setActive(Math.max(0,Math.min(lines.length-1,index)))};
   useEffect(()=>stop,[]);
 
   const persona=currentLine?.voiceRole==='male'?'A · MALE':currentLine?.voiceRole==='female'?'B · FEMALE':'NARRATOR';
@@ -167,7 +200,7 @@ export default function Listening({data}:{data:LessonPayload}){
         </header>
 
         <div className="shadow-current-v57">
-          <Transcript text={current} playing={playing} progress={progress} boundary={boundary}/>
+          <Transcript text={current} playing={playing} progress={progress} boundary={boundary} boundaryReliable={boundaryReliable}/>
           {showMeaning&&currentLine&&<p className="font-bn">{currentLine.bn}</p>}
         </div>
 
