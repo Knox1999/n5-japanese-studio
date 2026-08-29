@@ -1,0 +1,22 @@
+FINAL PRODUCTION — WINDOWS QUICK START
+======================================
+
+1. Download/unzip this package.
+2. Make sure your GitHub repository is already cloned on your PC.
+3. Add GitHub Actions secrets first:
+   AZURE_SPEECH_KEY
+   AZURE_SPEECH_REGION
+
+PowerShell, from this package folder:
+
+python .\apply_final_production.py --repo "C:\PATH\TO\n5-japanese-studio"
+
+After it passes QA/build:
+
+python .\apply_final_production.py --repo "C:\PATH\TO\n5-japanese-studio" --push --skip-build
+
+Or:
+
+.\Publish_Final_Production.ps1 -RepoPath "C:\PATH\TO\n5-japanese-studio" -Push
+
+The installer creates a timestamped backup inside the repo before replacing files.

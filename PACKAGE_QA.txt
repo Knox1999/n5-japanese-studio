@@ -1,0 +1,15 @@
+PASS shell_bangla
+PASS mobile_nav_4_plus_more
+PASS no_quick_access
+PASS hero_locked
+PASS mock_10_25_52
+PASS mock_20_20_12
+PASS v7_audio
+PASS no_mp3_runtime
+PASS azure_generator
+PASS workflow_v7
+PASS official_logo_512
+PASS official_logo_webp
+PASS style_existing_v60
+PASS no_new_versioned_css
+PASS installer

@@ -1,0 +1,38 @@
+THE NIHONGO VIBES — FINAL AUDIO SETUP
+========================================
+
+Approved Phase 7D V7 requires two GitHub Actions secrets:
+
+AZURE_SPEECH_KEY
+AZURE_SPEECH_REGION
+
+GitHub:
+Repository -> Settings -> Secrets and variables -> Actions -> New repository secret
+
+Voice profile:
+Male dialogue:
+  ja-JP-KeitaNeural
+
+Female conversation:
+  ja-JP-NanamiNeural
+  style = chat
+
+Female shadowing / normal learning:
+  ja-JP-NanamiNeural
+  neutral
+
+Output:
+  OGG / Opus 48 kHz mono
+
+Runtime speed:
+  0.75x / 0.9x / 1.0x
+  preservesPitch = true
+
+IMPORTANT
+---------
+Do not commit Azure keys to GitHub files.
+The workflow reads them only from Actions secrets.
+
+Without these two secrets, the FINAL V7 deployment workflow intentionally fails
+before replacing the current live deployment. This prevents silently publishing
+the rejected old female voice again.
