@@ -32,6 +32,7 @@ sw=(ROOT/"public/sw.js").read_text(encoding="utf-8")
 manifest=json.loads((ROOT/"public/manifest.webmanifest").read_text(encoding="utf-8"))
 package=json.loads((ROOT/"package.json").read_text(encoding="utf-8"))
 workflow=(ROOT/".github/workflows/deploy-pages.yml").read_text(encoding="utf-8")
+consent=(ROOT/"components/AnalyticsConsent.tsx").read_text(encoding="utf-8")
 ui58=(ROOT/"styles/v58-design-system.scss").read_text(encoding="utf-8")
 ui60=(ROOT/"styles/v60-ultimate.scss").read_text(encoding="utf-8")
 
@@ -52,10 +53,15 @@ check(manifest.get("background_color")=="#031326" and manifest.get("theme_color"
 
 check("maxAttempts=3" in data and "AbortController" in data,"Data retry + timeout")
 check("Search index unavailable" in shell and "Retry search" in shell,"Search retry/error state")
+check('aria-labelledby="course-menu-title"' in shell and 'aria-labelledby="course-search-title"' in shell,"Drawer/search dialogs have accessible names")
+check("data-overlay-autofocus" in shell and "previousFocus" in shell,"Overlay focus management present")
+check("future-drawer-search" in shell,"Mobile drawer exposes global search")
+check("aria-label={`${v.kanji||v.japanese} শব্দের উদাহরণ শুনুন`}" in (ROOT/"components/Vocabulary.tsx").read_text(encoding="utf-8"),"Vocabulary example audio has accessible name")
 check("nv:resource-error" in audio,"Audio final error notice")
 check("nv:resource-error" in app and "Retry" in app,"Global resource error UI")
 
 check("v58-design-system.scss" in layout,"V58 compatibility design system retained")
+check("v44-editorial.scss" not in layout and "v51-masterpiece.scss" not in layout,"Obsolete global style layers removed")
 check("--nv-bg:#031326" in ui58 and "--nv-touch:44px" in ui58,"44px canonical base tokens")
 check("@media(max-width:760px)" in ui58 and "min-height:var(--nv-touch)" in ui58,"Mobile touch target baseline")
 
@@ -71,6 +77,9 @@ check("শব্দভান্ডার" in shell and "স্মার্ট �
 
 check((ROOT/"scripts/repo_hygiene.py").exists(),"Safe repo hygiene script present")
 check("python scripts/repo_hygiene.py" in workflow,"Repo hygiene before build")
+check("contents: read" in workflow and "contents: write" not in workflow,"Deployment uses least-privilege repository permission")
+check("npm install --package-lock-only" not in workflow and "npm ci" in workflow,"Deployment uses committed lockfile deterministically")
+check("KANJIVG_COMMIT" in workflow and "build_strokes.py" in workflow,"KanjiVG source revision pinned")
 check(not (ROOT/"index.html").exists(),"Legacy root index removed in build workspace")
 check(not (ROOT/"sw.js").exists(),"Legacy root sw removed in build workspace")
 check(not (ROOT/"manifest.webmanifest").exists(),"Legacy root manifest removed in build workspace")
@@ -88,6 +97,7 @@ check("billed_api:false" in audio and "AZURE_SPEECH" not in workflow,"No paid sp
 check("splitForSpeech" in audio,"Long Japanese text chunking")
 check("rolePitch" in audio and "pickVoice" in audio,"Distinct dialogue role voices")
 check("playDialogueTrack" in audio,"Full dialogue track helper present")
+check("innerHTML" not in kanji and "safeStrokeSvg" in kanji and "replaceChildren" in kanji,"Kanji SVG runtime injection hardened")
 
 mock=(ROOT/"components/MockTest.tsx").read_text(encoding="utf-8")
 check("total:10" in mock and "total:25" in mock and "total:52" in mock,"Quick 10 / Mini 25 / Full 52 modes")
@@ -99,9 +109,10 @@ check("/* FINAL_PRODUCTION_NEO_TORII */" in ui60,"Final Neo Torii style block ap
 check("#050D18" in ui60 and "#EF3F3A" in ui60 and "#F7F9FC" in ui60,"Final navy/red/white palette encoded")
 
 for logo in [
-    "nihongo-vibes-logo.webp",
+    "nihongo-vibes-logo-96.png",
     "nihongo-vibes-logo-192.png",
     "nihongo-vibes-logo-512.png",
+    "nihongo-vibes-logo-maskable-512.png",
 ]:
     p=ROOT/"public/assets"/logo
     check(p.exists() and p.stat().st_size>1000,f"Official logo asset {logo}")
@@ -113,7 +124,13 @@ check(len(lessons)==25,"25 visual grammar lessons")
 check(len(rules)>=100 and len(examples)>=500,"Grammar rule/example scale retained")
 check(all(len(r.get("examples") or [])==5 for r in rules),"Exactly 5 examples per visual grammar rule")
 check("G-FG3JCWGSPR" in layout,"GA4 ID preserved")
+check("AnalyticsConsent" in layout and "consent==='accepted'" in consent,"Analytics gated behind explicit consent")
+check((ROOT/"app/privacy/page.tsx").exists(),"Privacy page present")
 check("playbackGeneration" in audio and "exclusive_audio:true" in audio,"One-audio-at-a-time mutex")
+check(package.get("version")=="61.0.0","V61 release metadata")
+check(package.get("dependencies",{}).get("next")=="16.3.3","Patched Next.js release")
+check("AUDIO_CACHE" not in sw and "source-v61" in sw,"Obsolete audio cache removed from source service worker")
+check((ROOT/"tests/site.spec.ts").exists() and "test:e2e" in package.get("scripts",{}),"Responsive accessibility E2E suite present")
 
 if post:
     out=ROOT/"out"
@@ -125,6 +142,7 @@ if post:
     out_sw=(out/"sw.js").read_text(encoding="utf-8") if (out/"sw.js").exists() else ""
     check("const APP_SHELL=" in out_sw,"Generated service worker app shell")
     check("./_next/static/" in out_sw,"Next chunks in service worker")
+    check("AUDIO_CACHE" not in out_sw and "build-" in out_sw,"Build-scoped service-worker caches")
 
 failed=[msg for ok,msg in checks if not ok]
 if failed:

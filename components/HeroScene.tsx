@@ -5,7 +5,7 @@ export default function HeroScene(){
   const root=useRef<HTMLDivElement>(null);
   useLayoutEffect(()=>{
     const el=root.current;if(!el||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-    let ctx:any;let move:(e:PointerEvent)=>void=()=>{};
+    let ctx:gsap.Context|undefined;let move:(e:PointerEvent)=>void=()=>{};
     (async()=>{try{const {gsap}=await import('gsap');ctx=gsap.context(()=>{
       gsap.fromTo('.v44-fuji',{y:18,opacity:0,scale:1.025},{y:0,opacity:1,scale:1,duration:1.2,ease:'power3.out'});
       gsap.fromTo('.v44-branch',{x:30,opacity:0},{x:0,opacity:1,duration:1.08,ease:'power3.out',delay:.08});

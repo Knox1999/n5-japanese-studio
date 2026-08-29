@@ -6,9 +6,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
+
+env:
+  KANJIVG_COMMIT: 61e39cf
 
 concurrency:
   group: pages
@@ -24,24 +27,23 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.12"
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.4.0
         with:
           node-version: "22"
 
-      - name: Repository hygiene and reproducible lockfile
+      - name: Repository hygiene
         shell: bash
         run: |
           set -e
           python scripts/repo_hygiene.py
-          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
       - name: Build and validate study data
         run: |
@@ -52,8 +54,14 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Dependency security audit
+        run: npm audit --audit-level=high
+
       - name: Type-check frontend
         run: npm run lint:types
+
+      - name: Lint frontend
+        run: npm run lint
 
       - name: Verify zero-cost Japanese voice runtime
         run: grep -q "web-speech-api-ja-JP" lib/audio.ts
@@ -61,8 +69,10 @@ jobs:
       - name: Build KanjiVG stroke-order library
         shell: bash
         run: |
-          rm -rf _kanjivg
-          git clone --depth 1 https://github.com/KanjiVG/kanjivg.git _kanjivg
+          set -euo pipefail
+          mkdir -p _kanjivg
+          curl --fail --location --retry 3 "https://github.com/KanjiVG/kanjivg/archive/${KANJIVG_COMMIT}.tar.gz" \
+            | tar -xz --strip-components=1 -C _kanjivg
           python scripts/build_strokes.py
 
       - name: Build static Next.js site
@@ -78,14 +88,20 @@ jobs:
       - name: Final production QA
         run: python scripts/qa_production.py --postbuild
 
+      - name: Install browser for responsive regression tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Responsive and accessibility regression tests
+        run: npm run test:e2e
+
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v5.0.0
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v3.0.1
         with:
           path: ./out
 
       - name: Deploy Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v4.0.5

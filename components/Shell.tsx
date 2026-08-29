@@ -3,9 +3,11 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
+import Image from 'next/image';
 import {
   BookOpen,
   BookOpenText,
@@ -114,10 +116,12 @@ function Brand({onClick}:{onClick:()=>void}) {
       aria-label="The Nihongo Vibes হোমে যান"
     >
       <span className="future-brand-logo-wrap nv60-brand-logo nv-final-brand-logo">
-        <img
+        <Image
           className="future-brand-logo"
-          src={`${basePath}/assets/nihongo-vibes-logo.webp`}
+          src={`${basePath}/assets/nihongo-vibes-logo-96.png`}
           alt=""
+          width={96}
+          height={96}
         />
       </span>
       <span className="nv60-brand-copy">
@@ -138,6 +142,7 @@ export default function Shell({
   const [results,setResults]=useState<SearchRow[]>([]);
   const [loading,setLoading]=useState(false);
   const [searchError,setSearchError]=useState('');
+  const previousFocus=useRef<HTMLElement|null>(null);
 
   const currentLesson =
     meta.lessons.find(item=>item.lesson===lesson) ?? meta.lessons[0];
@@ -188,6 +193,42 @@ export default function Shell({
       document.body.style.removeProperty('overflow');
     };
   },[drawer,search]);
+
+  const activeOverlay=search?'search':drawer?'drawer':null;
+  useEffect(()=>{
+    if(!activeOverlay){
+      const target=previousFocus.current;
+      previousFocus.current=null;
+      if(target) requestAnimationFrame(()=>target.focus({preventScroll:true}));
+      return;
+    }
+
+    if(!previousFocus.current && document.activeElement instanceof HTMLElement){
+      previousFocus.current=document.activeElement;
+    }
+
+    const selector=activeOverlay==='search'?'.future-search-layer':'.future-drawer-layer';
+    const frame=requestAnimationFrame(()=>{
+      const root=document.querySelector<HTMLElement>(selector);
+      const first=root?.querySelector<HTMLElement>('[data-overlay-autofocus]')
+        ?? root?.querySelector<HTMLElement>('button:not([disabled]),input:not([disabled]),select:not([disabled]),a[href]');
+      first?.focus({preventScroll:true});
+    });
+
+    const trap=(event:KeyboardEvent)=>{
+      if(event.key!=='Tab') return;
+      const root=document.querySelector<HTMLElement>(selector);
+      if(!root) return;
+      const focusable=[...root.querySelectorAll<HTMLElement>('button:not([disabled]),input:not([disabled]),select:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')]
+        .filter(element=>element.offsetParent!==null);
+      if(!focusable.length){event.preventDefault();return;}
+      const first=focusable[0],last=focusable[focusable.length-1];
+      if(event.shiftKey && document.activeElement===first){event.preventDefault();last.focus();}
+      else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus();}
+    };
+    document.addEventListener('keydown',trap);
+    return()=>{cancelAnimationFrame(frame);document.removeEventListener('keydown',trap)};
+  },[activeOverlay]);
 
   useEffect(()=>{
     stopAudio();
@@ -345,6 +386,12 @@ export default function Shell({
         {children}
       </main>
 
+      <footer className="site-footer">
+        <span>© {new Date().getFullYear()} The Nihongo Vibes</span>
+        <a href={`${basePath}/privacy/`}>গোপনীয়তা ও Analytics</a>
+        <span>Progress আপনার device-এই থাকে</span>
+      </footer>
+
       <nav
         className="future-mobile-dock nv60-mobile-dock nv-final-mobile-dock"
         aria-label="মোবাইল নেভিগেশন"
@@ -364,20 +411,21 @@ export default function Shell({
             </button>
           );
         })}
-        <button onClick={()=>setDrawer(true)}>
+        <button onClick={()=>setDrawer(true)} aria-label="আরও বিভাগ খুলুন">
           <Menu size={22}/>
           <span className="font-bn">আরও</span>
         </button>
       </nav>
 
       {drawer&&(
-        <div className="future-drawer-layer" role="dialog" aria-modal="true">
+        <div className="future-drawer-layer" role="dialog" aria-modal="true" aria-labelledby="course-menu-title">
           <button
             className="future-layer-backdrop"
             onClick={()=>setDrawer(false)}
             aria-label="মেনু বন্ধ করুন"
           />
           <aside className="future-drawer nv60-drawer nv-final-drawer">
+            <h2 id="course-menu-title" className="sr-only">কোর্স মেনু</h2>
             <div className="future-drawer-head">
               <Brand onClick={()=>go('dashboard')}/>
               <button onClick={()=>setDrawer(false)} aria-label="বন্ধ করুন">
@@ -393,6 +441,15 @@ export default function Shell({
               <strong>L{String(lesson).padStart(2,'0')}</strong>
               <p>{currentLesson?.title}</p>
             </section>
+
+            <button
+              className="future-drawer-search"
+              onClick={()=>void openSearch()}
+              data-overlay-autofocus
+            >
+              <Search size={18}/>
+              <span className="font-bn">পুরো কোর্সে খুঁজুন</span>
+            </button>
 
             <div className="future-drawer-lesson">
               <label htmlFor="nv-final-drawer-lesson">LESSON পরিবর্তন</label>
@@ -459,13 +516,14 @@ export default function Shell({
       )}
 
       {search&&(
-        <div className="future-search-layer" role="dialog" aria-modal="true">
+        <div className="future-search-layer" role="dialog" aria-modal="true" aria-labelledby="course-search-title">
           <button
             className="future-layer-backdrop"
             onClick={()=>setSearch(false)}
             aria-label="Search বন্ধ করুন"
           />
           <section className="future-search-dialog nv60-search-dialog nv-final-search-dialog">
+            <h2 id="course-search-title" className="sr-only">পুরো কোর্সে খুঁজুন</h2>
             <div className="future-search-head">
               <Search size={20}/>
               <input
@@ -474,6 +532,7 @@ export default function Shell({
                 onChange={e=>setQuery(e.target.value)}
                 placeholder="Japanese / Kanji / বাংলা / English…"
                 aria-label="খুঁজুন"
+                data-overlay-autofocus
               />
               <button onClick={()=>setSearch(false)} aria-label="বন্ধ করুন">
                 <X size={21}/>

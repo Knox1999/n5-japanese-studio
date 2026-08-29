@@ -119,7 +119,7 @@ export default function StudioApp(){
    loadLesson(lesson).then(x=>{if(!dead)setData(x)}).catch(e=>{
      if(dead)return;setFatal({scope:'lesson',message:e instanceof Error?e.message:String(e)});trackError('resource',e)
    });
-   track('lesson_open',{lesson_number:lesson,open_source:'app',section_name:view});
+   track('lesson_open',{lesson_number:lesson,open_source:'app'});
    return()=>{dead=true};
  },[lesson,meta,lessonNonce]);
 

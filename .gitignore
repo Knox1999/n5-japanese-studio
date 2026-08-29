@@ -7,3 +7,6 @@ _kanjivg/
 .DS_Store
 .github/workflows/deploy-ai-voice-pages.yml
 *.yml
+_e2e/
+playwright-report/
+test-results/

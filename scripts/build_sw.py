@@ -1,43 +1,53 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import json, sys
+
+import json
+import os
+import sys
 from pathlib import Path
 
-ROOT=Path(__file__).resolve().parents[1]
-OUT=ROOT/(sys.argv[1] if len(sys.argv)>1 else "out")
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / (sys.argv[1] if len(sys.argv) > 1 else "out")
 if not OUT.exists():
     raise SystemExit(f"Static export directory not found: {OUT}")
 
-def rel(p:Path)->str:
-    return "./"+p.relative_to(OUT).as_posix()
 
-shell=[
+def rel(path: Path) -> str:
+    return "./" + path.relative_to(OUT).as_posix()
+
+
+package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+release = os.getenv("GITHUB_SHA", package.get("version", "dev"))[:12]
+data_version = str(package.get("version", "60")).split(".")[0]
+
+shell = [
     "./",
     "./?view=dashboard",
     "./manifest.webmanifest",
-    "./data/meta.json?v=58",
-    "./data/lessons/01.json?v=58",
+    f"./data/meta.json?v={data_version}",
+    f"./data/lessons/01.json?v={data_version}",
 ]
-static_dir=OUT/"_next"/"static"
+static_dir = OUT / "_next" / "static"
 if static_dir.exists():
-    for p in sorted(static_dir.rglob("*")):
-        if p.is_file() and p.suffix.lower() in {".js",".css",".woff",".woff2"}:
-            shell.append(rel(p))
+    for path in sorted(static_dir.rglob("*")):
+        if path.is_file() and path.suffix.lower() in {".js", ".css", ".woff", ".woff2"}:
+            shell.append(rel(path))
 for name in [
-    "assets/nihongo-vibes-logo.webp",
+    "assets/nihongo-vibes-logo-96.png",
     "assets/nihongo-vibes-logo-192.png",
     "assets/nihongo-vibes-logo-512.png",
+    "assets/nihongo-vibes-logo-maskable-512.png",
 ]:
-    p=OUT/name
-    if p.exists(): shell.append(rel(p))
+    path = OUT / name
+    if path.exists():
+        shell.append(rel(path))
 
-shell=list(dict.fromkeys(shell))
-app_shell=json.dumps(shell,ensure_ascii=False,separators=(",",":"))
+shell = list(dict.fromkeys(shell))
+app_shell = json.dumps(shell, ensure_ascii=False, separators=(",", ":"))
 
-sw=f"""const VERSION='v58';
+sw = f"""const VERSION='build-{release}';
 const CORE_CACHE=`nihongo-vibes-${{VERSION}}-core`;
 const RUNTIME_CACHE=`nihongo-vibes-${{VERSION}}-runtime`;
-const AUDIO_CACHE=`nihongo-vibes-${{VERSION}}-audio`;
 const APP_SHELL={app_shell};
 
 async function precache(){{
@@ -54,8 +64,8 @@ self.addEventListener('install',event=>{{
 
 self.addEventListener('activate',event=>{{
   event.waitUntil(caches.keys().then(keys=>Promise.all(
-    keys.filter(k=>(k.startsWith('n5-')||k.startsWith('nihongo-vibes-'))&&![CORE_CACHE,RUNTIME_CACHE,AUDIO_CACHE].includes(k))
-      .map(k=>caches.delete(k))
+    keys.filter(key=>(key.startsWith('n5-')||key.startsWith('nihongo-vibes-'))&&![CORE_CACHE,RUNTIME_CACHE].includes(key))
+      .map(key=>caches.delete(key))
   )).then(()=>self.clients.claim()));
 }});
 
@@ -80,15 +90,6 @@ async function staleWhileRevalidate(request,cacheName){{
   return cached||fresh;
 }}
 
-async function cacheFirst(request,cacheName){{
-  const cache=await caches.open(cacheName);
-  const cached=await cache.match(request);
-  if(cached)return cached;
-  const response=await fetch(request);
-  if(response&&response.ok)cache.put(request,response.clone());
-  return response;
-}}
-
 self.addEventListener('fetch',event=>{{
   if(event.request.method!=='GET')return;
   const url=new URL(event.request.url);
@@ -101,16 +102,15 @@ self.addEventListener('fetch',event=>{{
     event.respondWith(networkFirst(event.request,RUNTIME_CACHE));
     return;
   }}
-  if(url.pathname.endsWith('.mp3')){{
-    event.respondWith(cacheFirst(event.request,AUDIO_CACHE));
-    return;
-  }}
   if(/\\.(?:js|css|svg|png|webp|avif|woff2?)$/i.test(url.pathname)){{
     event.respondWith(staleWhileRevalidate(event.request,RUNTIME_CACHE));
   }}
 }});
 """
-(OUT/"sw.js").write_text(sw,encoding="utf-8")
-(ROOT/"_build").mkdir(exist_ok=True)
-(ROOT/"_build"/"app_shell.json").write_text(json.dumps(shell,ensure_ascii=False,indent=2),encoding="utf-8")
-print(f"Generated V58 service worker with {len(shell)} app-shell resources")
+(OUT / "sw.js").write_text(sw, encoding="utf-8")
+(ROOT / "_build").mkdir(exist_ok=True)
+(ROOT / "_build/app_shell.json").write_text(
+    json.dumps(shell, ensure_ascii=False, indent=2),
+    encoding="utf-8",
+)
+print(f"Generated service worker {release} with {len(shell)} app-shell resources")

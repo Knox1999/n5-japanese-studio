@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -65,8 +65,7 @@ function mastered(progress:ProgressMap,ids:number[]) {
   return ids.reduce((count,id)=>count+(progress[String(id)]?1:0),0);
 }
 
-function getSrsHealth(srs:SrsMap,total:number) {
-  const now=Date.now();
+function getSrsHealth(srs:SrsMap,total:number,now:number) {
   let due=0;
   let mature=0;
   Object.values(srs).forEach((state:SrsCardState)=>{
@@ -88,7 +87,7 @@ export default function Dashboard({
   const current=meta.lessons.find(x=>x.lesson===lesson)??meta.lessons[0];
   const currentMastered=mastered(progress,current?.ids||[]);
   const currentPct=Math.round(currentMastered/Math.max(1,current?.count||1)*100);
-  const now=Date.now();
+  const [now]=useState(()=>Date.now());
   const currentDue=(current?.ids||[]).reduce((count,id)=>{
     const state=srs[String(id)];
     return count+(state?.due_at && new Date(state.due_at).getTime()<=now?1:0);
@@ -97,7 +96,7 @@ export default function Dashboard({
   const completionTarget=Math.ceil((current?.count||0)*.8);
   const remainingToCompletion=Math.max(0,completionTarget-currentMastered);
   const lessonComplete=currentPct>=80 && currentDue===0;
-  const health=getSrsHealth(srs,meta.vocabulary_count);
+  const health=getSrsHealth(srs,meta.vocabulary_count,now);
   const best=history.length?Math.max(...history.map(x=>Number(x.score||0))):0;
 
   const resume=useMemo(()=>health.due>0

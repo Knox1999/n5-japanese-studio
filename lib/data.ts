@@ -1,7 +1,7 @@
 import type { LessonPayload, StudioMeta, KLCTree, KLCMemory } from './types';
 
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
-export const DATA_VERSION = '58';
+export const DATA_VERSION = '61';
 
 export class ResourceLoadError extends Error {
   path:string;
@@ -72,4 +72,4 @@ export const loadKLC = () => Promise.all([
   getJSON<KLCTree>('/data/klc-tree.json'),
   getJSON<KLCMemory>('/data/klc-memory.json'),
 ] as const);
-export const loadSearchIndex = () => getJSON<any[]>('/data/search-index.json');
+export const loadSearchIndex = () => getJSON<Record<string, unknown>[]>('/data/search-index.json');

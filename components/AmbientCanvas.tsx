@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import type { BufferAttribute, Mesh, MeshBasicMaterial, TorusGeometry } from 'three';
+
+type NavigatorWithConnection=Navigator&{connection?:{saveData?:boolean}};
 
 export default function AmbientCanvas() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -9,7 +12,7 @@ export default function AmbientCanvas() {
     if (!canvas || typeof window === 'undefined') return;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const tiny = window.matchMedia('(max-width: 640px)').matches;
-    const saveData = Boolean((navigator as any).connection?.saveData);
+    const saveData = Boolean((navigator as NavigatorWithConnection).connection?.saveData);
     if (reduced || saveData) return;
     let cleanup = () => {};
     let disposed = false;
@@ -50,7 +53,7 @@ export default function AmbientCanvas() {
         const petalMat=new THREE.PointsMaterial({color:0xe99ba9,size:mobile?.055:.07,transparent:true,opacity:.3,depthWrite:false});
         const petalCloud=new THREE.Points(petalGeo,petalMat);scene.add(petalCloud);
 
-        const rings: any[]=[];
+        const rings:Array<Mesh<TorusGeometry,MeshBasicMaterial>>=[];
         [2.1,2.85,3.6].forEach((r,i)=>{
           const g=new THREE.TorusGeometry(r,.006,4,96);
           const m=new THREE.MeshBasicMaterial({color:i===1?0xd6ad65:0x5bd7cc,transparent:true,opacity:i===1?.08:.055,depthWrite:false});
@@ -66,10 +69,10 @@ export default function AmbientCanvas() {
         const animate=(now=performance.now())=>{
           if(!running)return;raf=requestAnimationFrame(animate);if(now-last<frameMs)return;last=now;
           mx+=(tx-mx)*.035;my+=(ty-my)*.035;camera.position.x=mx;camera.position.y=-my;
-          const pos=geometry.getAttribute('position') as any;
+          const pos=geometry.getAttribute('position') as BufferAttribute;
           for(let i=0;i<count;i++){pos.array[i*3+1]-=speed[i];pos.array[i*3]+=Math.sin(now*.00045+phase[i])*.00048;if(pos.array[i*3+1]<-2.9)pos.array[i*3+1]=2.9}
           pos.needsUpdate=true;particles.rotation.z+=.00028;particles.rotation.y=Math.sin(now*.00012)*.035;
-          const pp=petalGeo.getAttribute('position') as any;for(let i=0;i<petalCount;i++){pp.array[i*3+1]-=.0018+(i%5)*.00028;pp.array[i*3]+=.0008*Math.sin(now*.0006+i);if(pp.array[i*3+1]<-2.7){pp.array[i*3+1]=2.7;pp.array[i*3]=(Math.random()-.5)*8}}pp.needsUpdate=true;petalCloud.rotation.z+=.00018;
+          const pp=petalGeo.getAttribute('position') as BufferAttribute;for(let i=0;i<petalCount;i++){pp.array[i*3+1]-=.0018+(i%5)*.00028;pp.array[i*3]+=.0008*Math.sin(now*.0006+i);if(pp.array[i*3+1]<-2.7){pp.array[i*3+1]=2.7;pp.array[i*3]=(Math.random()-.5)*8}}pp.needsUpdate=true;petalCloud.rotation.z+=.00018;
           rings.forEach((r,i)=>{r.rotation.z+=.00022*(i+1);r.rotation.y+=.00008*(i%2?1:-1)});
           renderer.render(scene,camera);
         };

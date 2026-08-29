@@ -15,7 +15,6 @@ export interface DialogueSpeechLine{
   speaker?:string;
 }
 
-let activeUtterance:SpeechSynthesisUtterance|null=null;
 let activeResolve:((result:PlaybackResult)=>void)|null=null;
 let activeProgressTimer:number|null=null;
 let playbackGeneration=0;
@@ -53,7 +52,6 @@ export function stopAudio():PlaybackResult{
   playbackGeneration+=1;
   clearProgressTimer();
   try{speechController()?.cancel()}catch{}
-  activeUtterance=null;
   const finish=activeResolve;
   activeResolve=null;
   finish?.('cancelled');
@@ -181,7 +179,6 @@ export async function playText(
           cb.onProgress?.(1);
           cb.onEnd?.();
         }
-        activeUtterance=null;
         resolve(status);
       };
       activeResolve=finish;
@@ -193,7 +190,6 @@ export async function playText(
 
         const chunk=chunks[chunkIndex];
         const utterance=new SpeechSynthesisUtterance(chunk);
-        activeUtterance=utterance;
         utterance.lang='ja-JP';
         utterance.rate=safeRate;
         utterance.pitch=rolePitch(voiceRole);

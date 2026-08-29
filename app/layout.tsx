@@ -1,17 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
+import AnalyticsConsent from '@/components/AnalyticsConsent';
 
 import './globals.css';
 import '@/styles/premium.scss';
-import '@/styles/v44-editorial.scss';
 import '@/styles/v46-futuristic.scss';
-import '@/styles/v49-full-system.scss';
-import '@/styles/v50-production.scss';
-import '@/styles/v51-masterpiece.scss';
-import '@/styles/v52-learning-master.scss';
 import '@/styles/v53-visual-grammar.scss';
 import '@/styles/v54-clean-verb-lab.scss';
-import '@/styles/v56-unified-ui.scss';
 import '@/styles/v57-signature.scss';
 import '@/styles/v58-design-system.scss';
 import '@/styles/v60-ultimate.scss';
@@ -117,23 +112,7 @@ export default function RootLayout({
           {JSON.stringify(schema)}
         </Script>
 
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${ga}`}
-          strategy="afterInteractive"
-        />
-
-        <Script id="ga4" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments)}
-            window.gtag = gtag;
-            gtag('js', new Date());
-            gtag('config', '${ga}', {
-              send_page_view: false,
-              anonymize_ip: true
-            });
-          `}
-        </Script>
+        <AnalyticsConsent gaId={ga}/>
       </body>
     </html>
   );

@@ -15,7 +15,7 @@ const GrammarStudio=dynamic(()=>import('./GrammarStudio'),{
 const RATES=[.75,.9,1] as const;
 
 export function Conversation({data}:{data:LessonPayload}){
-  const rows=data.content.dialogue_extended||data.content.dialogue||[];
+  const rows=useMemo(()=>data.content.dialogue_extended||data.content.dialogue||[],[data.content.dialogue_extended,data.content.dialogue]);
   const speakers=useMemo(()=>Array.from(new Set(rows.map(r=>r[0]).filter(Boolean))).slice(0,4),[rows]);
   const voiceMap=useMemo(()=>{
     const map:Record<string,AudioVoiceRole>={};

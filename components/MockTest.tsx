@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   BookOpenText,
   Brain,
-  CheckCircle2,
   ClipboardCheck,
   Clock3,
   Headphones,
@@ -12,12 +11,12 @@ import {
   RotateCcw,
   Trophy,
   Volume2,
+  type LucideIcon,
 } from 'lucide-react';
 
 import type {
   LessonPayload,
   MockAttempt,
-  VocabItem,
 } from '@/lib/types';
 import { loadLesson } from '@/lib/data';
 import { playText, stopAudio, type AudioVoiceRole } from '@/lib/audio';
@@ -44,7 +43,7 @@ const SECTIONS:Record<SectionId,{
   titleBn:string;
   titleEn:string;
   jp:string;
-  icon:any;
+  icon:LucideIcon;
   types:string[];
 }>={
   vocabulary:{
@@ -229,13 +228,13 @@ function buildBanks(lessons:LessonPayload[]){
         bn:v.example?.bn||v.bangla_meaning,
       }));
 
-  cycle(readingPool,12).forEach((r:any,i)=>grammarQs.push({
+  cycle(readingPool,12).forEach((r,i)=>grammarQs.push({
     id:`rs-${i}-${r.id}`,
     section:'grammar-reading',
     itemType:'Short reading',
     prompt:r.jp,
     correct:r.bn,
-    options:opts(r.bn,readingPool.map((x:any)=>x.bn)),
+    options:opts(r.bn,readingPool.map(x=>x.bn)),
   }));
 
   cycle(readings,8).forEach((r,i)=>grammarQs.push({
@@ -354,22 +353,22 @@ export default function MockTest({
 
   const q=questions[i];
   const cfg=mode?MODES[mode]:null;
-  const selected=q?answers[q.id]:undefined;
+  const currentSectionId=q?.section;
   const sectionIndex=q
     ? questions.slice(0,i+1).filter(x=>x.section===q.section).length
     : 0;
   const sectionTotal=q&&cfg?cfg.counts[q.section]:0;
 
   useEffect(()=>{
-    if(!q||!cfg)return;
-    setSecondsLeft(cfg.minutes[q.section]*60);
-  },[q?.section,mode]);
+    if(!currentSectionId||!cfg)return;
+    setSecondsLeft(cfg.minutes[currentSectionId]*60);
+  },[currentSectionId,cfg]);
 
   useEffect(()=>{
-    if(!q||secondsLeft<=0)return;
+    if(!currentSectionId)return;
     const id=window.setInterval(()=>setSecondsLeft(x=>Math.max(0,x-1)),1000);
     return()=>window.clearInterval(id);
-  },[q?.section,secondsLeft<=0]);
+  },[currentSectionId]);
 
   useEffect(()=>()=>{ stopAudio(); },[]);
 

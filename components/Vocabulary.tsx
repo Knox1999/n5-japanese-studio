@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  AlertTriangle, BookOpenCheck, Check, ChevronLeft, ChevronRight, Headphones, Layers3,
+  AlertTriangle, BookOpenCheck, Check, ChevronRight, Headphones, Layers3,
   Search, Sparkles, Volume2, X
 } from 'lucide-react';
 import type { LessonPayload, VocabItem } from '@/lib/types';
@@ -148,7 +148,7 @@ function VocabCard({v,mastered,hideMeaning,onToggle,index,verbMode,onOpenForms}:
       <b className="font-bn">{v.bangla_meaning}</b><span>{v.english_meaning}</span><small className="font-bn">উচ্চারণ: {v.pronunciation_bn}</small>
     </div>
 
-    {ex&&<div className="example-block"><div className="flex items-start justify-between gap-3"><p className="font-jp" lang="ja">{ex}</p><button className="mini-audio" onClick={()=>playText(ex,1,'sentence',{}, {lesson_number:v.lesson,word_id:v.id})}><Headphones size={18}/></button></div><span className={`font-bn ${hideMeaning?'blur-sm select-none':''}`}>{v.example?.bn}</span></div>}
+    {ex&&<div className="example-block"><div className="flex items-start justify-between gap-3"><p className="font-jp" lang="ja">{ex}</p><button className="mini-audio" aria-label={`${v.kanji||v.japanese} শব্দের উদাহরণ শুনুন`} title="উদাহরণের জাপানি অডিও শুনুন" onClick={()=>playText(ex,1,'sentence',{}, {lesson_number:v.lesson,word_id:v.id})}><Headphones size={18}/></button></div><span className={`font-bn ${hideMeaning?'blur-sm select-none':''}`}>{v.example?.bn}</span></div>}
 
     <div className={`vocab-card-footer ${verbMode&&meta.kind==='verb'?'has-forms':''}`}>
       <button className={`mastery-button ${mastered?'done':''}`} onClick={()=>{onToggle(v.id);track('vocabulary_mastered',{lesson_number:v.lesson,word_id:v.id,mastered:!mastered})}}><Check size={18}/>{mastered?'Mastered':'Mark mastered'}</button>

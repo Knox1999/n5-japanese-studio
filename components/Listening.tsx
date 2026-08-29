@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpenText, Eye, EyeOff, Headphones, Play, SkipBack, SkipForward,
-  Square, Volume2, MessageCircle, Mic2, Waves, UserRound, Gauge, CheckCircle2
+  Square, MessageCircle, Mic2, Waves, UserRound, Gauge, CheckCircle2
 } from 'lucide-react';
 import type { LessonPayload, VocabItem } from '@/lib/types';
 import { playText, stopAudio, type AudioVoiceRole } from '@/lib/audio';

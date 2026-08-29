@@ -21,7 +21,6 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
   const [session,setSession]=useState<VocabItem[]>([]);
   const [idx,setIdx]=useState(0);
   const [reveal,setReveal]=useState(false);
-  const [nonce,setNonce]=useState(0);
   const [scope,setScope]=useState<'lesson'|'global'>('lesson');
   const [globalLoading,setGlobalLoading]=useState(false);
   const [globalError,setGlobalError]=useState('');
@@ -31,11 +30,11 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
     let due=0,started=0,mature=0;
     rows.forEach(v=>{const st=srs[String(v.id)];if(st){started++;if(dueNow(st))due++;if((st.interval_days||0)>=7||(st.repetitions||0)>=5)mature++}});
     return{due,new:rows.length-started,started,mature}
-  },[rows,srs,nonce]);
+  },[rows,srs]);
 
   const globalDueIds=useMemo(()=>new Set(
     Object.entries(srs).filter(([,st])=>dueNow(st)).map(([id])=>Number(id)).filter(Number.isFinite)
-  ),[srs,nonce]);
+  ),[srs]);
 
   const dueByLesson=useMemo(()=>meta.lessons.map(L=>({
     lesson:L.lesson,
@@ -85,7 +84,7 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
     if(interval>=7||reps>=5)onProgressChange({...progress,[String(card.id)]:true});
     track('practice_result',{practice_type:'srs',result:rating,word_id:card.id,lesson_number:card.lesson||data.lesson,queue_scope:scope});
     setReveal(false);
-    if(idx+1>=session.length){setSession([]);setIdx(0);setNonce(x=>x+1)}else setIdx(x=>x+1)
+    if(idx+1>=session.length){setSession([]);setIdx(0)}else setIdx(x=>x+1)
   };
 
   if(card){
