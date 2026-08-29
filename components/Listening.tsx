@@ -6,17 +6,18 @@ import {
   Square, MessageCircle, Mic2, Waves, UserRound, Gauge, CheckCircle2
 } from 'lucide-react';
 import type { LessonPayload, VocabItem } from '@/lib/types';
-import { playText, stopAudio, type AudioVoiceRole } from '@/lib/audio';
+import { playText, stopAudio, type AudioVoiceRole, type PlaybackResult } from '@/lib/audio';
 import { track } from '@/lib/analytics';
 
 type Source='Dialogue'|'Reading'|'Shadowing';
 type ListeningLine={jp:string;bn:string;source:Source;speaker?:string;voiceRole:AudioVoiceRole;hints:Array<{jp:string;bn:string}>};
 type Filter='All'|Source;
+type SegmentRange={text:string;start:number;end:number;wordLike:boolean};
+type SpeechCue={speech:string;start:number;end:number};
 
 function sentenceChunks(text:string){return String(text||'').split(/(?<=[。！？])/).map(s=>s.trim()).filter(Boolean)}
 function banglaChunks(text:string){return String(text||'').split(/(?<=[।!?])/).map(s=>s.trim()).filter(Boolean)}
 function norm(text?:string){return String(text||'').replace(/\s+/g,'').replace(/[“”‘’'"「」『』]/g,'').trim()}
-function tokens(text:string){const spaced=text.trim().split(/\s+/).filter(Boolean);if(spaced.length>1)return spaced;return Array.from(text).reduce<string[]>((a,ch)=>{if(/[、。！？]/.test(ch)){if(a.length)a[a.length-1]+=ch;else a.push(ch)}else if(a.length&&a[a.length-1].length<3)a[a.length-1]+=ch;else a.push(ch);return a},[])}
 function hintsFor(jp:string,vocab:VocabItem[]){const n=norm(jp);const seen=new Set<string>();return vocab.filter(v=>{const forms=[v.kanji,v.japanese].map(x=>norm(x)).filter(x=>x.length>1);return forms.some(f=>n.includes(f))}).map(v=>({jp:v.kanji||v.japanese,bn:v.bangla_meaning})).filter(x=>{const k=`${x.jp}|${x.bn}`;if(seen.has(k))return false;seen.add(k);return true}).slice(0,5)}
 
 function buildListeningLines(data:LessonPayload):ListeningLine[]{
@@ -48,7 +49,7 @@ function buildListeningLines(data:LessonPayload):ListeningLine[]{
     const jps=sentenceChunks(jpText),bns=banglaChunks(bnText);
     if(jps.length&&jps.length===bns.length){
       jps.forEach((jp,i)=>rows.push({jp,bn:bns[i],source:'Reading',voiceRole:'default',hints:hintsFor(jp,data.vocabulary)}));
-    } else if(jpText){
+    }else if(jpText){
       rows.push({jp:jpText,bn:bnText||'',source:'Reading',voiceRole:'default',hints:hintsFor(jpText,data.vocabulary)});
     }
   });
@@ -58,17 +59,71 @@ function buildListeningLines(data:LessonPayload):ListeningLine[]{
     if(!b){for(const [k,v] of meaning){if(k.includes(norm(jp))||norm(jp).includes(k)){b=v;break}}}
     rows.push({jp,bn:b,source:'Shadowing',voiceRole:'female',hints:hintsFor(jp,data.vocabulary)});
   });
-
   return rows.map(x=>({...x,bn:x.bn||'এই line-এর আলাদা বাংলা অর্থ lesson data-তে নেই। Context দেখে practice করুন।'}));
 }
 
-function Waveform({text,progress,voiceRole}:{text:string;progress:number;voiceRole:AudioVoiceRole}){
-  const peaks=useMemo(()=>Array.from({length:64},(_,i)=>{
+function segmentJapanese(text:string):SegmentRange[]{
+  if(!text)return[];
+  try{
+    const Segmenter=(Intl as typeof Intl & {Segmenter?:new(locales?:string|string[],options?:{granularity?:string})=>{segment:(input:string)=>Iterable<{segment:string;index:number;isWordLike?:boolean}>}}).Segmenter;
+    if(Segmenter){
+      const rows=[...new Segmenter('ja',{granularity:'word'}).segment(text)];
+      if(rows.length){
+        return rows.map((row,index)=>({
+          text:row.segment,
+          start:row.index,
+          end:index+1<rows.length?rows[index+1].index:text.length,
+          wordLike:row.isWordLike!==false&&!/^\s+$/.test(row.segment)&&!(/^[、。！？,.!?]$/.test(row.segment)),
+        }));
+      }
+    }
+  }catch{}
+
+  const ranges:SegmentRange[]=[];
+  const regex=/[一-龯々〆ヵヶ]+|[ぁ-ゖー]+|[ァ-ヺー]+|[A-Za-z0-9]+|\s+|[^\s]/g;
+  let match:RegExpExecArray|null;
+  while((match=regex.exec(text))){
+    ranges.push({text:match[0],start:match.index,end:match.index+match[0].length,wordLike:!/^\s+$/.test(match[0])&&!/^[、。！？,.!?]$/.test(match[0])});
+  }
+  return ranges.length?ranges:[{text,start:0,end:text.length,wordLike:true}];
+}
+
+function speechCues(text:string):SpeechCue[]{
+  const segments=segmentJapanese(text);
+  const words=segments.filter(segment=>segment.wordLike);
+  if(!words.length)return text?[{speech:text,start:0,end:text.length}]:[];
+  return words.map((word,index)=>{
+    const next=words[index+1];
+    const end=next?.start??text.length;
+    const speech=text.slice(word.start,end).trim()||word.text;
+    return {speech,start:word.start,end};
+  });
+}
+
+function Waveform({text,progress}:{text:string;progress:number}){
+  const peaks=useMemo(()=>Array.from({length:72},(_,i)=>{
     const code=text.charCodeAt(i%Math.max(1,text.length))||31;
-    const roleOffset=voiceRole==='male'?7:voiceRole==='female'?13:3;
-    return .18+((code*(i+roleOffset))%67)/100;
-  }),[text,voiceRole]);
-  return <div className="shadow-wave-v57" aria-label="Audio waveform">{peaks.map((p,i)=><i key={i} className={i/peaks.length<=progress?'played':''} style={{height:`${Math.round(9+p*32)}px`}}/>)}</div>
+    const envelope=.62+.38*Math.sin((i/71)*Math.PI);
+    return Math.max(.18,Math.min(1,((.22+((code*(i+9))%73)/100)*envelope)));
+  }),[text]);
+  const played=Math.round(progress*100);
+  return <div className="shadow-wave-shell-v82" aria-label={`Audio progress ${played}%`}>
+    <div className="shadow-wave-v57">{peaks.map((p,i)=><i key={i} className={i/peaks.length<=progress?'played':''} style={{height:`${Math.round(10+p*38)}px`}}/>)}</div>
+    <div className="shadow-wave-readout-v82"><span>VOICE SIGNAL</span><b>{played}%</b></div>
+  </div>
+}
+
+function Transcript({text,playing,activeCue}:{text:string;playing:boolean;activeCue:number|null}){
+  const segments=useMemo(()=>segmentJapanese(text),[text]);
+  const cues=useMemo(()=>speechCues(text),[text]);
+  const cue=activeCue===null?null:cues[activeCue];
+  return <div className="shadow-token-line-v57 font-jp" lang="ja" aria-live="off">
+    {segments.length?segments.map((segment,index)=>{
+      const isActive=!!cue&&playing&&segment.wordLike&&segment.start>=cue.start&&segment.start<cue.end;
+      const isSpoken=!!cue&&playing&&segment.wordLike&&segment.end<=cue.start;
+      return <span key={`${segment.start}-${index}`} className={`${isActive?'active':''} ${isSpoken?'spoken':''}`}>{segment.text}</span>;
+    }):'Select a transcript line'}
+  </div>;
 }
 
 export default function Listening({data}:{data:LessonPayload}){
@@ -79,44 +134,82 @@ export default function Listening({data}:{data:LessonPayload}){
   const [showMeaning,setShowMeaning]=useState(true);
   const [filter,setFilter]=useState<Filter>('All');
   const [completed,setCompleted]=useState<Record<number,boolean>>({});
+  const [activeCue,setActiveCue]=useState<number|null>(null);
   const run=useRef(0);
 
   const lines=useMemo(()=>buildListeningLines(data),[data]);
   const currentLine=lines[active];
   const current=currentLine?.jp||'';
-  const currentTokens=tokens(current);
-  const tokenIndex=Math.min(currentTokens.length-1,Math.floor(progress*Math.max(1,currentTokens.length)));
   const counts=useMemo(()=>({Dialogue:lines.filter(x=>x.source==='Dialogue').length,Reading:lines.filter(x=>x.source==='Reading').length,Shadowing:lines.filter(x=>x.source==='Shadowing').length}),[lines]);
   const visible=useMemo(()=>lines.map((line,index)=>({line,index})).filter(x=>filter==='All'||x.line.source===filter),[lines,filter]);
-  const stop=()=>{run.current++;stopAudio();setPlaying(false);setProgress(0)};
+
+  const resetSync=()=>setActiveCue(null);
+  const stop=()=>{run.current++;stopAudio();setPlaying(false);setProgress(0);resetSync()};
+
+  const speakLine=async(line:ListeningLine,index:number,token:number,sessionMode='single'):Promise<PlaybackResult>=>{
+    const cues=speechCues(line.jp);
+    if(!cues.length)return'unavailable';
+    for(let cueIndex=0;cueIndex<cues.length;cueIndex+=1){
+      if(token!==run.current)return'cancelled';
+      const cue=cues[cueIndex];
+      setActiveCue(cueIndex);
+      const result=await playText(cue.speech,rate,'listening',{
+        onProgress:r=>{
+          if(token!==run.current)return;
+          setProgress(Math.min(.999,(cueIndex+r)/cues.length));
+        },
+      },{
+        lesson_number:data.lesson,
+        segment_number:index+1,
+        source:line.source,
+        session_mode:sessionMode,
+        cue_number:cueIndex+1,
+        cue_count:cues.length,
+        synchronized_transcript:true,
+      },line.voiceRole);
+      if(result!=='ended')return result;
+    }
+    if(token===run.current){setProgress(1);setActiveCue(null)}
+    return'ended';
+  };
+
   const playOne=async(index=active)=>{
     if(!lines[index])return;
-    run.current++;const token=run.current;
-    setActive(index);setPlaying(true);setProgress(0);
-    await playText(lines[index].jp,rate,'listening',{onProgress:r=>token===run.current&&setProgress(r),onEnd:()=>{if(token===run.current){setPlaying(false);setCompleted(x=>({...x,[index]:true}))}}},{lesson_number:data.lesson,segment_number:index+1,source:lines[index].source},lines[index].voiceRole);
+    stopAudio();
+    run.current+=1;const token=run.current;
+    setActive(index);setPlaying(true);setProgress(0);resetSync();
+    const line=lines[index];
+    const result=await speakLine(line,index,token,'single');
+    if(token!==run.current)return;
+    setPlaying(false);resetSync();
+    if(result==='ended')setCompleted(x=>({...x,[index]:true}));
   };
+
   const playSequence=async()=>{
-    run.current++;const token=run.current;setPlaying(true);
+    stopAudio();
+    run.current+=1;const token=run.current;
+    setPlaying(true);setProgress(0);resetSync();
     const sequence=filter==='All'?lines.map((_,i)=>i):visible.map(x=>x.index);
     let completedRun=true;
     for(const index of sequence){
       if(token!==run.current){completedRun=false;break}
-      setActive(index);setProgress(0);
-      const result=await playText(lines[index].jp,rate,'listening',{onProgress:r=>token===run.current&&setProgress(r)},{lesson_number:data.lesson,segment_number:index+1,source:lines[index].source,session_mode:'full_shadowing'},lines[index].voiceRole);
+      setActive(index);setProgress(0);resetSync();
+      const result=await speakLine(lines[index],index,token,'full_shadowing');
       if(result!=='ended'){completedRun=false;break}
       if(token===run.current)setCompleted(x=>({...x,[index]:true}));
     }
-    if(token===run.current)setPlaying(false);
+    if(token===run.current){setPlaying(false);setProgress(completedRun?1:0);resetSync()}
     track(completedRun?'shadowing_complete':'shadowing_cancelled',{lesson_number:data.lesson,segment_count:sequence.length});
   };
-  const selectOnly=(index:number)=>{stopAudio();run.current++;setPlaying(false);setProgress(0);setActive(Math.max(0,Math.min(lines.length-1,index)))};
+
+  const selectOnly=(index:number)=>{stopAudio();run.current++;setPlaying(false);setProgress(0);resetSync();setActive(Math.max(0,Math.min(lines.length-1,index)))};
   useEffect(()=>stop,[]);
 
   const persona=currentLine?.voiceRole==='male'?'A · MALE':currentLine?.voiceRole==='female'?'B · FEMALE':'NARRATOR';
 
-  return <div className="space-y-5 pb-8 shadowing-view-v57">
+  return <div className="space-y-5 pb-8 shadowing-view-v57 listening-v82">
     <section className="study-header tone-listen">
-      <div><div className="section-kicker">FREE JAPANESE LISTENING · LESSON {String(data.lesson).padStart(2,'0')}</div><h1>Hear → Follow → Shadow</h1><p className="font-bn">Browser/Windows-এর Japanese voice, বাংলা support এবং একটাই focused practice flow—কোনো paid API ছাড়াই।</p></div>
+      <div><div className="section-kicker">JAPANESE LISTENING · LESSON {String(data.lesson).padStart(2,'0')}</div><h1>Hear → Follow → Shadow</h1><p className="font-bn">শুনুন, যে অংশটি voice বলছে ঠিক সেটাই follow করুন, তারপর একই rhythm-এ shadow করুন।</p></div>
       <Headphones className="header-big-icon"/>
     </section>
 
@@ -135,11 +228,11 @@ export default function Listening({data}:{data:LessonPayload}){
         </header>
 
         <div className="shadow-current-v57">
-          <div className="shadow-token-line-v57 font-jp" lang="ja">{currentTokens.length?currentTokens.map((t,i)=><span key={`${t}-${i}`} className={i===tokenIndex&&playing?'active':''}>{t}</span>):'Select a transcript line'}</div>
+          <Transcript text={current} playing={playing} activeCue={activeCue}/>
           {showMeaning&&currentLine&&<p className="font-bn">{currentLine.bn}</p>}
         </div>
 
-        <Waveform text={current} progress={progress} voiceRole={currentLine?.voiceRole||'default'}/>
+        <Waveform text={current} progress={progress}/>
         <div className="shadow-progress-v57"><i style={{width:`${Math.round(progress*100)}%`}}/><span>{Math.round(progress*100)}%</span></div>
 
         <div className="shadow-transport-v57">
@@ -156,7 +249,7 @@ export default function Listening({data}:{data:LessonPayload}){
       </article>
 
       <article className="shadow-library-v57">
-        <header><div><span>SHADOWING LIBRARY</span><h2>Pick one line. Repeat it well.</h2><p className="font-bn">একই স্ক্রিনে অতিরিক্ত panel নয়—line বাছুন, শুনুন, imitate করুন।</p></div><button onClick={()=>setShowMeaning(x=>!x)}>{showMeaning?<EyeOff/>:<Eye/>}<span>{showMeaning?'অর্থ লুকান':'অর্থ দেখান'}</span></button></header>
+        <header><div><span>SHADOWING LIBRARY</span><h2>Pick one line. Repeat it well.</h2><p className="font-bn">একটি line বাছুন, live cue follow করুন, তারপর imitate করুন।</p></div><button onClick={()=>setShowMeaning(x=>!x)}>{showMeaning?<EyeOff/>:<Eye/>}<span>{showMeaning?'অর্থ লুকান':'অর্থ দেখান'}</span></button></header>
         <div className="shadow-filters-v57">{(['All','Dialogue','Reading','Shadowing'] as Filter[]).map(f=><button key={f} className={filter===f?'active':''} onClick={()=>setFilter(f)}>{f}<span>{f==='All'?lines.length:counts[f]}</span></button>)}</div>
         <div className="shadow-list-v57">{visible.map(({line,index})=><button key={`${line.source}-${index}-${norm(line.jp)}`} className={`${index===active?'active':''} ${completed[index]?'done':''}`} onClick={()=>playOne(index)}>
           <span className={`shadow-list-avatar-v57 ${line.voiceRole}`}>{line.voiceRole==='male'?'A':line.voiceRole==='female'?'B':'読'}</span>

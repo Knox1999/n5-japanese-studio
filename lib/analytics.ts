@@ -1,7 +1,12 @@
+import { captureStudyEvent } from './studyActivity';
+
 declare global { interface Window { gtag?: (...args: unknown[]) => void; } }
 
 export function track(event: string, params: Record<string, unknown> = {}) {
   if (typeof window === 'undefined') return;
+  // Local study state is product functionality, not third-party analytics.
+  // It is recorded on-device even when GA consent is absent.
+  try { captureStudyEvent(event, params); } catch {}
   try { window.gtag?.('event', event, params); } catch {}
 }
 

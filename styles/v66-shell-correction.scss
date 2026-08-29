@@ -1,0 +1,139 @@
+/* V66 — Shell correction layer
+   Self-contained header, lesson picker, overlays and accessibility behavior. */
+
+/* Accessibility skip-link: invisible until keyboard focus. */
+.skip-link{
+  position:fixed!important;
+  left:14px!important;
+  top:10px!important;
+  z-index:1000!important;
+  transform:translateY(-180%)!important;
+  padding:10px 14px!important;
+  border:1px solid rgba(84,196,200,.35)!important;
+  border-radius:11px!important;
+  background:#0d2234!important;
+  color:#f3f7fa!important;
+  font-weight:800!important;
+  text-decoration:none!important;
+  transition:transform .16s ease!important;
+}
+.skip-link:focus,.skip-link:focus-visible{transform:translateY(0)!important}
+
+/* Header must never be affected by popover content flow. */
+.future-header.nv60-header.nv-final-header{
+  display:grid!important;
+  grid-template-columns:auto minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:16px!important;
+  width:100%!important;
+  min-height:72px!important;
+  padding:10px clamp(18px,2.2vw,34px)!important;
+  background:rgba(5,16,27,.94)!important;
+  border-bottom:1px solid rgba(182,211,229,.11)!important;
+  backdrop-filter:blur(22px) saturate(130%)!important;
+}
+.future-brand{min-width:0!important;max-width:245px!important}
+.future-brand-logo-wrap{flex:0 0 auto!important}
+.future-primary-nav{
+  justify-self:center!important;
+  width:min(760px,100%)!important;
+  min-width:0!important;
+  overflow:hidden!important;
+}
+.future-primary-nav button{white-space:nowrap!important}
+.future-header-tools{justify-self:end!important;display:flex!important;align-items:center!important;gap:8px!important;min-width:max-content!important}
+
+/* Lesson picker — anchored premium popover, never a side-page. */
+.lesson-picker-anchor{position:relative!important;display:inline-flex!important;align-items:center!important}
+.lesson-picker-trigger{min-width:78px!important;height:42px!important;padding:0 11px!important;color:#e8f0f5!important;border:1px solid rgba(239,91,85,.22)!important;background:rgba(255,255,255,.035)!important}
+.lesson-picker-trigger:hover,.lesson-picker-trigger.open{border-color:rgba(239,91,85,.48)!important;background:rgba(239,91,85,.09)!important}
+.lesson-picker-popover,
+.nv60-lesson-popover{
+  position:absolute!important;
+  top:calc(100% + 10px)!important;
+  right:0!important;
+  left:auto!important;
+  z-index:180!important;
+  width:min(390px,calc(100vw - 28px))!important;
+  max-width:390px!important;
+  max-height:min(72vh,680px)!important;
+  overflow:hidden!important;
+  margin:0!important;
+  padding:10px!important;
+  border:1px solid rgba(182,211,229,.15)!important;
+  border-radius:20px!important;
+  background:linear-gradient(180deg,rgba(13,34,52,.985),rgba(7,20,33,.995))!important;
+  color:#f3f7fa!important;
+  box-shadow:0 28px 90px rgba(0,0,0,.48)!important;
+  backdrop-filter:blur(24px)!important;
+}
+.lesson-picker-title{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;padding:8px 8px 10px!important;border-bottom:1px solid rgba(182,211,229,.09)!important}
+.lesson-picker-title>div{display:grid!important;gap:2px!important}
+.lesson-picker-title span{color:#ef7772!important;font-size:9px!important;font-weight:850!important;letter-spacing:.18em!important}
+.lesson-picker-title b{font-size:1rem!important;color:#f3f7fa!important}
+.lesson-picker-title>button{display:grid!important;place-items:center!important;width:34px!important;height:34px!important;border:1px solid rgba(182,211,229,.1)!important;border-radius:10px!important;background:rgba(255,255,255,.025)!important;color:#9fb3c1!important}
+.lesson-picker-current{margin:9px 0!important;padding:12px!important;border:1px solid rgba(84,196,200,.16)!important;border-radius:14px!important;background:linear-gradient(135deg,rgba(84,196,200,.08),rgba(255,255,255,.018))!important}
+.lesson-picker-current small{display:block!important;color:#72d0d2!important;font-size:9px!important;font-weight:800!important;letter-spacing:.13em!important;text-transform:uppercase!important}
+.lesson-picker-current b{display:block!important;margin-top:3px!important;color:#fff!important;font-size:.95rem!important}
+.lesson-picker-current span{display:block!important;margin-top:2px!important;color:#91a9b9!important;font-size:.79rem!important;line-height:1.45!important}
+.lesson-picker-list{display:grid!important;gap:5px!important;max-height:min(52vh,480px)!important;overflow-y:auto!important;padding:1px 2px 2px 0!important;overscroll-behavior:contain!important}
+.lesson-picker-list>button{
+  display:grid!important;
+  grid-template-columns:38px minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:10px!important;
+  width:100%!important;
+  min-height:54px!important;
+  padding:8px 10px!important;
+  border:1px solid transparent!important;
+  border-radius:12px!important;
+  text-align:left!important;
+  color:#dce8ef!important;
+  background:rgba(255,255,255,.018)!important;
+}
+.lesson-picker-list>button:hover{border-color:rgba(84,196,200,.18)!important;background:rgba(84,196,200,.045)!important}
+.lesson-picker-list>button.active{border-color:rgba(239,91,85,.3)!important;background:linear-gradient(90deg,rgba(239,91,85,.09),rgba(255,255,255,.02))!important}
+.lesson-picker-list>button>span{display:grid!important;place-items:center!important;width:34px!important;height:34px!important;border-radius:10px!important;background:rgba(255,255,255,.035)!important;color:#ef7772!important;font-size:.72rem!important;font-weight:850!important}
+.lesson-picker-list>button>div{min-width:0!important;display:grid!important;gap:1px!important}
+.lesson-picker-list>button b{overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#edf4f7!important;font-size:.78rem!important}
+.lesson-picker-list>button small{overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#829aaa!important;font-size:.7rem!important}
+.lesson-picker-list>button svg{color:#69cbbf!important;width:17px!important}
+
+/* Search/menu overlays: same brand system. */
+.future-layer-backdrop{position:absolute!important;inset:0!important;border:0!important;background:rgba(2,10,18,.72)!important;backdrop-filter:blur(6px)!important}
+.future-drawer-layer,.future-search-layer{position:fixed!important;inset:0!important;z-index:220!important}
+.future-drawer,.future-search-dialog{background:linear-gradient(180deg,#0d2234,#071421)!important;border-color:rgba(182,211,229,.14)!important;color:#f3f7fa!important;box-shadow:0 30px 100px rgba(0,0,0,.52)!important}
+
+/* Floating buttons should stay visually quiet and never cover primary content. */
+.kana-launcher{right:18px!important;bottom:18px!important;z-index:70!important;box-shadow:0 12px 34px rgba(0,0,0,.28)!important}
+
+/* Header content remains stable at intermediate desktop widths. */
+@media(max-width:1180px){
+  .future-header.nv60-header.nv-final-header{grid-template-columns:auto 1fr auto!important;gap:10px!important}
+  .future-brand .nv60-brand-copy small{display:none!important}
+  .future-primary-nav button{padding-inline:9px!important}
+  .future-primary-nav button span{font-size:.72rem!important}
+  .future-search-trigger span,.future-search-trigger kbd{display:none!important}
+  .future-search-trigger{width:42px!important;padding:0!important;justify-content:center!important}
+}
+
+@media(max-width:860px){
+  .future-header.nv60-header.nv-final-header{display:flex!important;justify-content:space-between!important;min-height:62px!important;padding:8px 12px!important}
+  .future-primary-nav{display:none!important}
+  .future-brand{max-width:210px!important}
+  .future-brand .nv60-brand-copy strong{font-size:.72rem!important}
+  .future-header-tools{margin-left:auto!important}
+  .lesson-picker-popover,.nv60-lesson-popover{position:fixed!important;top:72px!important;right:10px!important;width:calc(100vw - 20px)!important;max-width:none!important;max-height:calc(100vh - 90px)!important;border-radius:18px!important}
+  .lesson-picker-list{max-height:calc(100vh - 245px)!important}
+  .kana-launcher{bottom:82px!important;right:12px!important}
+}
+
+@media(max-width:520px){
+  .future-brand .nv60-brand-copy{display:none!important}
+  .future-brand{width:auto!important;min-width:auto!important}
+  .future-search-trigger{display:none!important}
+  .lesson-picker-trigger{min-width:70px!important;height:40px!important}
+  .lesson-picker-popover,.nv60-lesson-popover{top:66px!important;right:7px!important;width:calc(100vw - 14px)!important;padding:8px!important}
+  .lesson-picker-current{padding:10px!important}
+  .lesson-picker-list>button{min-height:50px!important;padding:7px 8px!important}
+}

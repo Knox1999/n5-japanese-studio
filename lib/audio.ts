@@ -3,9 +3,18 @@ import { track, trackError } from './analytics';
 export type AudioVoiceRole='default'|'male'|'female';
 export type PlaybackResult='ended'|'cancelled'|'unavailable';
 
+export interface AudioBoundary{
+  charIndex:number;
+  charLength:number;
+  totalChars:number;
+  progress:number;
+  name:string;
+}
+
 export interface AudioCallbacks{
   onStart?:()=>void;
   onProgress?:(ratio:number)=>void;
+  onBoundary?:(boundary:AudioBoundary)=>void;
   onEnd?:()=>void;
 }
 
@@ -113,10 +122,7 @@ function splitForSpeech(text:string,maxLength=150){
   const chunks:string[]=[];
   let current='';
   for(const part of parts){
-    if(current&&current.length+part.length>maxLength){
-      chunks.push(current);
-      current='';
-    }
+    if(current&&current.length+part.length>maxLength){chunks.push(current);current=''}
     if(part.length>maxLength){
       if(current){chunks.push(current);current=''}
       for(let index=0;index<part.length;index+=maxLength)chunks.push(part.slice(index,index+maxLength));
@@ -139,28 +145,16 @@ export async function playText(
   const clean=normalizeDisplay(text);
   const safeRate=Math.max(.5,Math.min(1.5,rate));
   const synth=speechController();
-  if(!clean||!synth){
-    notifyAudioError(clean,type);
-    return 'unavailable';
-  }
+  if(!clean||!synth){notifyAudioError(clean,type);return'unavailable'}
 
   const chunks=splitForSpeech(clean);
-  if(!chunks.length)return 'unavailable';
+  if(!chunks.length)return'unavailable';
 
-  track('audio_play',{
-    audio_type:type,
-    playback_rate:safeRate,
-    content_length:clean.length,
-    voice_role:voiceRole,
-    voice_engine:'web-speech-api-ja-JP',
-    billed_api:false,
-    exclusive_audio:true,
-    ...meta
-  });
+  track('audio_play',{audio_type:type,playback_rate:safeRate,content_length:clean.length,voice_role:voiceRole,voice_engine:'web-speech-api-ja-JP',billed_api:false,exclusive_audio:true,...meta});
 
   try{
     const voices=await loadJapaneseVoices(synth);
-    if(generation!==playbackGeneration)return 'cancelled';
+    if(generation!==playbackGeneration)return'cancelled';
     const selectedVoice=pickVoice(voices,voiceRole);
     const totalChars=chunks.reduce((sum,chunk)=>sum+chunk.length,0);
 
@@ -175,10 +169,7 @@ export async function playText(
         settled=true;
         clearProgressTimer();
         if(activeResolve===finish)activeResolve=null;
-        if(status==='ended'){
-          cb.onProgress?.(1);
-          cb.onEnd?.();
-        }
+        if(status==='ended'){cb.onProgress?.(1);cb.onEnd?.()}
         resolve(status);
       };
       activeResolve=finish;
@@ -190,10 +181,7 @@ export async function playText(
 
         const chunk=chunks[chunkIndex];
         const utterance=new SpeechSynthesisUtterance(chunk);
-        utterance.lang='ja-JP';
-        utterance.rate=safeRate;
-        utterance.pitch=rolePitch(voiceRole);
-        utterance.volume=1;
+        utterance.lang='ja-JP';utterance.rate=safeRate;utterance.pitch=rolePitch(voiceRole);utterance.volume=1;
         if(selectedVoice)utterance.voice=selectedVoice;
 
         const estimatedMs=Math.max(900,(chunk.length*115)/safeRate);
@@ -205,86 +193,54 @@ export async function playText(
           cb.onProgress?.(Math.min(.99,ratio));
         },100);
 
-        utterance.onstart=()=>{
-          if(started)return;
-          started=true;
-          cb.onStart?.();
-        };
+        utterance.onstart=()=>{if(started)return;started=true;cb.onStart?.()};
         utterance.onboundary=event=>{
-          const ratio=(completedChars+Math.min(chunk.length,event.charIndex))/totalChars;
-          cb.onProgress?.(Math.min(.99,ratio));
+          const localIndex=Math.max(0,Math.min(chunk.length,event.charIndex||0));
+          const absoluteIndex=Math.min(totalChars,completedChars+localIndex);
+          const reportedLength=Math.max(0,Number(event.charLength||0));
+          const remaining=Math.max(0,totalChars-absoluteIndex);
+          const charLength=Math.min(remaining,reportedLength||1);
+          const ratio=Math.min(.99,absoluteIndex/Math.max(1,totalChars));
+          cb.onBoundary?.({charIndex:absoluteIndex,charLength,totalChars,progress:ratio,name:String(event.name||'boundary')});
+          cb.onProgress?.(ratio);
         };
         utterance.onend=()=>{
           clearProgressTimer();
           if(generation!==playbackGeneration){finish('cancelled');return}
           completedChars+=chunk.length;
           cb.onProgress?.(Math.min(.99,completedChars/totalChars));
-          chunkIndex+=1;
-          speakNext();
+          chunkIndex+=1;speakNext();
         };
         utterance.onerror=event=>{
           clearProgressTimer();
-          if(generation!==playbackGeneration||event.error==='canceled'||event.error==='interrupted'){
-            finish('cancelled');
-            return;
-          }
-          trackError('audio',new Error(`browser-speech-${event.error}`));
-          notifyAudioError(clean,type);
-          finish('unavailable');
+          if(generation!==playbackGeneration||event.error==='canceled'||event.error==='interrupted'){finish('cancelled');return}
+          trackError('audio',new Error(`browser-speech-${event.error}`));notifyAudioError(clean,type);finish('unavailable');
         };
-
         synth.speak(utterance);
       };
-
       speakNext();
     });
   }catch(error){
-    if(generation!==playbackGeneration)return 'cancelled';
-    trackError('audio',error);
-    notifyAudioError(clean,type);
-    return 'unavailable';
+    if(generation!==playbackGeneration)return'cancelled';
+    trackError('audio',error);notifyAudioError(clean,type);return'unavailable';
   }
 }
 
-export async function playDialogueTrack(
-  lines:DialogueSpeechLine[],
-  rate=1,
-  cb:AudioCallbacks={},
-  meta:Record<string,unknown>={}
-):Promise<PlaybackResult>{
+export async function playDialogueTrack(lines:DialogueSpeechLine[],rate=1,cb:AudioCallbacks={},meta:Record<string,unknown>={}):Promise<PlaybackResult>{
   stopAudio();
   const sequence=lines.filter(line=>normalizeDisplay(line.text));
-  if(!sequence.length)return 'unavailable';
-
-  track('audio_play',{
-    audio_type:'conversation_full',
-    playback_rate:rate,
-    dual_voice:true,
-    voice_engine:'web-speech-api-ja-JP',
-    billed_api:false,
-    ...meta
-  });
+  if(!sequence.length)return'unavailable';
+  track('audio_play',{audio_type:'conversation_full',playback_rate:rate,dual_voice:true,voice_engine:'web-speech-api-ja-JP',billed_api:false,...meta});
 
   let started=false;
   for(let index=0;index<sequence.length;index+=1){
     const line=sequence[index];
-    const result=await playText(
-      line.text,
-      rate,
-      'conversation_line',
-      {
-        onStart:()=>{
-          if(!started){started=true;cb.onStart?.()}
-        },
-        onProgress:ratio=>cb.onProgress?.((index+ratio)/sequence.length)
-      },
-      {speaker:line.speaker,line_number:index+1,dialogue_sequence:true},
-      line.voiceRole||'default'
-    );
+    const result=await playText(line.text,rate,'conversation_line',{
+      onStart:()=>{if(!started){started=true;cb.onStart?.()}},
+      onProgress:ratio=>cb.onProgress?.((index+ratio)/sequence.length),
+      onBoundary:boundary=>cb.onBoundary?.({...boundary,progress:(index+boundary.progress)/sequence.length})
+    },{speaker:line.speaker,line_number:index+1,dialogue_sequence:true},line.voiceRole||'default');
     if(result!=='ended')return result;
   }
-
-  cb.onProgress?.(1);
-  cb.onEnd?.();
-  return 'ended';
+  cb.onProgress?.(1);cb.onEnd?.();return'ended';
 }

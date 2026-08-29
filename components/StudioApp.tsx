@@ -1,16 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Loader2, RefreshCcw, WifiOff, X } from 'lucide-react';
-import type { LessonPayload, MockAttempt, StudioMeta, ViewName } from '@/lib/types';
+import type { ConfidenceLevel, LessonPayload, LearningSkill, MockAttempt, StudioMeta, ViewName } from '@/lib/types';
 import { loadLesson, loadMeta } from '@/lib/data';
-import { readHistory, readLesson, readProgress, readSrs, saveHistory, saveProgress, saveSrs, writeLesson, type ProgressMap, type SrsMap } from '@/lib/storage';
+import { readHistory, readLearningState, readLesson, readProgress, readSrs, saveHistory, saveLearningState, saveProgress, saveSrs, writeLesson, type ProgressMap, type SrsMap } from '@/lib/storage';
+import { buildDailyRecommendations, buildLessonJourney, getRepairQueue, upsertMistake, type LearningState } from '@/lib/learning';
 import { track, trackError, trackVirtualPage } from '@/lib/analytics';
 import { stopAudio } from '@/lib/audio';
 import Shell from './Shell';
 import Dashboard from './Dashboard';
+import DailyCoachPanel from './DailyCoachPanel';
+import LessonJourneyPanel from './LessonJourneyPanel';
 import Vocabulary from './Vocabulary';
 import KanaPad from './KanaPad';
 import DataVault from './DataVault';
@@ -21,13 +24,15 @@ const SRS=dynamic(()=>import('./SRS'),{ssr:false,loading:LoadingView});
 const Spelling=dynamic(()=>import('./Spelling'),{ssr:false,loading:LoadingView});
 const Listening=dynamic(()=>import('./Listening'),{ssr:false,loading:LoadingView});
 const KanjiExplorer=dynamic(()=>import('./KanjiExplorer'),{ssr:false,loading:LoadingView});
+const KanaAcademy=dynamic(()=>import('./KanaAcademy'),{ssr:false,loading:LoadingView});
+const PracticeArcade=dynamic(()=>import('./PracticeArcade'),{ssr:false,loading:LoadingView});
 const MockTest=dynamic(()=>import('./MockTest'),{ssr:false,loading:LoadingView});
 const HistoryView=dynamic(()=>import('./HistoryView'),{ssr:false,loading:LoadingView});
 const Conversation=dynamic(()=>import('./StudyViews').then(m=>m.Conversation),{ssr:false,loading:LoadingView});
 const Reading=dynamic(()=>import('./StudyViews').then(m=>m.Reading),{ssr:false,loading:LoadingView});
 const Grammar=dynamic(()=>import('./StudyViews').then(m=>m.Grammar),{ssr:false,loading:LoadingView});
 
-const VIEWS:ViewName[]=['dashboard','vocabulary','srs','spelling','conversation','reading','listening','grammar','kanji','mock','history'];
+const VIEWS:ViewName[]=['dashboard','vocabulary','srs','spelling','conversation','reading','listening','grammar','kanji','kana','arcade','mock','history'];
 const isView=(x:string|null):x is ViewName=>!!x&&VIEWS.includes(x as ViewName);
 
 function urlState(){
@@ -48,6 +53,8 @@ function syncUrl(lesson:number,view:ViewName,replace=false){
 
 type FatalState={scope:'meta'|'lesson';message:string}|null;
 type ResourceNotice={kind:string;path?:string;message:string}|null;
+type SpellingAttempt={itemId:number;lesson:number;userAnswer:string;correctAnswer:string;correct:boolean;confidence:ConfidenceLevel};
+type LearningAttempt={itemId:string;userAnswer:string;correctAnswer:string;correct:boolean;questionType:string;skill?:LearningSkill};
 
 export default function StudioApp(){
  const [meta,setMeta]=useState<StudioMeta|null>(null);
@@ -57,6 +64,7 @@ export default function StudioApp(){
  const [progress,setProgress]=useState<ProgressMap>({});
  const [srs,setSrs]=useState<SrsMap>({});
  const [historyRows,setHistory]=useState<MockAttempt[]>([]);
+ const [learning,setLearning]=useState<LearningState>(()=>({version:1,mistakes:[],studyPlan:{dailyMinutes:20,updatedAt:null},journeyProgress:{}}));
  const [fatal,setFatal]=useState<FatalState>(null);
  const [resourceNotice,setResourceNotice]=useState<ResourceNotice>(null);
  const [metaNonce,setMetaNonce]=useState(0);
@@ -66,7 +74,7 @@ export default function StudioApp(){
  useEffect(()=>{
    const s=urlState();
    setLessonState(s.lesson);setView(s.view);writeLesson(s.lesson);
-   setProgress(readProgress());setSrs(readSrs());setHistory(readHistory());
+   setProgress(readProgress());setSrs(readSrs());setHistory(readHistory());setLearning(readLearningState());
    syncUrl(s.lesson,s.view,true);
  },[]);
 
@@ -135,6 +143,10 @@ export default function StudioApp(){
  const updateProgress=(n:ProgressMap)=>{setProgress(n);saveProgress(n)};
  const addHistory=(a:MockAttempt)=>{setHistory(h=>{const n=[a,...h];saveHistory(n);return n})};
 
+ const updateLearning=(recipe:(prev:LearningState)=>LearningState)=>{
+   setLearning(prev=>{const next=recipe(prev);saveLearningState(next);return next});
+ };
+
  const queueMockMistakes=(ids:number[])=>{
    if(!ids.length)return;
    setSrs(prev=>{
@@ -142,7 +154,62 @@ export default function StudioApp(){
      ids.forEach(id=>{const old=next[String(id)]||{};next[String(id)]={...old,phase:'recall',due_at:now,last_rating:'again',lapses:Number(old.lapses||0)+1}});
      saveSrs(next);return next;
    });
+   updateLearning(prev=>({
+     ...prev,
+     mistakes:ids.reduce((rows,id)=>upsertMistake(rows,{
+       itemId:String(id),lessonId:String(lesson),level:'N5',skill:'mock',questionType:'mock-vocabulary',confidence:'unsure',severity:'high',sourceId:'mock-test'
+     }),prev.mistakes),
+   }));
    track('mock_mistakes_to_srs',{lesson_number:lesson,mistake_count:ids.length});
+   track('mistake_recorded',{lesson_number:lesson,mistake_count:ids.length,source:'mock'});
+ };
+
+ const recordSpellingAttempt=(attempt:SpellingAttempt)=>{
+   const shouldRepair=!attempt.correct || attempt.confidence==='guess';
+   if(!shouldRepair)return;
+   updateLearning(prev=>({
+     ...prev,
+     mistakes:upsertMistake(prev.mistakes,{
+       itemId:String(attempt.itemId),lessonId:String(attempt.lesson),level:'N5',skill:'spelling',questionType:'listen-type',userAnswer:attempt.userAnswer,correctAnswer:attempt.correctAnswer,confidence:attempt.confidence,severity:!attempt.correct&&attempt.confidence==='confident'?'high':attempt.correct?'low':'medium',sourceId:'spelling'
+     }),
+   }));
+   track('mistake_recorded',{lesson_number:attempt.lesson,item_id:attempt.itemId,source:'spelling',confidence:attempt.confidence,was_correct:attempt.correct});
+ };
+
+ const recordLearningAttempt=(attempt:LearningAttempt,source:'kana'|'arcade')=>{
+   if(attempt.correct)return;
+   const skill=attempt.skill|| (source==='kana'?'kana':'game');
+   updateLearning(prev=>({
+     ...prev,
+     mistakes:upsertMistake(prev.mistakes,{
+       itemId:attempt.itemId,lessonId:String(lesson),level:'N5',skill,questionType:attempt.questionType,userAnswer:attempt.userAnswer,correctAnswer:attempt.correctAnswer,confidence:'unsure',severity:'medium',sourceId:source
+     }),
+   }));
+   track('mistake_recorded',{lesson_number:lesson,item_id:attempt.itemId,source,skill});
+ };
+
+ const currentMeta=meta?.lessons.find(x=>x.lesson===lesson);
+ const currentMastered=(currentMeta?.ids||[]).reduce((count,id)=>count+(progress[String(id)]?1:0),0);
+ const lessonPct=Math.round(currentMastered/Math.max(1,currentMeta?.count||1)*100);
+ const dueSrs=useMemo(()=>{
+   const now=Date.now();
+   return Object.values(srs).reduce((count,state)=>count+(state.due_at&&new Date(state.due_at).getTime()<=now?1:0),0);
+ },[srs]);
+ const lastMockScore=historyRows[0]?.score;
+ const recommendations=useMemo(()=>buildDailyRecommendations({lesson,lessonPercent:lessonPct,dueSrs,mistakes:learning.mistakes,dailyMinutes:Number(learning.studyPlan.dailyMinutes||20),lastMockScore}),[lesson,lessonPct,dueSrs,learning.mistakes,learning.studyPlan.dailyMinutes,lastMockScore]);
+ const repairCount=useMemo(()=>getRepairQueue(learning.mistakes,500).length,[learning.mistakes]);
+ const journey=useMemo(()=>data?buildLessonJourney(data):null,[data]);
+ const completedJourney=learning.journeyProgress[String(lesson)]||[];
+ const setDailyMinutes=(dailyMinutes:number)=>updateLearning(prev=>({...prev,studyPlan:{dailyMinutes,updatedAt:new Date().toISOString()}}));
+ const toggleJourneyStage=(stageId:string)=>updateLearning(prev=>{
+   const key=String(lesson);const rows=prev.journeyProgress[key]||[];const done=rows.includes(stageId);
+   const nextRows=done?rows.filter(x=>x!==stageId):[...rows,stageId];
+   track(done?'lesson_stage_reopened':'lesson_stage_completed',{lesson_number:lesson,stage_id:stageId});
+   return {...prev,journeyProgress:{...prev.journeyProgress,[key]:nextRows}};
+ });
+ const openJourneyStage=(target:ViewName,stageId:string)=>{
+   track('lesson_stage_open',{lesson_number:lesson,stage_id:stageId,target_view:target});
+   changeView(target);
  };
 
  if(fatal){
@@ -164,15 +231,17 @@ export default function StudioApp(){
 
  const content=(()=>{
    switch(view){
-     case'dashboard':return <Dashboard meta={meta} lesson={lesson} progress={progress} srs={srs} history={historyRows} onNavigate={changeView} onLesson={changeLesson}/>;
+     case'dashboard':return <div className="home-page-v67"><DailyCoachPanel plan={learning.studyPlan} recommendations={recommendations} unresolvedMistakes={repairCount} onMinutes={setDailyMinutes} onNavigate={changeView}/>{journey&&<LessonJourneyPanel journey={journey} completed={completedJourney} onOpen={openJourneyStage} onToggleComplete={toggleJourneyStage}/>}<Dashboard meta={meta} lesson={lesson} progress={progress} srs={srs} history={historyRows} onNavigate={changeView} onLesson={changeLesson}/></div>;
      case'vocabulary':return <Vocabulary data={data} progress={progress} onToggle={toggleMastery}/>;
      case'srs':return <SRS data={data} meta={meta} srs={srs} progress={progress} onSrsChange={updateSrs} onProgressChange={updateProgress}/>;
-     case'spelling':return <Spelling data={data}/>;
+     case'spelling':return <Spelling data={data} onAttempt={recordSpellingAttempt}/>;
      case'conversation':return <Conversation data={data}/>;
      case'reading':return <Reading data={data}/>;
      case'listening':return <Listening data={data}/>;
      case'grammar':return <Grammar data={data}/>;
      case'kanji':return <KanjiExplorer data={data}/>;
+     case'kana':return <KanaAcademy onAttempt={attempt=>recordLearningAttempt({...attempt,skill:'kana'},'kana')}/>;
+     case'arcade':return <PracticeArcade data={data} onAttempt={attempt=>recordLearningAttempt(attempt,'arcade')}/>;
      case'mock':return <MockTest data={data} onSave={addHistory} onReviewMistakes={queueMockMistakes}/>;
      case'history':return <HistoryView history={historyRows}/>;
      default:return null

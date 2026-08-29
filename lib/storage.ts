@@ -1,12 +1,14 @@
 import type { MockAttempt, SrsCardState } from './types';
+import { createLearningState, LEARNING_STATE_VERSION, type LearningState } from './learning';
 
-export const STORAGE_VERSION = 58;
+export const STORAGE_VERSION = 61;
 export const KEYS = {
   lesson: 'n5_offline_lesson',
   progress: 'n5_offline_progress',
   history: 'n5_offline_history',
   srs: 'n5_offline_srs_v8',
   spelling: 'n5_offline_spelling_v12',
+  learning: 'nihongo_vibes_learning_v1',
 };
 
 export function readJSON<T>(key: string, fallback: T): T {
@@ -45,6 +47,28 @@ export const saveSrs = (v: SrsMap) => writeJSON(KEYS.srs, v);
 export const readHistory = () => readJSON<MockAttempt[]>(KEYS.history, []);
 export const saveHistory = (v: MockAttempt[]) => writeJSON(KEYS.history, v.slice(0, 100));
 
+export function readLearningState(): LearningState {
+  const fallback = createLearningState();
+  const raw = readJSON<Partial<LearningState>>(KEYS.learning, fallback);
+  return {
+    version: LEARNING_STATE_VERSION,
+    mistakes: Array.isArray(raw.mistakes) ? raw.mistakes : [],
+    studyPlan: raw.studyPlan && typeof raw.studyPlan === 'object'
+      ? {
+          dailyMinutes: Number(raw.studyPlan.dailyMinutes || 20),
+          updatedAt: raw.studyPlan.updatedAt || null,
+        }
+      : fallback.studyPlan,
+    journeyProgress: raw.journeyProgress && typeof raw.journeyProgress === 'object'
+      ? raw.journeyProgress
+      : fallback.journeyProgress,
+  };
+}
+
+export function saveLearningState(value: LearningState) {
+  writeJSON(KEYS.learning, { ...value, version: LEARNING_STATE_VERSION });
+}
+
 export interface StudioBackup {
   app: 'the-nihongo-vibes';
   version: number;
@@ -53,6 +77,7 @@ export interface StudioBackup {
   progress: ProgressMap;
   srs: SrsMap;
   history: MockAttempt[];
+  learning?: LearningState;
 }
 
 export function createBackup(): StudioBackup {
@@ -64,6 +89,7 @@ export function createBackup(): StudioBackup {
     progress: readProgress(),
     srs: readSrs(),
     history: readHistory(),
+    learning: readLearningState(),
   };
 }
 
@@ -76,4 +102,15 @@ export function importBackup(value: unknown) {
   saveProgress((b.progress && typeof b.progress === 'object' ? b.progress : {}) as ProgressMap);
   saveSrs((b.srs && typeof b.srs === 'object' ? b.srs : {}) as SrsMap);
   saveHistory(Array.isArray(b.history) ? b.history : []);
+  if (b.learning && typeof b.learning === 'object') {
+    const fallback = createLearningState();
+    saveLearningState({
+      version: LEARNING_STATE_VERSION,
+      mistakes: Array.isArray(b.learning.mistakes) ? b.learning.mistakes : [],
+      studyPlan: b.learning.studyPlan || fallback.studyPlan,
+      journeyProgress: b.learning.journeyProgress && typeof b.learning.journeyProgress === 'object'
+        ? b.learning.journeyProgress
+        : fallback.journeyProgress,
+    });
+  }
 }
