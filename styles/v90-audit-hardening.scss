@@ -64,6 +64,10 @@
   .future-mobile-dock,.nv60-mobile-dock,.nv-final-mobile-dock{
     padding-bottom:max(5px,env(safe-area-inset-bottom))!important;
   }
+  .kana-launcher{
+    bottom:calc(86px + env(safe-area-inset-bottom))!important;
+    right:max(10px,env(safe-area-inset-right))!important;
+  }
   .future-drawer,.nv60-drawer,.nv-final-drawer{
     padding-bottom:calc(28px + env(safe-area-inset-bottom))!important;
   }
@@ -80,6 +84,24 @@
   }
   .future-drawer-utilities{grid-template-columns:1fr 1fr!important}
   .future-drawer-utilities button{justify-content:center!important;min-height:46px!important;padding:9px!important}
+
+  /* A recall session is a focused activity. Fixed navigation must not cover
+     sentence audio, reveal, or rating controls. :has() is supported by the
+     target modern Safari/Chrome browsers used by the app. */
+  .future-shell:has(.srs-shell) .future-mobile-dock,
+  .future-shell:has(.srs-shell) .kana-launcher{
+    opacity:0!important;
+    visibility:hidden!important;
+    pointer-events:none!important;
+    transform:translateY(calc(100% + 24px))!important;
+  }
+  .future-shell:has(.srs-shell) .future-main{
+    padding-bottom:calc(28px + env(safe-area-inset-bottom))!important;
+  }
+  .srs-shell .srs-card-premium{
+    margin-bottom:max(18px,env(safe-area-inset-bottom))!important;
+    scroll-margin-bottom:24px!important;
+  }
 }
 
 @media(max-width:430px){
