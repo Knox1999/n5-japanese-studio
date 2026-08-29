@@ -23,16 +23,15 @@ function targetFor(kind: DailyRecommendation['kind']): ViewName {
   return 'vocabulary';
 }
 
-function iconFor(kind: DailyRecommendation['kind']) {
-  if (kind === 'srs') return RotateCcw;
-  if (kind === 'repair') return Brain;
-  return Target;
+function iconNode(kind: DailyRecommendation['kind'], size: number) {
+  if (kind === 'srs') return <RotateCcw size={size}/>;
+  if (kind === 'repair') return <Brain size={size}/>;
+  return <Target size={size}/>;
 }
 
 export default function DailyCoachPanel({ plan, recommendations, unresolvedMistakes, onMinutes, onNavigate }: Props) {
   const primary = recommendations[0];
   const secondary = recommendations.slice(1, 4);
-  const PrimaryIcon = primary ? iconFor(primary.kind) : Target;
 
   return (
     <section className="daily-coach-v85 mx-auto mb-4 w-full max-w-7xl overflow-hidden rounded-[26px] border border-white/10 bg-[linear-gradient(135deg,rgba(78,186,199,.08),rgba(6,23,45,.78)_42%,rgba(240,68,62,.04))] shadow-[0_20px_60px_rgba(0,0,0,.18)]" aria-labelledby="daily-coach-title">
@@ -70,7 +69,7 @@ export default function DailyCoachPanel({ plan, recommendations, unresolvedMista
             <button type="button" onClick={() => onNavigate(targetFor(primary.kind))} className="daily-primary-action-v85 group relative w-full overflow-hidden rounded-[22px] border border-emerald-300/20 bg-white/[.045] p-4 text-left transition hover:border-emerald-300/40 hover:bg-white/[.065] sm:p-5">
               <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-emerald-300 to-cyan-300"/>
               <div className="flex items-start gap-4">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-300/10 text-emerald-200"><PrimaryIcon size={20}/></span>
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-300/10 text-emerald-200">{iconNode(primary.kind,20)}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-emerald-200/70"><span>Next best action</span><span className="h-1 w-1 rounded-full bg-white/20"/><span>{primary.minutes} min</span></div>
                   <h3 className="font-bn mt-1.5 text-lg font-bold sm:text-xl">{primary.title}</h3>
@@ -84,16 +83,13 @@ export default function DailyCoachPanel({ plan, recommendations, unresolvedMista
 
           {secondary.length > 0 && (
             <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {secondary.map((item, index) => {
-                const Icon = iconFor(item.kind);
-                return (
-                  <button type="button" key={item.id} onClick={() => onNavigate(targetFor(item.kind))} className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-black/10 px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[.04]">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[.055] text-white/55"><Icon size={15}/></span>
-                    <span className="min-w-0 flex-1"><b className="font-bn block truncate text-sm text-white/75">{item.title}</b><small className="text-[10px] uppercase tracking-[.12em] text-white/30">0{index + 2} · {item.minutes} min</small></span>
-                    <ArrowRight size={14} className="shrink-0 text-white/35"/>
-                  </button>
-                );
-              })}
+              {secondary.map((item, index) => (
+                <button type="button" key={item.id} onClick={() => onNavigate(targetFor(item.kind))} className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-black/10 px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[.04]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[.055] text-white/55">{iconNode(item.kind,15)}</span>
+                  <span className="min-w-0 flex-1"><b className="font-bn block truncate text-sm text-white/75">{item.title}</b><small className="text-[10px] uppercase tracking-[.12em] text-white/30">0{index + 2} · {item.minutes} min</small></span>
+                  <ArrowRight size={14} className="shrink-0 text-white/35"/>
+                </button>
+              ))}
             </div>
           )}
         </div>
