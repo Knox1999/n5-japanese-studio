@@ -39,6 +39,7 @@ import '@/styles/v86-global-detail-second-pass.scss';
 import '@/styles/v87-mobile-native-and-reactive-dashboard.scss';
 import '@/styles/v88-universal-phone-compat.scss';
 import '@/styles/v89-overall-production-polish.scss';
+import '@/styles/v90-audit-hardening.scss';
 
 const SITE = 'https://knox1999.github.io/n5-japanese-studio/';
 
