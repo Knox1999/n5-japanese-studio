@@ -69,25 +69,38 @@ self.addEventListener('activate',event=>{{
   )).then(()=>self.clients.claim()));
 }});
 
-async function networkFirst(request,cacheName){{
-  const cache=await caches.open(cacheName);
+async function navigationNetworkFirst(request){{
+  const cache=await caches.open(RUNTIME_CACHE);
   try{{
     const response=await fetch(request);
     if(response&&response.ok)cache.put(request,response.clone());
     return response;
   }}catch{{
-    return (await cache.match(request))||(await caches.match(request))||(await caches.match('./'));
+    return (await cache.match(request))||(await caches.match(request))||(await caches.match('./'))||new Response('Offline',{{status:503,headers:{{'Content-Type':'text/plain; charset=utf-8'}}}});
   }}
 }}
 
-async function staleWhileRevalidate(request,cacheName){{
-  const cache=await caches.open(cacheName);
+async function dataNetworkFirst(request){{
+  const cache=await caches.open(RUNTIME_CACHE);
+  try{{
+    const response=await fetch(request);
+    if(response&&response.ok){{cache.put(request,response.clone());return response}}
+    const cached=await cache.match(request);
+    return cached||response;
+  }}catch{{
+    const cached=(await cache.match(request))||(await caches.match(request));
+    return cached||new Response(JSON.stringify({{error:'offline',resource:new URL(request.url).pathname}}),{{status:503,headers:{{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}}}});
+  }}
+}}
+
+async function staleWhileRevalidate(request){{
+  const cache=await caches.open(RUNTIME_CACHE);
   const cached=await cache.match(request);
   const fresh=fetch(request).then(response=>{{
     if(response&&response.ok)cache.put(request,response.clone());
     return response;
   }}).catch(()=>cached);
-  return cached||fresh;
+  return cached||fresh||new Response('',{{status:504}});
 }}
 
 self.addEventListener('fetch',event=>{{
@@ -95,15 +108,15 @@ self.addEventListener('fetch',event=>{{
   const url=new URL(event.request.url);
   if(url.origin!==location.origin)return;
   if(event.request.mode==='navigate'){{
-    event.respondWith(networkFirst(event.request,RUNTIME_CACHE));
+    event.respondWith(navigationNetworkFirst(event.request));
     return;
   }}
   if(url.pathname.endsWith('.json')){{
-    event.respondWith(networkFirst(event.request,RUNTIME_CACHE));
+    event.respondWith(dataNetworkFirst(event.request));
     return;
   }}
   if(/\\.(?:js|css|svg|png|webp|avif|woff2?)$/i.test(url.pathname)){{
-    event.respondWith(staleWhileRevalidate(event.request,RUNTIME_CACHE));
+    event.respondWith(staleWhileRevalidate(event.request));
   }}
 }});
 """
