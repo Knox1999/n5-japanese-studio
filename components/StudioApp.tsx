@@ -7,12 +7,13 @@ import { AlertTriangle, Loader2, RefreshCcw, WifiOff, X } from 'lucide-react';
 import type { LessonPayload, MockAttempt, StudioMeta, ViewName } from '@/lib/types';
 import { loadLesson, loadMeta } from '@/lib/data';
 import { readHistory, readLearningState, readLesson, readProgress, readSrs, saveHistory, saveLearningState, saveProgress, saveSrs, writeLesson, type ProgressMap, type SrsMap } from '@/lib/storage';
-import { buildDailyRecommendations, getRepairQueue, upsertMistake, type LearningState } from '@/lib/learning';
+import { buildDailyRecommendations, buildLessonJourney, getRepairQueue, upsertMistake, type LearningState } from '@/lib/learning';
 import { track, trackError, trackVirtualPage } from '@/lib/analytics';
 import { stopAudio } from '@/lib/audio';
 import Shell from './Shell';
 import Dashboard from './Dashboard';
 import DailyCoachPanel from './DailyCoachPanel';
+import LessonJourneyPanel from './LessonJourneyPanel';
 import Vocabulary from './Vocabulary';
 import KanaPad from './KanaPad';
 import DataVault from './DataVault';
@@ -59,7 +60,7 @@ export default function StudioApp(){
  const [progress,setProgress]=useState<ProgressMap>({});
  const [srs,setSrs]=useState<SrsMap>({});
  const [historyRows,setHistory]=useState<MockAttempt[]>([]);
- const [learning,setLearning]=useState<LearningState>(()=>({version:1,mistakes:[],studyPlan:{dailyMinutes:20,updatedAt:null}}));
+ const [learning,setLearning]=useState<LearningState>(()=>({version:1,mistakes:[],studyPlan:{dailyMinutes:20,updatedAt:null},journeyProgress:{}}));
  const [fatal,setFatal]=useState<FatalState>(null);
  const [resourceNotice,setResourceNotice]=useState<ResourceNotice>(null);
  const [metaNonce,setMetaNonce]=useState(0);
@@ -169,7 +170,19 @@ export default function StudioApp(){
  const lastMockScore=historyRows[0]?.score;
  const recommendations=useMemo(()=>buildDailyRecommendations({lesson,lessonPercent:lessonPct,dueSrs,mistakes:learning.mistakes,dailyMinutes:Number(learning.studyPlan.dailyMinutes||20),lastMockScore}),[lesson,lessonPct,dueSrs,learning.mistakes,learning.studyPlan.dailyMinutes,lastMockScore]);
  const repairCount=useMemo(()=>getRepairQueue(learning.mistakes,500).length,[learning.mistakes]);
+ const journey=useMemo(()=>data?buildLessonJourney(data):null,[data]);
+ const completedJourney=learning.journeyProgress[String(lesson)]||[];
  const setDailyMinutes=(dailyMinutes:number)=>updateLearning(prev=>({...prev,studyPlan:{dailyMinutes,updatedAt:new Date().toISOString()}}));
+ const toggleJourneyStage=(stageId:string)=>updateLearning(prev=>{
+   const key=String(lesson);const rows=prev.journeyProgress[key]||[];const done=rows.includes(stageId);
+   const nextRows=done?rows.filter(x=>x!==stageId):[...rows,stageId];
+   track(done?'lesson_stage_reopened':'lesson_stage_completed',{lesson_number:lesson,stage_id:stageId});
+   return {...prev,journeyProgress:{...prev.journeyProgress,[key]:nextRows}};
+ });
+ const openJourneyStage=(target:ViewName,stageId:string)=>{
+   track('lesson_stage_open',{lesson_number:lesson,stage_id:stageId,target_view:target});
+   changeView(target);
+ };
 
  if(fatal){
    return <div className="nv58-fatal">
@@ -190,7 +203,7 @@ export default function StudioApp(){
 
  const content=(()=>{
    switch(view){
-     case'dashboard':return <><DailyCoachPanel plan={learning.studyPlan} recommendations={recommendations} unresolvedMistakes={repairCount} onMinutes={setDailyMinutes} onNavigate={changeView}/><Dashboard meta={meta} lesson={lesson} progress={progress} srs={srs} history={historyRows} onNavigate={changeView} onLesson={changeLesson}/></>;
+     case'dashboard':return <><DailyCoachPanel plan={learning.studyPlan} recommendations={recommendations} unresolvedMistakes={repairCount} onMinutes={setDailyMinutes} onNavigate={changeView}/>{journey&&<LessonJourneyPanel journey={journey} completed={completedJourney} onOpen={openJourneyStage} onToggleComplete={toggleJourneyStage}/>}<Dashboard meta={meta} lesson={lesson} progress={progress} srs={srs} history={historyRows} onNavigate={changeView} onLesson={changeLesson}/></>;
      case'vocabulary':return <Vocabulary data={data} progress={progress} onToggle={toggleMastery}/>;
      case'srs':return <SRS data={data} meta={meta} srs={srs} progress={progress} onSrsChange={updateSrs} onProgressChange={updateProgress}/>;
      case'spelling':return <Spelling data={data}/>;
