@@ -2,6 +2,7 @@
 
 import { ArrowRight, Brain, Clock3, RotateCcw, Sparkles, Target } from 'lucide-react';
 import type { DailyRecommendation, StudyPlan, ViewName } from '@/lib/types';
+import LearningLabLauncher from './LearningLabLauncher';
 
 type Props = {
   plan: StudyPlan;
@@ -17,6 +18,7 @@ function targetFor(kind: DailyRecommendation['kind']): ViewName {
   if (kind === 'srs' || kind === 'repair') return 'srs';
   if (kind === 'listening') return 'listening';
   if (kind === 'grammar') return 'grammar';
+  if (kind === 'kana') return 'kana';
   if (kind === 'kanji') return 'kanji';
   if (kind === 'mock') return 'mock';
   return 'vocabulary';
@@ -33,7 +35,7 @@ export default function DailyCoachPanel({ plan, recommendations, unresolvedMista
   const secondary = recommendations.slice(1, 4);
   const PrimaryIcon = primary ? iconFor(primary.kind) : Target;
 
-  return (
+  return <>
     <section className="mx-auto mb-4 w-full max-w-7xl overflow-hidden rounded-[26px] border border-white/10 bg-[linear-gradient(135deg,rgba(78,186,199,.08),rgba(6,23,45,.78)_42%,rgba(240,68,62,.04))] shadow-[0_20px_60px_rgba(0,0,0,.18)]" aria-labelledby="daily-coach-title">
       <div className="grid lg:grid-cols-[minmax(0,.82fr)_minmax(0,1.18fr)]">
         <div className="border-b border-white/10 p-5 lg:border-b-0 lg:border-r lg:p-6">
@@ -94,5 +96,6 @@ export default function DailyCoachPanel({ plan, recommendations, unresolvedMista
         </div>
       </div>
     </section>
-  );
+    <LearningLabLauncher onNavigate={onNavigate}/>
+  </>;
 }
