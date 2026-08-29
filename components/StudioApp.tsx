@@ -62,7 +62,7 @@ export default function StudioApp(){
  const [progress,setProgress]=useState<ProgressMap>({});
  const [srs,setSrs]=useState<SrsMap>({});
  const [historyRows,setHistory]=useState<MockAttempt[]>([]);
- const [learning,setLearning]=useState<LearningState>(()=>({version:1,mistakes:[],studyPlan:{dailyMinutes:20,updatedAt:null},journeyProgress:{}}));
+ const [,setLearning]=useState<LearningState>(()=>({version:1,mistakes:[],studyPlan:{dailyMinutes:20,updatedAt:null},journeyProgress:{}}));
  const [fatal,setFatal]=useState<FatalState>(null);
  const [resourceNotice,setResourceNotice]=useState<ResourceNotice>(null);
  const [metaNonce,setMetaNonce]=useState(0);
