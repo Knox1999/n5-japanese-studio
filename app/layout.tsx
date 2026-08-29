@@ -10,6 +10,7 @@ import '@/styles/v54-clean-verb-lab.scss';
 import '@/styles/v57-signature.scss';
 import '@/styles/v58-design-system.scss';
 import '@/styles/v60-ultimate.scss';
+import '@/styles/v62-connected-learning.scss';
 
 const SITE = 'https://knox1999.github.io/n5-japanese-studio/';
 
@@ -72,7 +73,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#090e14',
+  themeColor: '#071421',
 };
 
 export default function RootLayout({
