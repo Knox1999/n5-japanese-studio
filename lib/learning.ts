@@ -1,4 +1,4 @@
-import type { MistakeRecord, StudyPlan, DailyRecommendation, ConfidenceLevel, LearningSkill } from './types';
+import type { MistakeRecord, StudyPlan, DailyRecommendation, ConfidenceLevel, LearningSkill, LessonJourney, LessonPayload, LessonStage, ViewName } from './types';
 
 export const LEARNING_STATE_VERSION = 1;
 
@@ -6,6 +6,7 @@ export type LearningState = {
   version: number;
   mistakes: MistakeRecord[];
   studyPlan: StudyPlan;
+  journeyProgress: Record<string, string[]>;
 };
 
 export const DEFAULT_STUDY_PLAN: StudyPlan = {
@@ -14,7 +15,7 @@ export const DEFAULT_STUDY_PLAN: StudyPlan = {
 };
 
 export function createLearningState(): LearningState {
-  return { version: LEARNING_STATE_VERSION, mistakes: [], studyPlan: DEFAULT_STUDY_PLAN };
+  return { version: LEARNING_STATE_VERSION, mistakes: [], studyPlan: DEFAULT_STUDY_PLAN, journeyProgress: {} };
 }
 
 export function normalizeConfidence(value: unknown): ConfidenceLevel {
@@ -75,6 +76,31 @@ export function weakestSkill(records: MistakeRecord[]): LearningSkill | null {
   const totals = new Map<LearningSkill, number>();
   getRepairQueue(records, 100).forEach(record => totals.set(record.skill, (totals.get(record.skill) || 0) + scoreMistake(record)));
   return [...totals.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+}
+
+function stage(id:string, kind:LessonStage['kind'], title:string, targetView:ViewName, estimatedMinutes:number, optional=false):LessonStage {
+  return { id, kind, title, targetView, estimatedMinutes, optional };
+}
+
+export function buildLessonJourney(data: LessonPayload): LessonJourney {
+  const stages: LessonStage[] = [
+    stage('goal','goal','Lesson goal দেখুন','vocabulary',1),
+    stage('vocabulary','vocabulary','Core vocabulary শিখুন','vocabulary',6),
+  ];
+  if (data.content.dialogue?.length || data.content.dialogue_extended?.length) stages.push(stage('conversation','conversation','Conversation context','conversation',4));
+  if (data.content.grammar?.length) stages.push(stage('grammar','grammar','Grammar pattern বুঝুন','grammar',5));
+  if (data.content.dialogue?.length || data.content.dialogue_extended?.length || data.content.shadowing_chunks?.length) stages.push(stage('listening','listening','Listen → repeat → shadow','listening',5));
+  if (data.content.reading || data.content.reading_extended) stages.push(stage('reading','reading','Reading comprehension','reading',4));
+  if (data.kanji?.length) stages.push(stage('kanji','kanji','Kanji reinforcement','kanji',4,true));
+  stages.push(stage('practice','practice','Active recall practice','srs',4));
+  stages.push(stage('quiz','quiz','Lesson check','mock',5));
+  stages.push(stage('repair','repair','Mistake review','srs',3,true));
+  return {
+    lessonId: String(data.lesson),
+    level: 'N5',
+    objective: data.scenario || data.content.scenario || data.title || `Lesson ${data.lesson}`,
+    stages,
+  };
 }
 
 type CoachInput = {
