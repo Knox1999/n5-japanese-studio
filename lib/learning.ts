@@ -1,4 +1,4 @@
-import type { MistakeRecord, StudyPlan, DailyRecommendation, ConfidenceLevel, LearningSkill, LessonJourney, LessonPayload, LessonStage, ViewName } from './types';
+import type { MistakeRecord, StudyPlan, DailyRecommendation, ConfidenceLevel, LearningSkill, LessonJourney, LessonPayload, LessonStage, ViewName, DailyMinutes } from './types';
 
 export const LEARNING_STATE_VERSION = 1;
 
@@ -15,7 +15,13 @@ export const DEFAULT_STUDY_PLAN: StudyPlan = {
 };
 
 export function createLearningState(): LearningState {
-  return { version: LEARNING_STATE_VERSION, mistakes: [], studyPlan: DEFAULT_STUDY_PLAN, journeyProgress: {} };
+  return { version: LEARNING_STATE_VERSION, mistakes: [], studyPlan: { ...DEFAULT_STUDY_PLAN }, journeyProgress: {} };
+}
+
+export function normalizeDailyMinutes(value: unknown): DailyMinutes {
+  const minutes = Number(value);
+  const allowed: DailyMinutes[] = [5, 10, 20, 30, 45];
+  return allowed.includes(minutes as DailyMinutes) ? minutes as DailyMinutes : 20;
 }
 
 export function normalizeConfidence(value: unknown): ConfidenceLevel {
@@ -83,18 +89,24 @@ function stage(id:string, kind:LessonStage['kind'], title:string, targetView:Vie
 }
 
 export function buildLessonJourney(data: LessonPayload): LessonJourney {
+  const hasDialogue = Boolean(data.content.dialogue?.length || data.content.dialogue_extended?.length);
+  const hasListening = Boolean(hasDialogue || data.content.shadowing_chunks?.length);
   const stages: LessonStage[] = [
     stage('goal','goal','Lesson goal দেখুন','vocabulary',1),
     stage('vocabulary','vocabulary','Core vocabulary শিখুন','vocabulary',6),
   ];
-  if (data.content.dialogue?.length || data.content.dialogue_extended?.length) stages.push(stage('conversation','conversation','Conversation context','conversation',4));
+
+  // Keep the established stage IDs so existing journeyProgress remains valid,
+  // while ordering the flow around a beginner-friendly learn → hear → recall → use loop.
+  if (hasListening) stages.push(stage('listening','listening','Listen → follow → shadow','listening',5));
+  stages.push(stage('practice','practice','Smart Recall দিয়ে মনে করুন','srs',4));
   if (data.content.grammar?.length) stages.push(stage('grammar','grammar','Grammar pattern বুঝুন','grammar',5));
-  if (data.content.dialogue?.length || data.content.dialogue_extended?.length || data.content.shadowing_chunks?.length) stages.push(stage('listening','listening','Listen → repeat → shadow','listening',5));
+  if (hasDialogue) stages.push(stage('conversation','conversation','Context-এ বলুন','conversation',4));
   if (data.content.reading || data.content.reading_extended) stages.push(stage('reading','reading','Reading comprehension','reading',4));
   if (data.kanji?.length) stages.push(stage('kanji','kanji','Kanji reinforcement','kanji',4,true));
-  stages.push(stage('practice','practice','Active recall practice','srs',4));
   stages.push(stage('quiz','quiz','Lesson check','mock',5));
   stages.push(stage('repair','repair','Mistake review','srs',3,true));
+
   return {
     lessonId: String(data.lesson),
     level: 'N5',
@@ -125,9 +137,14 @@ export function buildDailyRecommendations(input: CoachInput): DailyRecommendatio
   if (!result.length) result.push({ id: 'next-lesson', kind: 'lesson', title: 'পরবর্তী শেখার ধাপ শুরু করুন', reason: 'Due review বা unresolved mistake নেই।', minutes, priority: 60 });
 
   let budget = minutes;
-  return result.sort((a, b) => b.priority - a.priority).map(item => {
-    const allocated = Math.max(2, Math.min(item.minutes, budget));
-    budget = Math.max(0, budget - allocated);
-    return { ...item, minutes: allocated };
-  }).filter((item, index) => item.minutes > 0 && index < 4);
+  const planned: DailyRecommendation[] = [];
+  for (const item of result.sort((a, b) => b.priority - a.priority)) {
+    if (budget <= 0 || planned.length >= 4) break;
+    const minimum = Math.min(2, budget);
+    const allocated = Math.min(item.minutes, budget);
+    const finalMinutes = Math.max(minimum, allocated);
+    planned.push({ ...item, minutes: finalMinutes });
+    budget -= finalMinutes;
+  }
+  return planned;
 }
