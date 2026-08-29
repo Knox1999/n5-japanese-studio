@@ -1,18 +1,18 @@
 {
+  "id": "./",
   "name": "The Nihongo Vibes — N5 Japanese Learning Studio",
   "short_name": "Nihongo Vibes",
-  "description": "A focused JLPT N5 Japanese learning studio with vocabulary, global SRS, listening, shadowing, conversation, reading, visual grammar, Kanji and mock practice.",
+  "description": "A focused JLPT N5 Japanese learning studio with vocabulary, smart recall, listening, shadowing, conversation, reading, visual grammar, Kanji and mock practice.",
   "start_url": "./?view=dashboard",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#031326",
-  "theme_color": "#031326",
+  "background_color": "#06172d",
+  "theme_color": "#06172d",
   "lang": "bn",
-  "categories": [
-    "education",
-    "productivity"
-  ],
+  "dir": "ltr",
+  "categories": ["education", "productivity"],
   "icons": [
     {
       "src": "./assets/nihongo-vibes-logo-192.png",
