@@ -24,6 +24,9 @@ export interface DialogueSpeechLine{
   speaker?:string;
 }
 
+type PreparedSpeech={display:string;speech:string;speechToDisplay:number[]};
+type SpeechChunk={text:string;speechStart:number};
+
 let activeResolve:((result:PlaybackResult)=>void)|null=null;
 let activeProgressTimer:number|null=null;
 let playbackGeneration=0;
@@ -32,17 +35,31 @@ function normalizeDisplay(text:string){
   return String(text||'').normalize('NFC').replace(/\s+/g,' ').trim();
 }
 
-function normalizeSpeech(text:string){
-  let value=String(text||'').normalize('NFC').trim();
-  const japanese='\\u3040-\\u30ff\\u3400-\\u9fff々〆ヵヶ';
-  value=value
-    .replace(new RegExp(`(?<=[${japanese}])\\s+(?=[${japanese}])`,'g'),'')
-    .replace(/[「」『』“”"']/g,'')
-    .replace(new RegExp(`(?<=[${japanese}])・(?=[${japanese}])`,'g'),'')
-    .replace(/。(?=.)/g,'。 ')
-    .replace(/、{2,}/g,'、')
-    .trim();
-  return value;
+const JP=/[\u3040-\u30ff\u3400-\u9fff々〆ヵヶ]/;
+const QUOTE=/[「」『』“”"']/;
+
+function prepareSpeech(text:string):PreparedSpeech{
+  const display=normalizeDisplay(text);
+  let speech='';
+  const speechToDisplay:number[]=[];
+  const append=(value:string,displayIndex:number)=>{
+    for(const char of value){speech+=char;speechToDisplay.push(displayIndex)}
+  };
+
+  for(let index=0;index<display.length;index+=1){
+    const char=display[index];
+    const prev=display[index-1]||'';
+    const next=display[index+1]||'';
+    if(QUOTE.test(char))continue;
+    if(char==='・'&&JP.test(prev)&&JP.test(next))continue;
+    if(/\s/.test(char)&&JP.test(prev)&&JP.test(next))continue;
+    if(char==='、'&&speech.endsWith('、'))continue;
+    append(char,index);
+    // A small pause after a full stop sounds more natural in long browser-TTS
+    // passages. Synthetic spacing maps back to the punctuation itself.
+    if(char==='。'&&index<display.length-1)append(' ',index);
+  }
+  return{display,speech:speech.trim(),speechToDisplay};
 }
 
 function speechController():SpeechSynthesis|null{
@@ -115,21 +132,39 @@ function rolePitch(role:AudioVoiceRole){
   return 1;
 }
 
-function splitForSpeech(text:string,maxLength=150){
-  const clean=normalizeSpeech(text);
-  if(clean.length<=maxLength)return clean?[clean]:[];
-  const parts=clean.split(/(?<=[。！？!?、,])\s*/).filter(Boolean);
-  const chunks:string[]=[];
+function splitSpeech(text:string,maxLength=150):SpeechChunk[]{
+  if(!text)return[];
+  if(text.length<=maxLength)return[{text,speechStart:0}];
+  const raw=text.split(/(?<=[。！？!?、,])\s*/).filter(Boolean);
+  const chunks:SpeechChunk[]=[];
   let current='';
-  for(const part of parts){
-    if(current&&current.length+part.length>maxLength){chunks.push(current);current=''}
+  let currentStart=0;
+  let cursor=0;
+  const pushCurrent=()=>{if(current){chunks.push({text:current,speechStart:currentStart});current=''}};
+
+  for(const part of raw){
+    const partStart=text.indexOf(part,cursor);
+    const safeStart=partStart>=0?partStart:cursor;
+    cursor=safeStart+part.length;
+    if(current&&current.length+part.length>maxLength)pushCurrent();
     if(part.length>maxLength){
-      if(current){chunks.push(current);current=''}
-      for(let index=0;index<part.length;index+=maxLength)chunks.push(part.slice(index,index+maxLength));
-    }else current+=part;
+      pushCurrent();
+      for(let offset=0;offset<part.length;offset+=maxLength){
+        chunks.push({text:part.slice(offset,offset+maxLength),speechStart:safeStart+offset});
+      }
+    }else{
+      if(!current)currentStart=safeStart;
+      current+=part;
+    }
   }
-  if(current)chunks.push(current);
+  pushCurrent();
   return chunks;
+}
+
+function displayIndexFor(prepared:PreparedSpeech,speechIndex:number){
+  if(!prepared.speechToDisplay.length)return 0;
+  const safe=Math.max(0,Math.min(prepared.speechToDisplay.length-1,speechIndex));
+  return prepared.speechToDisplay[safe]??0;
 }
 
 export async function playText(
@@ -142,26 +177,25 @@ export async function playText(
 ):Promise<PlaybackResult>{
   stopAudio();
   const generation=playbackGeneration;
-  const clean=normalizeDisplay(text);
+  const prepared=prepareSpeech(text);
   const safeRate=Math.max(.5,Math.min(1.5,rate));
   const synth=speechController();
-  if(!clean||!synth){notifyAudioError(clean,type);return'unavailable'}
+  if(!prepared.display||!prepared.speech||!synth){notifyAudioError(prepared.display,type);return'unavailable'}
 
-  const chunks=splitForSpeech(clean);
+  const chunks=splitSpeech(prepared.speech);
   if(!chunks.length)return'unavailable';
 
-  track('audio_play',{audio_type:type,playback_rate:safeRate,content_length:clean.length,voice_role:voiceRole,voice_engine:'web-speech-api-ja-JP',billed_api:false,exclusive_audio:true,...meta});
+  track('audio_play',{audio_type:type,playback_rate:safeRate,content_length:prepared.display.length,voice_role:voiceRole,voice_engine:'web-speech-api-ja-JP',billed_api:false,exclusive_audio:true,...meta});
 
   try{
     const voices=await loadJapaneseVoices(synth);
     if(generation!==playbackGeneration)return'cancelled';
     const selectedVoice=pickVoice(voices,voiceRole);
-    const totalChars=chunks.reduce((sum,chunk)=>sum+chunk.length,0);
+    const totalSpeechChars=prepared.speech.length;
 
     return await new Promise<PlaybackResult>(resolve=>{
       let settled=false;
       let chunkIndex=0;
-      let completedChars=0;
       let started=false;
 
       const finish=(status:PlaybackResult)=>{
@@ -180,49 +214,52 @@ export async function playText(
         if(chunkIndex>=chunks.length){finish('ended');return}
 
         const chunk=chunks[chunkIndex];
-        const utterance=new SpeechSynthesisUtterance(chunk);
+        const utterance=new SpeechSynthesisUtterance(chunk.text);
         utterance.lang='ja-JP';utterance.rate=safeRate;utterance.pitch=rolePitch(voiceRole);utterance.volume=1;
         if(selectedVoice)utterance.voice=selectedVoice;
 
-        const estimatedMs=Math.max(900,(chunk.length*115)/safeRate);
+        const estimatedMs=Math.max(900,(chunk.text.length*115)/safeRate);
         const startedAt=performance.now();
         clearProgressTimer();
         activeProgressTimer=window.setInterval(()=>{
           const partial=Math.min(.96,(performance.now()-startedAt)/estimatedMs);
-          const ratio=(completedChars+partial*chunk.length)/totalChars;
+          const ratio=(chunk.speechStart+partial*chunk.text.length)/Math.max(1,totalSpeechChars);
           cb.onProgress?.(Math.min(.99,ratio));
-        },100);
+        },120);
 
         utterance.onstart=()=>{if(started)return;started=true;cb.onStart?.()};
         utterance.onboundary=event=>{
-          const localIndex=Math.max(0,Math.min(chunk.length,event.charIndex||0));
-          const absoluteIndex=Math.min(totalChars,completedChars+localIndex);
-          const reportedLength=Math.max(0,Number(event.charLength||0));
-          const remaining=Math.max(0,totalChars-absoluteIndex);
-          const charLength=Math.min(remaining,reportedLength||1);
-          const ratio=Math.min(.99,absoluteIndex/Math.max(1,totalChars));
-          cb.onBoundary?.({charIndex:absoluteIndex,charLength,totalChars,progress:ratio,name:String(event.name||'boundary')});
+          const localIndex=Math.max(0,Math.min(chunk.text.length-1,Number(event.charIndex||0)));
+          const absoluteSpeechIndex=Math.min(totalSpeechChars-1,chunk.speechStart+localIndex);
+          const displayIndex=displayIndexFor(prepared,absoluteSpeechIndex);
+          const reportedLength=Math.max(1,Number(event.charLength||1));
+          const endSpeechIndex=Math.min(totalSpeechChars-1,absoluteSpeechIndex+reportedLength-1);
+          const displayEnd=displayIndexFor(prepared,endSpeechIndex)+1;
+          const charLength=Math.max(1,displayEnd-displayIndex);
+          const ratio=Math.min(.99,absoluteSpeechIndex/Math.max(1,totalSpeechChars));
+          cb.onBoundary?.({charIndex:displayIndex,charLength,totalChars:prepared.display.length,progress:ratio,name:String(event.name||'boundary')});
           cb.onProgress?.(ratio);
         };
         utterance.onend=()=>{
           clearProgressTimer();
           if(generation!==playbackGeneration){finish('cancelled');return}
-          completedChars+=chunk.length;
-          cb.onProgress?.(Math.min(.99,completedChars/totalChars));
+          const completed=Math.min(totalSpeechChars,chunk.speechStart+chunk.text.length);
+          cb.onProgress?.(Math.min(.99,completed/Math.max(1,totalSpeechChars)));
           chunkIndex+=1;speakNext();
         };
         utterance.onerror=event=>{
           clearProgressTimer();
           if(generation!==playbackGeneration||event.error==='canceled'||event.error==='interrupted'){finish('cancelled');return}
-          trackError('audio',new Error(`browser-speech-${event.error}`));notifyAudioError(clean,type);finish('unavailable');
+          trackError('audio',new Error(`browser-speech-${event.error}`));notifyAudioError(prepared.display,type);finish('unavailable');
         };
+        try{if(synth.paused)synth.resume()}catch{}
         synth.speak(utterance);
       };
       speakNext();
     });
   }catch(error){
     if(generation!==playbackGeneration)return'cancelled';
-    trackError('audio',error);notifyAudioError(clean,type);return'unavailable';
+    trackError('audio',error);notifyAudioError(prepared.display,type);return'unavailable';
   }
 }
 
