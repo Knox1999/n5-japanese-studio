@@ -14,6 +14,7 @@ import Shell from './Shell';
 import Dashboard from './Dashboard';
 import DailyCoachPanel from './DailyCoachPanel';
 import LessonJourneyPanel from './LessonJourneyPanel';
+import LearningLabLauncher from './LearningLabLauncher';
 import Vocabulary from './Vocabulary';
 import KanaPad from './KanaPad';
 import DataVault from './DataVault';
@@ -231,7 +232,7 @@ export default function StudioApp(){
 
  const content=(()=>{
    switch(view){
-     case'dashboard':return <><DailyCoachPanel plan={learning.studyPlan} recommendations={recommendations} unresolvedMistakes={repairCount} onMinutes={setDailyMinutes} onNavigate={changeView}/>{journey&&<LessonJourneyPanel journey={journey} completed={completedJourney} onOpen={openJourneyStage} onToggleComplete={toggleJourneyStage}/>}<Dashboard meta={meta} lesson={lesson} progress={progress} srs={srs} history={historyRows} onNavigate={changeView} onLesson={changeLesson}/></>;
+     case'dashboard':return <div className="home-page-v67"><DailyCoachPanel plan={learning.studyPlan} recommendations={recommendations} unresolvedMistakes={repairCount} onMinutes={setDailyMinutes} onNavigate={changeView}/>{journey&&<LessonJourneyPanel journey={journey} completed={completedJourney} onOpen={openJourneyStage} onToggleComplete={toggleJourneyStage}/>}<Dashboard meta={meta} lesson={lesson} progress={progress} srs={srs} history={historyRows} onNavigate={changeView} onLesson={changeLesson}/><LearningLabLauncher onNavigate={changeView}/></div>;
      case'vocabulary':return <Vocabulary data={data} progress={progress} onToggle={toggleMastery}/>;
      case'srs':return <SRS data={data} meta={meta} srs={srs} progress={progress} onSrsChange={updateSrs} onProgressChange={updateProgress}/>;
      case'spelling':return <Spelling data={data} onAttempt={recordSpellingAttempt}/>;
