@@ -1,0 +1,772 @@
+From 32775f39e06295216620fbc39d05e3922ed0b426 Mon Sep 17 00:00:00 2001
+From: Knox1999 <libertychemicals3@gmail.com>
+Date: Sat, 29 Aug 2026 13:31:58 +0600
+Subject: [PATCH 2/2] feat: use free browser Japanese voices
+
+---
+ .github/workflows/deploy-pages.yml |  28 +--
+ FINAL_MANIFEST.json                |  18 +-
+ PUBLISH_WINDOWS_BN.txt             |   4 +-
+ apply_final_production.py          |   6 +-
+ components/Listening.tsx           |  11 +-
+ components/StudyViews.tsx          |  24 +-
+ docs/FINAL_RELEASE.md              |  13 +-
+ lib/audio.ts                       | 377 +++++++++++++++--------------
+ scripts/qa_production.py           |  16 +-
+ 9 files changed, 247 insertions(+), 250 deletions(-)
+
+diff --git a/.github/workflows/deploy-pages.yml b/.github/workflows/deploy-pages.yml
+index f68b36b..e1974bd 100644
+--- a/.github/workflows/deploy-pages.yml
++++ b/.github/workflows/deploy-pages.yml
+@@ -20,7 +20,7 @@ jobs:
+       name: github-pages
+       url: ${{ steps.deployment.outputs.page_url }}
+     runs-on: ubuntu-latest
+-    timeout-minutes: 360
++    timeout-minutes: 90
+ 
+     steps:
+       - name: Checkout
+@@ -55,30 +55,8 @@ jobs:
+       - name: Type-check frontend
+         run: npm run lint:types
+ 
+-      - name: Validate Azure Speech secrets
+-        env:
+-          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+-          AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION }}
+-        run: |
+-          test -n "$AZURE_SPEECH_KEY" || (echo "::error::Missing AZURE_SPEECH_KEY" && exit 1)
+-          test -n "$AZURE_SPEECH_REGION" || (echo "::error::Missing AZURE_SPEECH_REGION" && exit 1)
+-
+-      - name: Restore V7 Azure Opus audio cache
+-        uses: actions/cache@v4
+-        with:
+-          path: _audio_cache_v7
+-          key: n5-v7-azure-opus-${{ hashFiles('source/data/studio.json', 'source/data/grammar-visual.json', 'scripts/generate_audio_azure_opus.py', 'scripts/extract_audio_texts.py') }}
+-        # IMPORTANT: no restore-keys from V57/V58 Edge caches.
+-
+-      - name: Generate natural Japanese OGG/Opus audio
+-        env:
+-          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+-          AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION }}
+-        run: |
+-          rm -rf public/audio
+-          python scripts/extract_audio_texts.py
+-          python scripts/generate_audio_azure_opus.py
+-          python scripts/build_audio_manifest.py
++      - name: Verify zero-cost Japanese voice runtime
++        run: grep -q "web-speech-api-ja-JP" lib/audio.ts
+ 
+       - name: Build KanjiVG stroke-order library
+         shell: bash
+diff --git a/FINAL_MANIFEST.json b/FINAL_MANIFEST.json
+index 22a22b6..61d722b 100644
+--- a/FINAL_MANIFEST.json
++++ b/FINAL_MANIFEST.json
+@@ -14,16 +14,17 @@
+   ],
+   "official_logo": "user supplied IMG_8327.PNG",
+   "audio": {
+-    "engine": "Azure Speech build-time",
+-    "male": "ja-JP-KeitaNeural",
+-    "female_conversation": "ja-JP-NanamiNeural chat",
+-    "format": "OGG/Opus",
++    "engine": "Web Speech API with device Japanese voices",
++    "male": "preferred Japanese voice A with lower pitch",
++    "female_conversation": "preferred Japanese voice B with higher pitch",
++    "format": "runtime browser synthesis",
+     "speeds": [
+       0.75,
+       0.9,
+       1.0
+     ],
+-    "mp3": false
++    "mp3": false,
++    "billed_api": false
+   },
+   "mock": {
+     "quick": 10,
+@@ -42,8 +43,5 @@
+     768
+   ],
+   "style_patch": "existing styles/v60-ultimate.scss is patched in place; no V61/V62 stylesheet",
+-  "requires_github_secrets": [
+-    "AZURE_SPEECH_KEY",
+-    "AZURE_SPEECH_REGION"
+-  ]
+-}
+\ No newline at end of file
++  "requires_github_secrets": []
++}
+diff --git a/PUBLISH_WINDOWS_BN.txt b/PUBLISH_WINDOWS_BN.txt
+index ddb60b1..d30e129 100644
+--- a/PUBLISH_WINDOWS_BN.txt
++++ b/PUBLISH_WINDOWS_BN.txt
+@@ -3,9 +3,7 @@ FINAL PRODUCTION — WINDOWS QUICK START
+ 
+ 1. Download/unzip this package.
+ 2. Make sure your GitHub repository is already cloned on your PC.
+-3. Add GitHub Actions secrets first:
+-   AZURE_SPEECH_KEY
+-   AZURE_SPEECH_REGION
++3. No Azure account, payment card, speech API key, or GitHub Actions speech secret is required.
+ 
+ PowerShell, from this package folder:
+ 
+diff --git a/apply_final_production.py b/apply_final_production.py
+index e3afa36..a98250d 100644
+--- a/apply_final_production.py
++++ b/apply_final_production.py
+@@ -91,13 +91,11 @@ def main():
+             run(["npm","ci","--no-audit","--no-fund"],repo_root)
+         run(["npm","run","lint:types"],repo_root)
+ 
+-        # Local build does not have GitHub Azure secrets by default.
+-        # Next build itself can still validate the frontend; workflow generates audio in CI.
++        # Voice playback uses the browser/OS at runtime, so no speech credentials are needed.
+         run(["npm","run","build"],repo_root)
+ 
+     if args.push:
+-        # Refuse to push if GitHub Action secrets cannot be checked locally.
+-        print("\nIMPORTANT: Ensure AZURE_SPEECH_KEY and AZURE_SPEECH_REGION are configured in GitHub Actions.")
++        print("\nNo speech API key or GitHub Actions speech secret is required.")
+         run(["git","add","-A"],repo_root)
+         status=subprocess.run(["git","status","--porcelain"],cwd=repo_root,text=True,capture_output=True,check=True).stdout
+         if not status.strip():
+diff --git a/components/Listening.tsx b/components/Listening.tsx
+index b8563cf..69b4a74 100644
+--- a/components/Listening.tsx
++++ b/components/Listening.tsx
+@@ -6,7 +6,7 @@ import {
+   Square, Volume2, MessageCircle, Mic2, Waves, UserRound, Gauge, CheckCircle2
+ } from 'lucide-react';
+ import type { LessonPayload, VocabItem } from '@/lib/types';
+-import { audioUrlForText, playText, stopAudio, type AudioVoiceRole } from '@/lib/audio';
++import { playText, stopAudio, type AudioVoiceRole } from '@/lib/audio';
+ import { track } from '@/lib/analytics';
+ 
+ type Source='Dialogue'|'Reading'|'Shadowing';
+@@ -63,8 +63,11 @@ function buildListeningLines(data:LessonPayload):ListeningLine[]{
+ }
+ 
+ function Waveform({text,progress,voiceRole}:{text:string;progress:number;voiceRole:AudioVoiceRole}){
+-  const [peaks,setPeaks]=useState<number[]>(Array.from({length:64},(_,i)=>.2+((i*17)%13)/18));
+-  useEffect(()=>{let dead=false;let ctx:AudioContext|undefined;(async()=>{try{if(!text)return;const url=await audioUrlForText(text,voiceRole);const r=await fetch(url);if(!r.ok)return;const b=await r.arrayBuffer();ctx=new (window.AudioContext||((window as any).webkitAudioContext))();const audio=await ctx.decodeAudioData(b);const ch=audio.getChannelData(0),n=64,step=Math.max(1,Math.floor(ch.length/n));const vals=[];for(let i=0;i<n;i++){let m=0;const start=i*step,end=Math.min(ch.length,start+step);for(let j=start;j<end;j++)m=Math.max(m,Math.abs(ch[j]));vals.push(Math.max(.12,Math.min(1,m*2.2)))}if(!dead)setPeaks(vals)}catch{}finally{ctx?.close().catch(()=>{})}})();return()=>{dead=true;ctx?.close().catch(()=>{})}},[text,voiceRole]);
++  const peaks=useMemo(()=>Array.from({length:64},(_,i)=>{
++    const code=text.charCodeAt(i%Math.max(1,text.length))||31;
++    const roleOffset=voiceRole==='male'?7:voiceRole==='female'?13:3;
++    return .18+((code*(i+roleOffset))%67)/100;
++  }),[text,voiceRole]);
+   return <div className="shadow-wave-v57" aria-label="Audio waveform">{peaks.map((p,i)=><i key={i} className={i/peaks.length<=progress?'played':''} style={{height:`${Math.round(9+p*32)}px`}}/>)}</div>
+ }
+ 
+@@ -113,7 +116,7 @@ export default function Listening({data}:{data:LessonPayload}){
+ 
+   return <div className="space-y-5 pb-8 shadowing-view-v57">
+     <section className="study-header tone-listen">
+-      <div><div className="section-kicker">HUMAN-LIKE LISTENING · LESSON {String(data.lesson).padStart(2,'0')}</div><h1>Hear → Follow → Shadow</h1><p className="font-bn">Clean transcript, young-adult Japanese voices, বাংলা support এবং একটাই focused practice flow।</p></div>
++      <div><div className="section-kicker">FREE JAPANESE LISTENING · LESSON {String(data.lesson).padStart(2,'0')}</div><h1>Hear → Follow → Shadow</h1><p className="font-bn">Browser/Windows-এর Japanese voice, বাংলা support এবং একটাই focused practice flow—কোনো paid API ছাড়াই।</p></div>
+       <Headphones className="header-big-icon"/>
+     </section>
+ 
+diff --git a/components/StudyViews.tsx b/components/StudyViews.tsx
+index c1727e3..988f196 100644
+--- a/components/StudyViews.tsx
++++ b/components/StudyViews.tsx
+@@ -57,20 +57,26 @@ export function Conversation({data}:{data:LessonPayload}){
+     }
+ 
+     const run=++playRun.current;
++    const sequence=rows.filter(r=>r?.[1]).map(r=>({
++      text:r[1],
++      speaker:r[0],
++      voiceRole:voiceMap[r[0]]||'default'
++    }));
+     setPlayingAll(true);
+     setActiveLine(null);
+     track('conversation_full_play',{
+       lesson_number:data.lesson,
+-      segments:rows.length,
++      segments:sequence.length,
+       dual_voice:true,
+-      voice_engine:'v7-azure-multivoice-opus',
++      voice_engine:'web-speech-api-ja-JP',
++      billed_api:false,
+       playback_rate:rate
+     });
+ 
+     try{
+-      await playDialogueTrack(data.lesson,rate,{
++      await playDialogueTrack(sequence,rate,{
+         onEnd:()=>{if(run===playRun.current)setPlayingAll(false)}
+-      },{segments:rows.length});
++      },{lesson_number:data.lesson,segments:sequence.length});
+     }finally{
+       if(run===playRun.current)setPlayingAll(false);
+     }
+@@ -79,9 +85,9 @@ export function Conversation({data}:{data:LessonPayload}){
+   return <div className="space-y-5 conversation-view-v57">
+     <section className="study-header tone-conversation">
+       <div>
+-        <div className="section-kicker">NATURAL TWO-VOICE DIALOGUE · LESSON {String(data.lesson).padStart(2,'0')}</div>
++        <div className="section-kicker">FREE JAPANESE DEVICE VOICES · LESSON {String(data.lesson).padStart(2,'0')}</div>
+         <h1>Listen like a real conversation</h1>
+-        <p className="font-bn">A male = Keita। B female = Nanami chat। Full dialogue একবারে multi-voice track হিসেবে চলে, line practice আলাদাভাবে করা যায়।</p>
++        <p className="font-bn">আপনার browser বা Windows-এর Japanese voice দিয়ে A/B role আলাদা স্বরে চলে। কোনো paid API বা key লাগে না।</p>
+       </div>
+       <MessageCircle className="header-big-icon"/>
+     </section>
+@@ -91,9 +97,9 @@ export function Conversation({data}:{data:LessonPayload}){
+         {speakers.slice(0,2).map((s,i)=><div className={`persona-card-v57 ${i===0?'male':'female'}`} key={s}>
+           <span className="persona-avatar-v57">{i===0?'A':'B'}</span>
+           <div>
+-            <small>{i===0?'JAPANESE MALE · KEITA':'JAPANESE FEMALE · NANAMI CHAT'}</small>
++            <small>{i===0?'JAPANESE VOICE · A':'JAPANESE VOICE · B'}</small>
+             <b>Speaker {s}</b>
+-            <span>Natural Japanese neural voice</span>
++            <span>Browser/OS Japanese voice · free</span>
+           </div>
+         </div>)}
+       </div>
+@@ -131,7 +137,7 @@ export function Conversation({data}:{data:LessonPayload}){
+           <div className="turn-identity-v57"><span>{side==='male'?'A':'B'}</span><small>{side==='male'?'MALE':'FEMALE'}</small></div>
+           <div className="turn-card-v57">
+             <header>
+-              <div><small>SPEAKER {r[0]}</small><b>{side==='male'?'Keita':'Nanami · chat'}</b></div>
++              <div><small>SPEAKER {r[0]}</small><b>{side==='male'?'Voice A':'Voice B'}</b></div>
+               <button onClick={()=>{
+                 playRun.current+=1;setPlayingAll(false);
+                 playLine(r[1],i,r[0],role!=='all')
+diff --git a/docs/FINAL_RELEASE.md b/docs/FINAL_RELEASE.md
+index b9f2b58..021995a 100644
+--- a/docs/FINAL_RELEASE.md
++++ b/docs/FINAL_RELEASE.md
+@@ -21,14 +21,13 @@ Approved phases: 7A, 7B, 7C, 7D, 7E, 7F, 7G, 7H
+ - Lesson completion: >=80% vocabulary mastery + 0 due SRS
+ - KLC: 2,300 nodes / 4,034 edges
+ - Visual construction is not presented as historical etymology
+-- Phase 7D V7 natural Japanese audio
+-  - Keita male
+-  - Nanami chat female
+-  - OGG/Opus
+-  - no MP3
++- Phase 7D free Japanese browser audio
++  - Web Speech API with installed Japanese device voices
++  - separate A/B voice preference and pitch
++  - no API key or per-character billing
++  - voice name and quality vary by browser/operating system
+   - 0.75 / 0.9 / 1 speed
+-  - pitch preservation
+-  - multi-voice full dialogue
++  - full dialogue sequencing
+ 
+ ## What this package replaces
+ 
+diff --git a/lib/audio.ts b/lib/audio.ts
+index 0a85399..4e00f2b 100644
+--- a/lib/audio.ts
++++ b/lib/audio.ts
+@@ -1,63 +1,58 @@
+-import { BASE } from './data';
+ import { track, trackError } from './analytics';
+ 
+ export type AudioVoiceRole='default'|'male'|'female';
+ export type PlaybackResult='ended'|'cancelled'|'unavailable';
+ 
+-let activeAudio: HTMLAudioElement | null = null;
+-let activeUtterance: SpeechSynthesisUtterance | null = null;
+-let activeResolve: ((result:PlaybackResult)=>void) | null = null;
+-let raf = 0;
+-let playbackGeneration = 0;
++export interface AudioCallbacks{
++  onStart?:()=>void;
++  onProgress?:(ratio:number)=>void;
++  onEnd?:()=>void;
++}
++
++export interface DialogueSpeechLine{
++  text:string;
++  voiceRole?:AudioVoiceRole;
++  speaker?:string;
++}
++
++let activeUtterance:SpeechSynthesisUtterance|null=null;
++let activeResolve:((result:PlaybackResult)=>void)|null=null;
++let activeProgressTimer:number|null=null;
++let playbackGeneration=0;
+ 
+ function normalizeDisplay(text:string){
+   return String(text||'').normalize('NFC').replace(/\s+/g,' ').trim();
+ }
+ 
+ function normalizeSpeech(text:string){
+-  let s=String(text||'').normalize('NFC').trim();
+-  const jp='\\u3040-\\u30ff\\u3400-\\u9fff々〆ヵヶ';
+-  s=s
+-    .replace(new RegExp(`(?<=[${jp}])\\s+(?=[${jp}])`,'g'),'')
++  let value=String(text||'').normalize('NFC').trim();
++  const japanese='\\u3040-\\u30ff\\u3400-\\u9fff々〆ヵヶ';
++  value=value
++    .replace(new RegExp(`(?<=[${japanese}])\\s+(?=[${japanese}])`,'g'),'')
+     .replace(/[「」『』“”"']/g,'')
+-    .replace(new RegExp(`(?<=[${jp}])・(?=[${jp}])`,'g'),'')
+-    .replace(/。(?=.)/g,'、')
++    .replace(new RegExp(`(?<=[${japanese}])・(?=[${japanese}])`,'g'),'')
++    .replace(/。(?=.)/g,'。 ')
+     .replace(/、{2,}/g,'、')
+     .trim();
+-  return s;
++  return value;
+ }
+ 
+-function hashText(text:string,voiceRole:AudioVoiceRole='default'){
+-  const clean=normalizeDisplay(text);
+-  return voiceRole==='default'?clean:`${voiceRole}|${clean}`;
++function speechController():SpeechSynthesis|null{
++  if(typeof window==='undefined'||!('speechSynthesis'in window))return null;
++  return window.speechSynthesis;
+ }
+ 
+-export async function sha1(text:string){
+-  const data=new TextEncoder().encode(normalizeDisplay(text));
+-  const digest=await crypto.subtle.digest('SHA-1',data);
+-  return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+-}
+-
+-export async function audioUrlForText(text:string,voiceRole:AudioVoiceRole='default'){
+-  const hash=await sha1(hashText(text,voiceRole));
+-  return `${BASE}/audio/${hash}.ogg`;
++function clearProgressTimer(){
++  if(activeProgressTimer!==null){
++    window.clearInterval(activeProgressTimer);
++    activeProgressTimer=null;
++  }
+ }
+ 
+ export function stopAudio():PlaybackResult{
+   playbackGeneration+=1;
+-  if(raf){cancelAnimationFrame(raf);raf=0}
+-  if(activeAudio){
+-    try{
+-      activeAudio.pause();
+-      activeAudio.currentTime=0;
+-      activeAudio.removeAttribute('src');
+-      activeAudio.load();
+-    }catch{}
+-    activeAudio=null;
+-  }
+-  if(typeof window!=='undefined'&&'speechSynthesis'in window){
+-    try{window.speechSynthesis.cancel()}catch{}
+-  }
++  clearProgressTimer();
++  try{speechController()?.cancel()}catch{}
+   activeUtterance=null;
+   const finish=activeResolve;
+   activeResolve=null;
+@@ -69,15 +64,68 @@ function notifyAudioError(text:string,type:string){
+   if(typeof window==='undefined')return;
+   try{
+     window.dispatchEvent(new CustomEvent('nv:resource-error',{
+-      detail:{kind:'audio',path:type,message:`Audio unavailable: ${normalizeDisplay(text).slice(0,80)}`}
++      detail:{kind:'audio',path:type,message:`Voice unavailable: ${normalizeDisplay(text).slice(0,80)}`}
+     }));
+   }catch{}
+ }
+ 
+-export interface AudioCallbacks{
+-  onStart?:()=>void;
+-  onProgress?:(ratio:number)=>void;
+-  onEnd?:()=>void;
++function japaneseVoices(synth:SpeechSynthesis){
++  return synth.getVoices().filter(voice=>/^ja(?:-|_)/i.test(voice.lang));
++}
++
++async function loadJapaneseVoices(synth:SpeechSynthesis){
++  const ready=japaneseVoices(synth);
++  if(ready.length)return ready;
++  await new Promise<void>(resolve=>{
++    let settled=false;
++    const finish=()=>{
++      if(settled)return;
++      settled=true;
++      synth.removeEventListener('voiceschanged',finish);
++      window.clearTimeout(timeout);
++      resolve();
++    };
++    const timeout=window.setTimeout(finish,1200);
++    synth.addEventListener('voiceschanged',finish,{once:true});
++  });
++  return japaneseVoices(synth);
++}
++
++const MALE_HINTS=[/keita/i,/otoya/i,/ichiro/i,/hattori/i,/male/i,/男性/];
++const FEMALE_HINTS=[/nanami/i,/kyoko/i,/ayumi/i,/haruka/i,/female/i,/女性/];
++
++function pickVoice(voices:SpeechSynthesisVoice[],role:AudioVoiceRole){
++  if(!voices.length)return undefined;
++  const hints=role==='male'?MALE_HINTS:role==='female'?FEMALE_HINTS:[];
++  return voices.find(voice=>hints.some(pattern=>pattern.test(`${voice.name} ${voice.voiceURI}`)))
++    ||voices.find(voice=>voice.default)
++    ||voices[0];
++}
++
++function rolePitch(role:AudioVoiceRole){
++  if(role==='male')return .88;
++  if(role==='female')return 1.08;
++  return 1;
++}
++
++function splitForSpeech(text:string,maxLength=150){
++  const clean=normalizeSpeech(text);
++  if(clean.length<=maxLength)return clean?[clean]:[];
++  const parts=clean.split(/(?<=[。！？!?、,])\s*/).filter(Boolean);
++  const chunks:string[]=[];
++  let current='';
++  for(const part of parts){
++    if(current&&current.length+part.length>maxLength){
++      chunks.push(current);
++      current='';
++    }
++    if(part.length>maxLength){
++      if(current){chunks.push(current);current=''}
++      for(let index=0;index<part.length;index+=maxLength)chunks.push(part.slice(index,index+maxLength));
++    }else current+=part;
++  }
++  if(current)chunks.push(current);
++  return chunks;
+ }
+ 
+ export async function playText(
+@@ -90,186 +138,157 @@ export async function playText(
+ ):Promise<PlaybackResult>{
+   stopAudio();
+   const generation=playbackGeneration;
+-  const safeRate=Math.max(.75,Math.min(1,rate));
+   const clean=normalizeDisplay(text);
+-  if(!clean)return 'unavailable';
++  const safeRate=Math.max(.5,Math.min(1.5,rate));
++  const synth=speechController();
++  if(!clean||!synth){
++    notifyAudioError(clean,type);
++    return 'unavailable';
++  }
++
++  const chunks=splitForSpeech(clean);
++  if(!chunks.length)return 'unavailable';
+ 
+   track('audio_play',{
+     audio_type:type,
+     playback_rate:safeRate,
+     content_length:clean.length,
+     voice_role:voiceRole,
++    voice_engine:'web-speech-api-ja-JP',
++    billed_api:false,
+     exclusive_audio:true,
+     ...meta
+   });
+ 
+   try{
+-    const url=await audioUrlForText(clean,voiceRole);
++    const voices=await loadJapaneseVoices(synth);
+     if(generation!==playbackGeneration)return 'cancelled';
++    const selectedVoice=pickVoice(voices,voiceRole);
++    const totalChars=chunks.reduce((sum,chunk)=>sum+chunk.length,0);
+ 
+-    const audio=new Audio(url);
+-    activeAudio=audio;
+-    audio.preload='auto';
+-    audio.playbackRate=safeRate;
+-    audio.defaultPlaybackRate=safeRate;
+-    audio.volume=1;
+-
+-    if('preservesPitch'in audio)(audio as HTMLAudioElement & {preservesPitch:boolean}).preservesPitch=true;
+-    if('webkitPreservesPitch'in audio)(audio as any).webkitPreservesPitch=true;
++    return await new Promise<PlaybackResult>(resolve=>{
++      let settled=false;
++      let chunkIndex=0;
++      let completedChars=0;
++      let started=false;
+ 
+-    return await new Promise<PlaybackResult>((resolve,reject)=>{
+-      let started=false,settled=false;
+       const finish=(status:PlaybackResult)=>{
+         if(settled)return;
+         settled=true;
++        clearProgressTimer();
+         if(activeResolve===finish)activeResolve=null;
++        if(status==='ended'){
++          cb.onProgress?.(1);
++          cb.onEnd?.();
++        }
++        activeUtterance=null;
+         resolve(status);
+       };
+       activeResolve=finish;
+ 
+-      audio.addEventListener('error',()=>{
++      const speakNext=()=>{
++        if(settled)return;
+         if(generation!==playbackGeneration){finish('cancelled');return}
+-        reject(new Error('v7-ogg-audio-unavailable'));
+-      },{once:true});
+-
+-      audio.addEventListener('canplay',async()=>{
+-        if(started)return;
+-        started=true;
+-        if(generation!==playbackGeneration||activeAudio!==audio){
+-          finish('cancelled');
+-          return;
+-        }
+-        try{
+-          await audio.play();
++        if(chunkIndex>=chunks.length){finish('ended');return}
++
++        const chunk=chunks[chunkIndex];
++        const utterance=new SpeechSynthesisUtterance(chunk);
++        activeUtterance=utterance;
++        utterance.lang='ja-JP';
++        utterance.rate=safeRate;
++        utterance.pitch=rolePitch(voiceRole);
++        utterance.volume=1;
++        if(selectedVoice)utterance.voice=selectedVoice;
++
++        const estimatedMs=Math.max(900,(chunk.length*115)/safeRate);
++        const startedAt=performance.now();
++        clearProgressTimer();
++        activeProgressTimer=window.setInterval(()=>{
++          const partial=Math.min(.96,(performance.now()-startedAt)/estimatedMs);
++          const ratio=(completedChars+partial*chunk.length)/totalChars;
++          cb.onProgress?.(Math.min(.99,ratio));
++        },100);
++
++        utterance.onstart=()=>{
++          if(started)return;
++          started=true;
+           cb.onStart?.();
+-          const tick=()=>{
+-            if(generation!==playbackGeneration||activeAudio!==audio||audio.paused||audio.ended)return;
+-            const ratio=audio.duration>0?Math.min(1,audio.currentTime/audio.duration):0;
+-            cb.onProgress?.(ratio);
+-            raf=requestAnimationFrame(tick);
+-          };
+-          tick();
+-        }catch(err){reject(err)}
+-      },{once:true});
+-
+-      audio.addEventListener('ended',()=>{
+-        if(generation!==playbackGeneration){finish('cancelled');return}
+-        if(raf){cancelAnimationFrame(raf);raf=0}
+-        cb.onProgress?.(1);
+-        cb.onEnd?.();
+-        if(activeAudio===audio)activeAudio=null;
+-        finish('ended');
+-      },{once:true});
+-
+-      audio.load();
++        };
++        utterance.onboundary=event=>{
++          const ratio=(completedChars+Math.min(chunk.length,event.charIndex))/totalChars;
++          cb.onProgress?.(Math.min(.99,ratio));
++        };
++        utterance.onend=()=>{
++          clearProgressTimer();
++          if(generation!==playbackGeneration){finish('cancelled');return}
++          completedChars+=chunk.length;
++          cb.onProgress?.(Math.min(.99,completedChars/totalChars));
++          chunkIndex+=1;
++          speakNext();
++        };
++        utterance.onerror=event=>{
++          clearProgressTimer();
++          if(generation!==playbackGeneration||event.error==='canceled'||event.error==='interrupted'){
++            finish('cancelled');
++            return;
++          }
++          trackError('audio',new Error(`browser-speech-${event.error}`));
++          notifyAudioError(clean,type);
++          finish('unavailable');
++        };
++
++        synth.speak(utterance);
++      };
++
++      speakNext();
+     });
+-  }catch(err){
++  }catch(error){
+     if(generation!==playbackGeneration)return 'cancelled';
+-    trackError('audio',err);
+-  }
+-
+-  // Do not silently replace role-specific dialogue with a random browser female/male voice.
+-  if(voiceRole==='male'||voiceRole==='female'){
++    trackError('audio',error);
+     notifyAudioError(clean,type);
+     return 'unavailable';
+   }
+-
+-  // Non-dialogue emergency fallback only.
+-  if(typeof window!=='undefined'&&'speechSynthesis'in window){
+-    return await new Promise<PlaybackResult>(resolve=>{
+-      if(generation!==playbackGeneration){resolve('cancelled');return}
+-      const u=new SpeechSynthesisUtterance(normalizeSpeech(clean));
+-      activeUtterance=u;
+-      u.lang='ja-JP';
+-      u.rate=safeRate;
+-      u.pitch=1;
+-      u.volume=1;
+-      u.onend=()=>{
+-        if(generation!==playbackGeneration){resolve('cancelled');return}
+-        cb.onProgress?.(1);cb.onEnd?.();activeUtterance=null;resolve('ended');
+-      };
+-      u.onerror=()=>{
+-        activeUtterance=null;
+-        notifyAudioError(clean,type);
+-        resolve('unavailable');
+-      };
+-      window.speechSynthesis.speak(u);
+-    });
+-  }
+-
+-  notifyAudioError(clean,type);
+-  return 'unavailable';
+ }
+ 
+ export async function playDialogueTrack(
+-  lesson:number,
++  lines:DialogueSpeechLine[],
+   rate=1,
+   cb:AudioCallbacks={},
+   meta:Record<string,unknown>={}
+ ):Promise<PlaybackResult>{
+   stopAudio();
+-  const generation=playbackGeneration;
+-  const safeRate=Math.max(.75,Math.min(1,rate));
+-  const url=`${BASE}/audio/dialogue/lesson-${String(lesson).padStart(2,'0')}.ogg`;
++  const sequence=lines.filter(line=>normalizeDisplay(line.text));
++  if(!sequence.length)return 'unavailable';
+ 
+   track('audio_play',{
+     audio_type:'conversation_full',
+-    playback_rate:safeRate,
+-    lesson_number:lesson,
++    playback_rate:rate,
+     dual_voice:true,
+-    voice_engine:'v7-azure-multivoice-opus',
++    voice_engine:'web-speech-api-ja-JP',
++    billed_api:false,
+     ...meta
+   });
+ 
+-  try{
+-    const audio=new Audio(url);
+-    activeAudio=audio;
+-    audio.preload='auto';
+-    audio.playbackRate=safeRate;
+-    audio.defaultPlaybackRate=safeRate;
+-    audio.volume=1;
+-    if('preservesPitch'in audio)(audio as HTMLAudioElement & {preservesPitch:boolean}).preservesPitch=true;
+-    if('webkitPreservesPitch'in audio)(audio as any).webkitPreservesPitch=true;
+-
+-    return await new Promise<PlaybackResult>((resolve,reject)=>{
+-      let started=false,settled=false;
+-      const finish=(status:PlaybackResult)=>{
+-        if(settled)return;
+-        settled=true;
+-        if(activeResolve===finish)activeResolve=null;
+-        resolve(status);
+-      };
+-      activeResolve=finish;
+-
+-      audio.addEventListener('error',()=>reject(new Error('v7-dialogue-track-unavailable')),{once:true});
+-      audio.addEventListener('canplay',async()=>{
+-        if(started)return;
+-        started=true;
+-        if(generation!==playbackGeneration||activeAudio!==audio){finish('cancelled');return}
+-        try{
+-          await audio.play();
+-          cb.onStart?.();
+-          const tick=()=>{
+-            if(generation!==playbackGeneration||activeAudio!==audio||audio.paused||audio.ended)return;
+-            cb.onProgress?.(audio.duration>0?Math.min(1,audio.currentTime/audio.duration):0);
+-            raf=requestAnimationFrame(tick);
+-          };
+-          tick();
+-        }catch(err){reject(err)}
+-      },{once:true});
+-      audio.addEventListener('ended',()=>{
+-        if(generation!==playbackGeneration){finish('cancelled');return}
+-        if(raf){cancelAnimationFrame(raf);raf=0}
+-        cb.onProgress?.(1);cb.onEnd?.();
+-        if(activeAudio===audio)activeAudio=null;
+-        finish('ended');
+-      },{once:true});
+-      audio.load();
+-    });
+-  }catch(err){
+-    if(generation!==playbackGeneration)return 'cancelled';
+-    trackError('audio',err);
+-    notifyAudioError(`Lesson ${lesson} full dialogue`,'conversation_full');
+-    return 'unavailable';
++  let started=false;
++  for(let index=0;index<sequence.length;index+=1){
++    const line=sequence[index];
++    const result=await playText(
++      line.text,
++      rate,
++      'conversation_line',
++      {
++        onStart:()=>{
++          if(!started){started=true;cb.onStart?.()}
++        },
++        onProgress:ratio=>cb.onProgress?.((index+ratio)/sequence.length)
++      },
++      {speaker:line.speaker,line_number:index+1,dialogue_sequence:true},
++      line.voiceRole||'default'
++    );
++    if(result!=='ended')return result;
+   }
++
++  cb.onProgress?.(1);
++  cb.onEnd?.();
++  return 'ended';
+ }
+diff --git a/scripts/qa_production.py b/scripts/qa_production.py
+index 2b26984..7381bb4 100644
+--- a/scripts/qa_production.py
++++ b/scripts/qa_production.py
+@@ -81,14 +81,12 @@ check("dynamic(()=>import('./GrammarStudio')" in study,"Visual Grammar lazy-load
+ check("playDialogueTrack" in study,"Full multi-voice dialogue binding")
+ check("RATES=[.75,.9,1]" in study.replace(" ",""),"Conversation 0.75/0.9/1 speed controls")
+ 
+-check((ROOT/"scripts/generate_audio_azure_opus.py").exists(),"Azure Japanese audio generator present")
+-check("_audio_cache_v7" in workflow,"V7 audio cache namespace")
+-check("AZURE_SPEECH_KEY" in workflow and "AZURE_SPEECH_REGION" in workflow,"Azure Speech secrets wired")
+-check("generate_audio_azure_opus.py" in workflow,"Azure OGG/Opus generation used")
+-check("restore-keys:" not in workflow,"Old Edge audio cache cannot be restored")
+-check(".ogg" in audio and ".mp3" not in audio,"Runtime uses OGG and no MP3")
+-check("playbackRate=safeRate" in audio and "preservesPitch" in audio,"Reliable slow playback + pitch preservation")
+-check("voiceRole==='male'||voiceRole==='female'" in audio,"Role dialogue does not silently fall back to random browser voice")
++check("SpeechSynthesisUtterance" in audio and "speechSynthesis" in audio,"Browser speech synthesis runtime")
++check("voiceschanged" in audio and "getVoices()" in audio,"Japanese device voice discovery")
++check("ja-JP" in audio and "web-speech-api-ja-JP" in audio,"Japanese browser voice selected")
++check("billed_api:false" in audio and "AZURE_SPEECH" not in workflow,"No paid speech API or credentials")
++check("splitForSpeech" in audio,"Long Japanese text chunking")
++check("rolePitch" in audio and "pickVoice" in audio,"Distinct dialogue role voices")
+ check("playDialogueTrack" in audio,"Full dialogue track helper present")
+ 
+ mock=(ROOT/"components/MockTest.tsx").read_text(encoding="utf-8")
+@@ -123,7 +121,7 @@ if post:
+     check((out/".nojekyll").exists(),"Pages .nojekyll exists")
+     check((out/"manifest.webmanifest").exists(),"PWA manifest exported")
+     check((out/"data/grammar-visual.json").exists(),"Visual grammar data exported")
+-    check((out/"audio/manifest.json").exists(),"V7 audio manifest exported")
++    check(not (out/"audio/manifest.json").exists(),"No generated-audio manifest required")
+     out_sw=(out/"sw.js").read_text(encoding="utf-8") if (out/"sw.js").exists() else ""
+     check("const APP_SHELL=" in out_sw,"Generated service worker app shell")
+     check("./_next/static/" in out_sw,"Next chunks in service worker")
+-- 
+2.55.0.windows.2
+
