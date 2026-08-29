@@ -91,6 +91,21 @@ test('Verb Forms Lab shows only the four requested core forms',async({page})=>{
   await expect(lab).not.toContainText('て Form');
 });
 
+test('mobile SRS session keeps fixed navigation away from study controls',async({page},testInfo)=>{
+  test.skip(testInfo.project.name!=='mobile-chromium');
+  await page.goto('?lesson=1&view=srs');
+  await page.getByRole('button',{name:/Lesson Smart Session/}).click();
+  const shell=page.locator('.srs-shell');
+  await expect(shell).toBeVisible();
+  const reveal=page.getByRole('button',{name:'Reveal answer'});
+  await expect(reveal).toBeVisible();
+  const dock=page.getByRole('navigation',{name:'মোবাইল নেভিগেশন'});
+  await expect(dock).toBeHidden();
+  const revealBox=await reveal.boundingBox();
+  expect(revealBox).not.toBeNull();
+  expect((revealBox?.y||0)+(revealBox?.height||0)).toBeLessThanOrEqual((await page.evaluate(()=>window.innerHeight))+1);
+});
+
 test('vocabulary audio controls have names and touch-sized targets',async({page})=>{
   await page.goto('?lesson=1&view=vocabulary');
   const audio=page.locator('.mini-audio').first();
