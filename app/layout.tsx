@@ -15,6 +15,7 @@ import '@/styles/v62-dashboard-context.scss';
 import '@/styles/v63-brand-experience.scss';
 import '@/styles/v64-learning-labs.scss';
 import '@/styles/v65-production-qa.scss';
+import '@/styles/v66-shell-correction.scss';
 
 const SITE = 'https://knox1999.github.io/n5-japanese-studio/';
 
