@@ -1,0 +1,122 @@
+/* V90 — Final audit hardening
+   Last cascade: branding, overlays, modal stacking, drawer utilities, mobile safe areas. */
+
+/* Full brand lockup must never truncate. */
+.future-header .nv60-brand-copy,
+.future-drawer-head .nv60-brand-copy{
+  display:flex!important;
+  min-width:0!important;
+  flex:1 1 auto!important;
+  overflow:visible!important;
+}
+.future-header .nv60-brand-copy strong,
+.future-drawer-head .nv60-brand-copy strong{
+  display:block!important;
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+}
+.future-drawer-head .future-brand{
+  display:flex!important;
+  flex:1 1 auto!important;
+  min-width:0!important;
+  max-width:calc(100% - 54px)!important;
+}
+.future-drawer-head .future-brand-logo-wrap{
+  flex:0 0 auto!important;
+}
+
+/* Only the active overlay should own the screen. */
+.future-drawer-layer,.future-search-layer,.vault-layer{isolation:isolate!important}
+.vault-layer{z-index:10000!important}
+.future-search-layer{z-index:900!important}
+.future-drawer-layer{z-index:800!important}
+
+/* Drawer utilities should look like utilities, not loose page content. */
+.future-drawer-utilities{
+  margin-top:12px!important;
+  padding-top:10px!important;
+  border-top:1px solid rgba(196,216,227,.08)!important;
+}
+.future-drawer-utilities button{
+  display:flex!important;
+  align-items:center!important;
+  gap:9px!important;
+  border:1px solid rgba(196,216,227,.09)!important;
+  color:rgba(226,237,242,.82)!important;
+  background:rgba(255,255,255,.018)!important;
+}
+.future-drawer-utilities button:hover{
+  border-color:rgba(114,211,213,.22)!important;
+  background:rgba(114,211,213,.045)!important;
+}
+
+/* Defensive modal styling even before external CSS finishes painting. */
+.vault-layer>.future-layer-backdrop{position:absolute!important;inset:0!important}
+.vault-dialog{position:relative!important;z-index:2!important}
+
+/* Mobile dock should never cover the final interactive control. */
+@media(max-width:820px){
+  .future-main,.nv60-main,.nv-final-main{
+    padding-bottom:calc(112px + env(safe-area-inset-bottom))!important;
+  }
+  .future-mobile-dock,.nv60-mobile-dock,.nv-final-mobile-dock{
+    padding-bottom:max(5px,env(safe-area-inset-bottom))!important;
+  }
+  .future-drawer,.nv60-drawer,.nv-final-drawer{
+    padding-bottom:calc(28px + env(safe-area-inset-bottom))!important;
+  }
+  .future-drawer-head .future-brand-logo-wrap{
+    width:40px!important;height:40px!important;flex-basis:40px!important;
+  }
+  .future-drawer-head .nv60-brand-copy strong{
+    font-size:clamp(.62rem,2.8vw,.76rem)!important;
+    letter-spacing:.035em!important;
+  }
+  .future-drawer-head .nv60-brand-copy small{
+    display:block!important;
+    font-size:.43rem!important;
+  }
+  .future-drawer-utilities{grid-template-columns:1fr 1fr!important}
+  .future-drawer-utilities button{justify-content:center!important;min-height:46px!important;padding:9px!important}
+}
+
+@media(max-width:430px){
+  .future-header .nv60-brand-copy strong{
+    font-size:clamp(.55rem,2.55vw,.68rem)!important;
+    letter-spacing:.018em!important;
+  }
+  .future-header .nv60-brand-copy small{font-size:.4rem!important}
+  .future-drawer-utilities{grid-template-columns:1fr!important}
+  .future-drawer-utilities button{justify-content:flex-start!important}
+}
+
+@media(max-width:359px){
+  .future-header .nv60-brand-copy strong{
+    max-width:none!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+    font-size:.53rem!important;
+  }
+  .future-header .nv60-brand-copy small{display:none!important}
+  .future-drawer-head .nv60-brand-copy strong{font-size:.58rem!important}
+  .future-drawer-head .nv60-brand-copy small{display:none!important}
+}
+
+/* Forms Lab: exactly four core categories, visually equal and scan-friendly. */
+.verb-family-stack{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+.verb-family-box{margin:0!important;min-width:0!important}
+.verb-family-box .verb-family-grid{grid-template-columns:1fr!important}
+.verb-family-box .verb-form-cell{min-height:108px!important}
+@media(max-width:760px){
+  .verb-family-stack{grid-template-columns:1fr!important;gap:9px!important}
+  .verb-family-box .verb-form-cell{min-height:90px!important}
+}
+
+/* Touch and text safety across all learning views. */
+@media(hover:none) and (pointer:coarse){
+  .future-main button,.future-drawer button,.vault-dialog button,.lesson-picker-popover button{min-height:44px}
+}
+.future-main,.future-main>*{min-width:0}
+.future-main p,.future-main h1,.future-main h2,.future-main h3,.future-main b,.future-main span{overflow-wrap:anywhere}
