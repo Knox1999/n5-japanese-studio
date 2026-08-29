@@ -2,6 +2,73 @@ export type ViewName =
   | 'dashboard' | 'vocabulary' | 'srs' | 'spelling' | 'conversation'
   | 'reading' | 'listening' | 'grammar' | 'kanji' | 'mock' | 'history';
 
+export type LearningLevel = 'N5' | 'N4' | 'N3' | (string & {});
+export type LearningSkill =
+  | 'vocabulary' | 'srs' | 'kana' | 'kanji' | 'grammar' | 'listening'
+  | 'particles' | 'reading' | 'spelling' | 'conversation' | 'mock' | 'game';
+export type ConfidenceLevel = 'guess' | 'unsure' | 'confident';
+export type MistakeSeverity = 'low' | 'medium' | 'high';
+
+export interface MistakeRecord {
+  id: string;
+  itemId: string;
+  lessonId?: string;
+  level?: LearningLevel;
+  skill: LearningSkill;
+  questionType: string;
+  userAnswer?: string;
+  correctAnswer?: string;
+  timestamp: string;
+  attempts: number;
+  confidence: ConfidenceLevel;
+  severity: MistakeSeverity;
+  lastReviewed?: string | null;
+  repaired: boolean;
+  tags?: string[];
+  sourceId?: string;
+}
+
+export interface ConfidenceRecord {
+  itemId: string;
+  skill: LearningSkill;
+  confidence: ConfidenceLevel;
+  timestamp: string;
+}
+
+export interface StudyPlan {
+  dailyMinutes: 5 | 10 | 20 | 30 | 45 | number;
+  updatedAt: string | null;
+}
+
+export interface DailyRecommendation {
+  id: string;
+  kind: 'srs' | 'repair' | 'lesson' | 'listening' | 'grammar' | 'kana' | 'kanji' | 'mock' | 'scenario';
+  title: string;
+  reason: string;
+  minutes: number;
+  priority: number;
+}
+
+export type LessonStageKind =
+  | 'goal' | 'vocabulary' | 'pronunciation' | 'grammar' | 'examples' | 'conversation'
+  | 'listening' | 'reading' | 'kana' | 'kanji' | 'practice' | 'quiz' | 'repair' | 'srs' | 'complete';
+
+export interface LessonStage {
+  id: string;
+  kind: LessonStageKind;
+  title: string;
+  estimatedMinutes?: number;
+  optional?: boolean;
+  targetView?: ViewName;
+}
+
+export interface LessonJourney {
+  lessonId: string;
+  level: LearningLevel;
+  objective: string;
+  stages: LessonStage[];
+}
+
 export interface VocabItem {
   id: number;
   lesson: number;
