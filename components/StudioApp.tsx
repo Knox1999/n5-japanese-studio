@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, BookOpen, Loader2, RefreshCcw, WifiOff, X } from 'lucide-react';
 import type { ConfidenceLevel, LessonPayload, LearningSkill, MockAttempt, StudioMeta, ViewName } from '@/lib/types';
 import { loadLesson, loadMeta } from '@/lib/data';
@@ -14,12 +13,12 @@ import Shell from './Shell';
 import Dashboard from './Dashboard';
 import DailyCoachPanel from './DailyCoachPanel';
 import LessonJourneyPanel from './LessonJourneyPanel';
-import Vocabulary from './Vocabulary';
 import KanaPad from './KanaPad';
 import DataVault from './DataVault';
 
 const LoadingView=()=> <div className="nv58-view-loading" role="status" aria-live="polite"><Loader2 className="animate-spin"/><b>Loading study module…</b></div>;
 
+const Vocabulary=dynamic(()=>import('./Vocabulary'),{ssr:false,loading:LoadingView});
 const SRS=dynamic(()=>import('./SRS'),{ssr:false,loading:LoadingView});
 const Spelling=dynamic(()=>import('./Spelling'),{ssr:false,loading:LoadingView});
 const Listening=dynamic(()=>import('./Listening'),{ssr:false,loading:LoadingView});
@@ -55,6 +54,7 @@ type FatalState={scope:'meta'|'lesson';message:string}|null;
 type ResourceNotice={kind:string;path?:string;message:string}|null;
 type SpellingAttempt={itemId:number;lesson:number;userAnswer:string;correctAnswer:string;correct:boolean;confidence:ConfidenceLevel};
 type LearningAttempt={itemId:string;userAnswer:string;correctAnswer:string;correct:boolean;questionType:string;skill?:LearningSkill};
+type SrsReviewResult={itemId:number;lesson:number;rating:'again'|'hard'|'good'|'easy';correctAnswer:string};
 
 function WorkspaceBoot({online}:{online:boolean}){
   return <main className="boot-screen boot-screen-v2" id="main-content" aria-busy="true" aria-labelledby="boot-title">
@@ -98,8 +98,6 @@ export default function StudioApp(){
    return()=>{dead=true};
  },[metaNonce]);
 
- // Lesson payload does not depend on meta.json. Loading both resources concurrently
- // removes an unnecessary network waterfall during first launch and lesson changes.
  useEffect(()=>{
    let dead=false;
    setData(null);setFatal(null);
@@ -200,6 +198,17 @@ export default function StudioApp(){
    track('mistake_recorded',{lesson_number:lesson,item_id:attempt.itemId,source,skill});
  };
 
+ const recordSrsReview=(attempt:SrsReviewResult)=>{
+   if(attempt.rating!=='again'&&attempt.rating!=='hard')return;
+   updateLearning(prev=>({
+     ...prev,
+     mistakes:upsertMistake(prev.mistakes,{
+       itemId:String(attempt.itemId),lessonId:String(attempt.lesson),level:'N5',skill:'srs',questionType:'smart-recall',correctAnswer:attempt.correctAnswer,confidence:'unsure',severity:attempt.rating==='again'?'high':'medium',sourceId:'srs'
+     }),
+   }));
+   track('mistake_recorded',{lesson_number:attempt.lesson,item_id:attempt.itemId,source:'srs',rating:attempt.rating,skill:'srs'});
+ };
+
  const currentMeta=meta?.lessons.find(x=>x.lesson===lesson);
  const currentMastered=(currentMeta?.ids||[]).reduce((count,id)=>count+(progress[String(id)]?1:0),0);
  const lessonPct=Math.round(currentMastered/Math.max(1,currentMeta?.count||1)*100);
@@ -255,7 +264,7 @@ export default function StudioApp(){
        journey={journey?<LessonJourneyPanel journey={journey} completed={completedJourney} onOpen={openJourneyStage} onToggleComplete={toggleJourneyStage}/>:null}
      /></div>;
      case'vocabulary':return <Vocabulary data={data} progress={progress} onToggle={toggleMastery}/>;
-     case'srs':return <SRS data={data} meta={meta} srs={srs} progress={progress} onSrsChange={updateSrs} onProgressChange={updateProgress}/>;
+     case'srs':return <SRS data={data} meta={meta} srs={srs} progress={progress} onSrsChange={updateSrs} onProgressChange={updateProgress} onReviewResult={recordSrsReview}/>;
      case'spelling':return <Spelling data={data} onAttempt={recordSpellingAttempt}/>;
      case'conversation':return <Conversation data={data}/>;
      case'reading':return <Reading data={data}/>;
@@ -272,7 +281,7 @@ export default function StudioApp(){
 
  return <>
    <Shell meta={meta} lesson={lesson} view={view} onLesson={changeLesson} onView={changeView}>
-     <AnimatePresence mode="wait"><motion.div key={`${view}-${lesson}`} initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-4}} transition={{duration:.2,ease:[.2,.8,.2,1]}}>{content}</motion.div></AnimatePresence>
+     <div className="studio-view-content" key={`${view}-${lesson}`}>{content}</div>
    </Shell>
    <KanaPad/><DataVault/>
    {!online&&<div className="nv58-offline-pill" role="status"><WifiOff/> Offline · cached content only</div>}
