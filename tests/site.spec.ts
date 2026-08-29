@@ -3,12 +3,6 @@ import { expect, test } from '@playwright/test';
 
 const views=['dashboard','vocabulary','srs','spelling','conversation','reading','listening','grammar','kanji','kana','arcade','mock','history'];
 
-async function expectLearningView(page:Parameters<typeof test>[0] extends never?never:any){
-  const main=page.locator('main#main-content');
-  await expect(main).toBeVisible();
-  await expect(main.locator('h1,h2').first()).toBeVisible();
-}
-
 test.beforeEach(async({page})=>{
   await page.addInitScript(()=>localStorage.setItem('nv_analytics_consent_v1','declined'));
 });
