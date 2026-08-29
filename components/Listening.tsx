@@ -104,10 +104,11 @@ export default function Listening({data}:{data:LessonPayload}){
   const counts=useMemo(()=>({Dialogue:lines.filter(x=>x.source==='Dialogue').length,Reading:lines.filter(x=>x.source==='Reading').length,Shadowing:lines.filter(x=>x.source==='Shadowing').length}),[lines]);
   const visible=useMemo(()=>lines.map((line,index)=>({line,index})).filter(x=>filter==='All'||x.line.source===filter),[lines,filter]);
 
-  const applyBoundary=(event:AudioBoundary)=>{
-    const start=Math.max(0,Math.min(current.length,event.charIndex));
-    const fallbackLength=event.name==='word'?Math.max(1,event.charLength):Math.max(1,event.charLength||1);
-    setBoundary({start,end:Math.min(current.length,start+fallbackLength)});
+  const applyBoundary=(text:string,event:AudioBoundary)=>{
+    const length=Array.from(text).length;
+    const start=Math.max(0,Math.min(length,event.charIndex));
+    const highlightLength=Math.max(1,event.charLength||1);
+    setBoundary({start,end:Math.min(length,start+highlightLength)});
   };
   const stop=()=>{run.current++;stopAudio();setPlaying(false);setProgress(0);setBoundary(null)};
   const playOne=async(index=active)=>{
@@ -117,7 +118,7 @@ export default function Listening({data}:{data:LessonPayload}){
     const line=lines[index];
     const result=await playText(line.jp,rate,'listening',{
       onProgress:r=>token===run.current&&setProgress(r),
-      onBoundary:event=>token===run.current&&applyBoundary(event),
+      onBoundary:event=>token===run.current&&applyBoundary(line.jp,event),
       onEnd:()=>{if(token===run.current){setPlaying(false);setBoundary(null);setCompleted(x=>({...x,[index]:true}))}}
     },{lesson_number:data.lesson,segment_number:index+1,source:line.source},line.voiceRole);
     if(token===run.current&&result!=='ended'){setPlaying(false);setBoundary(null)}
@@ -132,7 +133,7 @@ export default function Listening({data}:{data:LessonPayload}){
       const line=lines[index];
       const result=await playText(line.jp,rate,'listening',{
         onProgress:r=>token===run.current&&setProgress(r),
-        onBoundary:event=>token===run.current&&applyBoundary(event)
+        onBoundary:event=>token===run.current&&applyBoundary(line.jp,event)
       },{lesson_number:data.lesson,segment_number:index+1,source:line.source,session_mode:'full_shadowing'},line.voiceRole);
       if(result!=='ended'){completedRun=false;break}
       if(token===run.current)setCompleted(x=>({...x,[index]:true}));
