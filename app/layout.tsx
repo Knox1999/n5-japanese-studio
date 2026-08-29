@@ -18,6 +18,19 @@ import '@/styles/v65-production-qa.scss';
 import '@/styles/v66-shell-correction.scss';
 import '@/styles/v67-home-perfect.scss';
 import '@/styles/v68-vocabulary-perfect.scss';
+import '@/styles/v69-srs-perfect.scss';
+import '@/styles/v70-spelling-perfect.scss';
+import '@/styles/v71-conversation-perfect.scss';
+import '@/styles/v72-reading-perfect.scss';
+import '@/styles/v73-listening-perfect.scss';
+import '@/styles/v74-grammar-perfect.scss';
+import '@/styles/v75-kanji-perfect.scss';
+import '@/styles/v76-kana-perfect.scss';
+import '@/styles/v77-arcade-perfect.scss';
+import '@/styles/v78-mock-perfect.scss';
+import '@/styles/v79-history-perfect.scss';
+import '@/styles/v80-privacy-perfect.scss';
+import '@/styles/v81-not-found-perfect.scss';
 
 const SITE = 'https://knox1999.github.io/n5-japanese-studio/';
 
