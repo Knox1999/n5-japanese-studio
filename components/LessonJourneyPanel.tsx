@@ -18,33 +18,49 @@ export default function LessonJourneyPanel({ journey, completed, onOpen, onToggl
   const totalMinutes = journey.stages.reduce((sum, x) => sum + Number(x.estimatedMinutes || 0), 0);
 
   return (
-    <section className="mx-auto mb-6 w-full max-w-7xl rounded-[28px] border border-white/10 bg-white/[.035] p-5 md:p-7" aria-labelledby="lesson-journey-title">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.2em] text-cyan-300"><Map size={15}/> Guided Lesson Journey</div>
-          <h2 id="lesson-journey-title" className="text-2xl font-bold">Lesson {String(journey.lessonId).padStart(2,'0')} · এক ধাপ করে এগোন</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/60">{journey.objective}</p>
-        </div>
-        <div className="min-w-[220px] rounded-2xl border border-white/10 bg-black/15 p-4">
-          <div className="flex items-end justify-between"><span className="text-xs uppercase tracking-[.16em] text-white/40">Progress</span><b className="text-xl">{percent}%</b></div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-cyan-300" style={{width:`${percent}%`}}/></div>
-          <div className="mt-2 flex justify-between text-xs text-white/40"><span>{requiredDone}/{required.length} core stages</span><span>≈ {totalMinutes} min</span></div>
-        </div>
-      </div>
+    <section className="mx-auto mb-5 w-full max-w-7xl rounded-[26px] border border-white/10 bg-white/[.028] p-4 sm:p-5 lg:p-6" aria-labelledby="lesson-journey-title">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,.72fr)_minmax(0,1.28fr)] lg:items-start">
+        <div className="lg:sticky lg:top-24">
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-cyan-300"><Map size={14}/> Guided Lesson Journey</div>
+          <h2 id="lesson-journey-title" className="font-bn text-[clamp(1.45rem,2vw,1.95rem)] font-bold leading-tight">Lesson {String(journey.lessonId).padStart(2,'0')} · এক ধাপ করে এগোন</h2>
+          <p className="font-bn mt-2 max-w-xl text-sm leading-6 text-white/50">{journey.objective}</p>
 
-      <div className="mt-6 grid gap-2">
-        {journey.stages.map((stage, index) => {
-          const done = completed.includes(stage.id);
-          const active = current?.id === stage.id;
-          return <div key={stage.id} className={`flex items-center gap-3 rounded-2xl border p-3 transition ${active?'border-cyan-300/35 bg-cyan-300/[.06]':'border-white/10 bg-black/10'}`}>
-            <button onClick={() => onToggleComplete(stage.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5" aria-label={`${stage.title} ${done?'অসম্পূর্ণ করুন':'সম্পন্ন করুন'}`}>{done?<Check size={17}/>:<Circle size={16} className="text-white/35"/>}</button>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-bold tracking-[.16em] text-white/30">{String(index+1).padStart(2,'0')}</span><b className={done?'text-white/45 line-through':''}>{stage.title}</b>{stage.optional&&<span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/35">optional</span>}</div>
-              <p className="mt-1 text-xs text-white/40">≈ {stage.estimatedMinutes || 0} min {active?'· Next recommended step':''}</p>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-3.5">
+            <div className="flex items-center justify-between gap-4"><span className="text-[10px] font-bold uppercase tracking-[.16em] text-white/35">Lesson progress</span><b className="text-lg">{percent}%</b></div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-cyan-300 transition-all" style={{width:`${percent}%`}}/></div>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-white/35"><span>{requiredDone}/{required.length} core stages</span><span>≈ {totalMinutes} min total</span></div>
+          </div>
+
+          {current && (
+            <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/[.045] p-3.5">
+              <span className="text-[10px] font-bold uppercase tracking-[.16em] text-cyan-200/60">Up next</span>
+              <div className="mt-1 flex items-center justify-between gap-3">
+                <div className="min-w-0"><b className="font-bn block truncate text-sm">{current.title}</b><span className="text-xs text-white/35">≈ {current.estimatedMinutes || 0} min</span></div>
+                {current.targetView && <button onClick={()=>onOpen(current.targetView!,current.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-cyan-100"><Play size={15}/></button>}
+              </div>
             </div>
-            {stage.targetView&&<button onClick={()=>onOpen(stage.targetView!,stage.id)} className="flex items-center gap-1 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/65 hover:bg-white/5">{active?<Play size={15}/>:<ChevronRight size={15}/>}<span className="hidden sm:inline">Open</span></button>}
-          </div>;
-        })}
+          )}
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2">
+          {journey.stages.map((stage, index) => {
+            const done = completed.includes(stage.id);
+            const active = current?.id === stage.id;
+            return (
+              <article key={stage.id} className={`group min-w-0 rounded-2xl border p-3.5 transition ${active?'border-cyan-300/30 bg-cyan-300/[.05] shadow-[0_10px_30px_rgba(0,0,0,.12)]':'border-white/10 bg-black/[.08] hover:border-white/18 hover:bg-white/[.025]'}`}>
+                <div className="flex items-start gap-3">
+                  <button onClick={() => onToggleComplete(stage.id)} className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition ${done?'border-emerald-300/30 bg-emerald-300/10 text-emerald-200':'border-white/15 bg-white/[.035] text-white/30'}`} aria-label={`${stage.title} ${done?'অসম্পূর্ণ করুন':'সম্পন্ন করুন'}`}>{done?<Check size={15}/>:<Circle size={14}/>}</button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2"><span className="text-[10px] font-bold tracking-[.16em] text-white/25">{String(index+1).padStart(2,'0')}</span>{active&&<span className="rounded-full border border-cyan-300/20 bg-cyan-300/[.06] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-200/70">next</span>}{stage.optional&&<span className="rounded-full border border-white/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/30">optional</span>}</div>
+                    <b className={`font-bn mt-1 block truncate text-sm ${done?'text-white/35 line-through':'text-white/80'}`}>{stage.title}</b>
+                    <p className="mt-1 text-[11px] text-white/30">≈ {stage.estimatedMinutes || 0} min</p>
+                  </div>
+                  {stage.targetView&&<button onClick={()=>onOpen(stage.targetView!,stage.id)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/10 text-white/35 transition group-hover:border-cyan-300/20 group-hover:text-cyan-100" aria-label={`${stage.title} খুলুন`}>{active?<Play size={14}/>:<ChevronRight size={14}/>}</button>}
+                </div>
+              </article>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
