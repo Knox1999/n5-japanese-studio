@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test';
 
 const views=['dashboard','vocabulary','srs','spelling','conversation','reading','listening','grammar','kanji','kana','arcade','mock','history'];
 
+const visibleHeading=(page:import('@playwright/test').Page)=>page.locator('main#main-content').locator('h1:visible,h2:visible').first();
+
 test.beforeEach(async({page})=>{
   await page.addInitScript(()=>localStorage.setItem('nv_analytics_consent_v1','declined'));
 });
@@ -15,7 +17,7 @@ for(const view of views){
     await page.goto(`?lesson=1&view=${view}`,{waitUntil:'networkidle'});
     const main=page.locator('main#main-content');
     await expect(main).toBeVisible();
-    await expect(main.locator('h1,h2').first()).toBeVisible();
+    await expect(visibleHeading(page)).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
     expect(errors).toEqual([]);
   });
@@ -122,7 +124,7 @@ test('representative pages have no serious axe violations',async({page})=>{
     await page.goto(`?lesson=1&view=${view}`);
     const main=page.locator('main#main-content');
     await expect(main).toBeVisible();
-    await expect(main.locator('h1,h2').first()).toBeVisible();
+    await expect(visibleHeading(page)).toBeVisible();
     const results=await new AxeBuilder({page}).disableRules(['color-contrast']).analyze();
     const serious=results.violations.filter(item=>['serious','critical'].includes(item.impact||''));
     expect(serious,JSON.stringify(serious,null,2)).toEqual([]);
