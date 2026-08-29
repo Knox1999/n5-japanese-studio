@@ -1,27 +1,27 @@
-name: Deploy The Nihongo Vibes — Production
+name: Verify and Deploy The Nihongo Vibes
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
+      - 'refactor/**'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 env:
   KANJIVG_COMMIT: 61e39cf
 
 concurrency:
-  group: pages
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  verify:
+    name: production-verification
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -32,12 +32,13 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5.6.0
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Setup Node
         uses: actions/setup-node@v4.4.0
         with:
-          node-version: "22"
+          node-version: '22'
+          cache: npm
 
       - name: Repository hygiene
         shell: bash
@@ -77,7 +78,7 @@ jobs:
 
       - name: Build static Next.js site
         env:
-          GITHUB_PAGES: "true"
+          GITHUB_PAGES: 'true'
         run: npm run build
 
       - name: Generate offline app shell
@@ -88,11 +89,40 @@ jobs:
       - name: Final production QA
         run: python scripts/qa_production.py --postbuild
 
-      - name: Install browser for responsive regression tests
-        run: npx playwright install --with-deps chromium
+      - name: Install browsers for responsive regression tests
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Responsive and accessibility regression tests
         run: npm run test:e2e
+
+      - name: Upload verified static export
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-static-export
+          path: ./out
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy:
+    name: deploy-github-pages
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download verified static export
+        uses: actions/download-artifact@v4
+        with:
+          name: verified-static-export
+          path: ./out
 
       - name: Configure Pages
         uses: actions/configure-pages@v5.0.0
