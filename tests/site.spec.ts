@@ -70,17 +70,17 @@ test('Data Vault opens as the only fixed modal and never as page content',async(
   const box=await vault.boundingBox();
   expect(box?.y).toBeGreaterThanOrEqual(0);
   expect((box?.y||0)+(box?.height||0)).toBeLessThanOrEqual((await page.evaluate(()=>window.innerHeight))+1);
-  await vault.getByRole('button',{name:'Close'}).click();
+  await vault.getByRole('button',{name:'Close',exact:true}).click();
   await expect(vault).toBeHidden();
 });
 
 test('Verb Forms Lab shows only the four requested core forms',async({page})=>{
-  await page.goto('?lesson=1&view=vocabulary');
+  await page.goto('?lesson=6&view=vocabulary');
   await page.getByRole('button',{name:/動詞|Verb/}).first().click();
   const formsButton=page.getByRole('button',{name:/Forms/}).first();
   await expect(formsButton).toBeVisible();
   await formsButton.click();
-  const lab=page.getByRole('dialog',{name:/.+/});
+  const lab=page.locator('.verb-lab-layer[role="dialog"]');
   await expect(lab).toBeVisible();
   await expect(lab.locator('.verb-family-box')).toHaveCount(4);
   await expect(lab).toContainText('ます Form');
