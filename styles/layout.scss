@@ -1,0 +1,4 @@
+.future-main,.nv60-main,.nv-final-main{width:100%;min-width:0}
+.future-main>*,.nv60-main>*{min-width:0}
+.home-simple,.home-page-v67{width:min(100%,var(--nv-content-max));margin-inline:auto}
+@media (max-width:640px){.future-main,.nv60-main,.nv-final-main{padding-inline:max(.75rem,env(safe-area-inset-left)) max(.75rem,env(safe-area-inset-right));padding-bottom:calc(5.75rem + env(safe-area-inset-bottom))}}

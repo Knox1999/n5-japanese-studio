@@ -1,0 +1,90 @@
+/* V83 — Global scroll hardening */
+html,
+body{
+  width:100%!important;
+  min-height:100%!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:auto!important;
+  touch-action:pan-y pinch-zoom!important;
+}
+
+html:not(.overlay-open){overflow-y:auto!important}
+body:not(.overlay-open){
+  overflow-y:visible!important;
+  position:static!important;
+  inset:auto!important;
+  max-height:none!important;
+}
+
+.future-shell,
+.nv60-shell,
+.nv-final-shell{
+  width:100%!important;
+  min-height:100dvh!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  position:relative!important;
+}
+.future-main,
+.nv60-main,
+.nv-final-main,
+#main-content{
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  overscroll-behavior-y:auto!important;
+}
+
+/* Only a real full-screen overlay may lock document scrolling. */
+html.overlay-open:has(.future-drawer-layer,.future-search-layer),
+body.overlay-open:has(.future-drawer-layer,.future-search-layer){
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+  touch-action:none!important;
+}
+
+/* Recover immediately from a stale class left by navigation/HMR. */
+html.overlay-open:not(:has(.future-drawer-layer,.future-search-layer)){
+  overflow-y:auto!important;
+  height:auto!important;
+  max-height:none!important;
+  overscroll-behavior-y:auto!important;
+  touch-action:pan-y pinch-zoom!important;
+}
+body.overlay-open:not(:has(.future-drawer-layer,.future-search-layer)){
+  overflow-y:visible!important;
+  position:static!important;
+  inset:auto!important;
+  height:auto!important;
+  min-height:100vh!important;
+  max-height:none!important;
+  overscroll-behavior-y:auto!important;
+  touch-action:pan-y pinch-zoom!important;
+}
+
+/* Nested study lists can scroll themselves, but never swallow page scrolling at the edge. */
+.shadow-list-v57,
+.kanji-browser,
+.grammar-rule-rail,
+.lesson-picker-list,
+.future-drawer,
+.future-search-panel{
+  overscroll-behavior:contain!important;
+}
+
+/* Decorative/floating layers must never intercept wheel or touch gestures. */
+.future-global-ambient,
+.future-global-ambient *,
+body::before,
+body::after{
+  pointer-events:none!important;
+}
+
+@media(max-width:760px){
+  html,body{scrollbar-gutter:auto!important}
+  .future-main,.nv60-main,.nv-final-main{padding-bottom:96px!important}
+}

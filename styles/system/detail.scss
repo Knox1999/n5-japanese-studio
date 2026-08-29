@@ -1,0 +1,98 @@
+/* V86 — second-pass product-wide detail polish */
+
+.future-main>*{min-width:0}
+.study-header,.premium-panel,.toolbar-panel,.action-panel,.metric-card,
+.vocab-clean-card,.srs-card-premium,.practice-card,.conversation-stage-v57,
+.reading-vocab-panel-v57,.shadow-player-v57,.shadow-library-v57,
+.grammar-note-card,.kanji-identity,.jlpt-section-card,.history-card-v65,
+.kana-recognition-lab,.arcade-question-v64{min-width:0!important}
+
+.study-header h1,.study-header h2,.study-header p,
+.future-main h1,.future-main h2,.future-main h3,.future-main p,
+.future-main b,.future-main span,.future-main small{overflow-wrap:anywhere}
+
+/* Consistent surface rhythm */
+[data-view]:not([data-view="dashboard"]) .future-main>div{width:100%}
+[data-view]:not([data-view="dashboard"]) .future-main section+section{margin-top:14px}
+
+/* Buttons/touch targets */
+.future-main button:not(.icon-btn):not(.mini-audio):not(.shadow-transport-v57 button){min-height:40px}
+.future-main button:disabled{cursor:not-allowed!important}
+
+/* Vocabulary */
+[data-view="vocabulary"] .vocab-clean-card{isolation:isolate}
+[data-view="vocabulary"] .vocab-clean-card h2{max-width:100%}
+[data-view="vocabulary"] .example-block{overflow:hidden}
+
+/* SRS */
+[data-view="srs"] .srs-card-premium{width:min(100%,780px)!important}
+[data-view="srs"] .rating-grid button{touch-action:manipulation}
+
+/* Spelling */
+[data-view="spelling"] .practice-card input{width:100%;min-width:0}
+[data-view="spelling"] .practice-card{overflow:hidden}
+
+/* Conversation */
+[data-view="conversation"] .turn-card-v57{overflow-wrap:anywhere}
+[data-view="conversation"] .turn-card-v57 p{max-width:100%}
+
+/* Reading */
+[data-view="reading"] .reading-paper-v57{overflow-wrap:anywhere}
+[data-view="reading"] .reading-paper-v57 p{max-width:100%}
+
+/* Listening */
+[data-view="listening"] .shadow-library-v57,[data-view="listening"] .shadow-player-v57{min-width:0}
+[data-view="listening"] .shadow-list-v57>button>div{min-width:0}
+[data-view="listening"] .shadow-list-v57 p,[data-view="listening"] .shadow-list-v57 b{white-space:normal!important}
+
+/* Grammar */
+[data-view="grammar"] .grammar-note-card{scroll-margin-top:110px}
+[data-view="grammar"] .grammar-example-card{min-width:0}
+[data-view="grammar"] .grammar-pattern-title{overflow-wrap:anywhere}
+
+/* Kanji */
+[data-view="kanji"] .kanji-detail,[data-view="kanji"] .kanji-browser{min-width:0}
+[data-view="kanji"] .recursive-tree-panel{max-width:100%;overflow:auto}
+
+/* Kana */
+[data-view="kana"] .kana-card-browser,[data-view="kana"] .kana-group-rail{scrollbar-width:thin}
+[data-view="kana"] canvas{max-width:100%;height:auto;touch-action:none}
+
+/* Arcade */
+[data-view="arcade"] .arcade-options-v64 button{white-space:normal!important;text-align:left}
+
+/* Mock */
+[data-view="mock"] .mock-question{min-width:0}
+[data-view="mock"] .mock-options button{white-space:normal!important;text-align:left}
+
+/* History */
+[data-view="history"] .history-card-v65{min-width:0}
+
+/* Global horizontal overflow guard */
+.future-main img,.future-main svg:not(.header-big-icon){max-width:100%}
+
+@media(max-width:980px){
+  .future-main,.nv60-main,.nv-final-main{width:calc(100% - 24px)!important}
+  .study-header{padding:20px!important}
+  [data-view="grammar"] .grammar-command-bar{position:relative!important;top:auto!important}
+  [data-view="kanji"] .kanji-browser{position:relative!important;top:auto!important}
+  [data-view="listening"] .shadow-player-v57{position:relative!important;top:auto!important}
+}
+
+@media(max-width:760px){
+  .future-main,.nv60-main,.nv-final-main{width:calc(100% - 16px)!important;padding-left:0!important;padding-right:0!important}
+  .study-header{padding:17px!important;border-radius:18px!important}
+  .study-header h1{font-size:clamp(1.55rem,8vw,2rem)!important}
+  .study-header p{font-size:.86rem!important;line-height:1.65!important}
+  .premium-panel,.toolbar-panel,.action-panel,.practice-card,.srs-card-premium,
+  .shadow-player-v57,.shadow-library-v57,.grammar-note-card,.kanji-identity,
+  .jlpt-section-card,.history-card-v65{border-radius:17px!important}
+  .future-main button{touch-action:manipulation}
+  .future-main input,.future-main textarea,.future-main select{font-size:16px!important}
+}
+
+@media(max-width:420px){
+  .future-main,.nv60-main,.nv-final-main{width:calc(100% - 12px)!important}
+  .study-header{padding:15px!important}
+  .future-main button{max-width:100%}
+}

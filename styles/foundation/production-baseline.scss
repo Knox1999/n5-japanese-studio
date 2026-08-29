@@ -1,0 +1,250 @@
+/* V65 — Production QA / responsive normalization */
+
+:root{
+  --v65-max:1280px;
+  --v65-gap:16px;
+  --v65-touch:44px;
+}
+
+/* Universal content rhythm */
+.future-main>*,.nv60-main>*,.nv-final-main>*{min-width:0}
+.future-main [class*="grid"],.future-main [class*="layout"],.future-main [class*="panel"],.future-main article,.future-main section{min-width:0}
+.future-main img,.future-main svg,.future-main canvas{max-width:100%}
+.future-main button,.future-main input,.future-main select,.future-main textarea{max-width:100%}
+.future-main p,.future-main h1,.future-main h2,.future-main h3,.future-main b,.future-main span{overflow-wrap:anywhere}
+
+/* Shared mobile-safe headers */
+.study-header>div{min-width:0}
+.study-header h1{text-wrap:balance}
+.study-header p{max-width:70ch}
+
+/* Dashboard/Coach/Journey */
+[data-view="dashboard"] .future-main{display:grid;gap:14px}
+[data-view="dashboard"] .future-main>div>section{margin-bottom:14px!important}
+[data-view="dashboard"] .v63-dashboard{gap:14px!important}
+[data-view="dashboard"] .v63-course-overview,[data-view="dashboard"] .v63-course-map,[data-view="dashboard"] .v63-module-section,[data-view="dashboard"] .v63-learning-loop,[data-view="dashboard"] .v63-next-lesson{overflow:hidden}
+
+/* Vocabulary */
+[data-view="vocabulary"] .toolbar-panel{position:relative;z-index:1}
+[data-view="vocabulary"] .search-field{flex:1 1 320px}
+[data-view="vocabulary"] .word-filter-row{flex:1 1 100%;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+[data-view="vocabulary"] .word-filter-row::-webkit-scrollbar{display:none}
+[data-view="vocabulary"] .word-filter-row button{flex:0 0 auto;min-height:40px}
+[data-view="vocabulary"] .vocab-premium-card{height:100%}
+[data-view="vocabulary"] .vocab-card-footer{display:flex;gap:8px;flex-wrap:wrap}
+[data-view="vocabulary"] .vocab-card-footer>*{flex:1 1 150px}
+
+/* SRS */
+[data-view="srs"] .grid.grid-cols-2.gap-3.lg\:grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
+[data-view="srs"] .action-panel{display:flex;align-items:center;gap:13px;text-align:left}
+[data-view="srs"] .action-panel svg{flex:0 0 auto}
+[data-view="srs"] .rating-grid button{min-width:0}
+
+/* Spelling */
+[data-view="spelling"] .practice-card{display:grid;gap:16px}
+[data-view="spelling"] .practice-top{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--v62-muted);font-size:.8rem}
+[data-view="spelling"] .prompt-meaning{text-align:center;font-size:clamp(1.2rem,3vw,1.75rem);font-weight:800;line-height:1.55}
+[data-view="spelling"] .writing-field{display:grid;gap:7px}
+[data-view="spelling"] .writing-field>span{font-size:.72rem;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--v62-muted)}
+[data-view="spelling"] .writing-field input{width:100%;min-height:56px;padding:0 16px;border:1px solid var(--v62-line);color:#fff;font-size:1.1rem;outline:none}
+[data-view="spelling"] .writing-field input:focus{border-color:rgba(84,196,200,.45);box-shadow:0 0 0 3px rgba(84,196,200,.06)}
+[data-view="spelling"] .result-box{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--v62-line);background:rgba(255,255,255,.025)}
+[data-view="spelling"] .result-box>div{min-width:0;flex:1}
+[data-view="spelling"] .result-box.ok{border-color:rgba(117,207,170,.25);background:rgba(117,207,170,.055)}
+[data-view="spelling"] .result-box.bad{border-color:rgba(239,91,85,.25);background:rgba(239,91,85,.05)}
+[data-view="spelling"] .result-box button{min-height:40px;padding:0 13px;border-radius:11px;background:rgba(255,255,255,.06)}
+
+/* Conversation */
+[data-view="conversation"] .conversation-personas-v57{min-width:0}
+[data-view="conversation"] .conversation-control-v57>div{min-width:0}
+[data-view="conversation"] .conversation-stage-v57{overflow:hidden}
+[data-view="conversation"] .conversation-turn-v57{min-width:0}
+[data-view="conversation"] .turn-card-v57{min-width:0;overflow:hidden}
+[data-view="conversation"] .turn-card-v57 header{gap:10px}
+[data-view="conversation"] .turn-card-v57 header>div{min-width:0}
+[data-view="conversation"] .conversation-role-tabs-v57{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}
+[data-view="conversation"] .conversation-role-tabs-v57::-webkit-scrollbar{display:none}
+[data-view="conversation"] .conversation-role-tabs-v57 button{flex:0 0 auto;min-height:42px}
+
+/* Reading */
+[data-view="reading"] .reading-toolbar-v57{flex-wrap:wrap}
+[data-view="reading"] .reading-toolbar-v57 button{min-height:44px;padding:0 14px}
+[data-view="reading"] .reading-paper-v57{overflow:hidden}
+
+/* Listening */
+[data-view="listening"] .shadowing-summary-v57>div{min-width:0}
+[data-view="listening"] .shadow-player-head-v57,[data-view="listening"] .shadow-library-v57>header{gap:12px;flex-wrap:wrap}
+[data-view="listening"] .shadow-transport-v57 button{min-width:var(--v65-touch);min-height:var(--v65-touch)}
+[data-view="listening"] .shadow-speed-v57{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+[data-view="listening"] .shadow-speed-v57 button{min-height:38px;min-width:48px}
+[data-view="listening"] .shadow-list-v57>button{min-width:0}
+[data-view="listening"] .shadow-list-v57>button>div{min-width:0}
+[data-view="listening"] .shadow-list-v57 p,[data-view="listening"] .shadow-list-v57 b{white-space:normal}
+
+/* Grammar */
+[data-view="grammar"] .grammar-studio{min-width:0}
+[data-view="grammar"] .grammar-command-bar{overflow:hidden}
+[data-view="grammar"] .grammar-rule-rail{scrollbar-width:thin}
+[data-view="grammar"] .grammar-matrix-scroll{overflow:auto;max-width:100%}
+[data-view="grammar"] .grammar-matrix table{min-width:660px}
+[data-view="grammar"] .grammar-formula-board{display:flex;align-items:center;flex-wrap:wrap}
+[data-view="grammar"] .grammar-formula-unit{min-width:0}
+[data-view="grammar"] .grammar-example-card>div{min-width:0}
+
+/* Kanji */
+[data-view="kanji"] .kanji-chip-scroll{overflow-x:auto;scrollbar-width:thin}
+[data-view="kanji"] .kanji-chip-scroll button{flex:0 0 auto}
+[data-view="kanji"] .kanji-browser-toggle{min-height:44px}
+[data-view="kanji"] .kanji-detail{min-width:0}
+[data-view="kanji"] .component-card-grid,[data-view="kanji"] .builds-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+[data-view="kanji"] .recursive-tree-scroll{overflow:auto;max-width:100%;padding-bottom:8px}
+[data-view="kanji"] .recursive-node{min-width:max-content}
+[data-view="kanji"] .klc-info-grid-v42{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Mock */
+[data-view="mock"] .mock-sticky-head{overflow:hidden}
+[data-view="mock"] .mock-sticky-head>div{min-width:0}
+[data-view="mock"] .mock-options button{text-align:left}
+[data-view="mock"] .mock-options button b{min-width:0}
+[data-view="mock"] .mock-next-row{display:flex;justify-content:flex-end}
+[data-view="mock"] .mock-result-actions{display:flex;gap:8px;flex-wrap:wrap}
+[data-view="mock"] .mock-result-actions>*{flex:0 1 auto}
+
+/* History */
+.history-view-v65{max-width:1120px;margin:0 auto}
+.history-metrics-v65{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.history-metrics-v65 article{display:grid;gap:3px;padding:16px;border:1px solid var(--v62-line);border-radius:17px;background:rgba(255,255,255,.023)}
+.history-metrics-v65 article svg{width:18px;color:#79d3d5;margin-bottom:5px}
+.history-metrics-v65 article span{font-size:.69rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--v62-muted)}
+.history-metrics-v65 article b{font-size:1.8rem}
+.history-metrics-v65 article small{color:rgba(196,213,223,.4)}
+.history-list-v65{border:1px solid var(--v62-line);border-radius:22px;background:rgba(9,27,43,.52);padding:18px}
+.history-list-v65>header{display:flex;align-items:end;justify-content:space-between;gap:14px;margin-bottom:12px}
+.history-list-v65>header span{font-size:9px;font-weight:800;letter-spacing:.15em;color:#78d1d4}
+.history-list-v65>header h2{font-size:1.25rem;margin-top:4px}
+.history-list-v65>header small{color:var(--v62-muted)}
+.history-list-v65>div{display:grid;gap:8px}
+.history-card-v65{display:grid;grid-template-columns:90px minmax(0,1fr);gap:14px;align-items:center;padding:14px;border:1px solid rgba(255,255,255,.065);border-radius:15px;background:rgba(255,255,255,.018);position:relative;overflow:hidden}
+.history-score-v65{display:grid;place-items:start}.history-score-v65 strong{font-size:1.45rem}.history-score-v65 span{font-size:.68rem;color:var(--v62-muted)}
+.history-copy-v65{min-width:0}.history-copy-v65 small{font-size:9px;letter-spacing:.12em;color:#78d1d4}.history-copy-v65 b{display:block;margin:2px 0 3px}.history-copy-v65 p{font-size:.8rem;color:var(--v62-muted)}
+.history-progress-v65{position:absolute;inset:auto 0 0;height:3px;background:rgba(255,255,255,.04)}.history-progress-v65 i{display:block;height:100%;background:linear-gradient(90deg,#55c5c8,#7bd4ac)}
+
+/* Learning labs */
+[data-view="kana"] .kana-academy-v64,[data-view="arcade"] .practice-arcade-v64{min-width:0}
+[data-view="kana"] .kana-card-browser{scrollbar-width:thin}
+[data-view="kana"] .kana-focus-card>*{min-width:0}
+[data-view="arcade"] .arcade-mode-grid>button{height:100%}
+[data-view="arcade"] .arcade-options button{text-align:left}
+
+/* Floating tools */
+.kana-launcher{z-index:90!important}
+.kana-pad-v42{max-width:min(760px,calc(100vw - 18px))!important;max-height:calc(100vh - 18px)!important;overflow:auto!important}
+.vault-dialog{width:min(620px,calc(100vw - 24px))!important;max-height:calc(100vh - 24px)!important;overflow:auto!important}
+.vault-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vault-actions>button{min-width:0}
+
+/* Tablet */
+@media (max-width:980px){
+  [data-view="srs"] .grid.grid-cols-2.gap-3.lg\:grid-cols-5{grid-template-columns:repeat(3,minmax(0,1fr))}
+  [data-view="kanji"] .klc-info-grid-v42{grid-template-columns:1fr}
+  .history-metrics-v65{grid-template-columns:repeat(2,minmax(0,1fr))}
+  [data-view="grammar"] .grammar-command-bar{position:relative!important;top:auto!important}
+}
+
+/* Phone */
+@media (max-width:700px){
+  :root{--v65-gap:11px}
+  .future-main,.nv60-main,.nv-final-main{padding-top:10px!important}
+  .study-header{margin-bottom:11px!important}
+  .study-header h1{font-size:clamp(1.55rem,8vw,2rem)!important;line-height:1.18!important}
+  .study-header p{font-size:.88rem!important;line-height:1.62!important}
+  .section-kicker{font-size:9px!important;letter-spacing:.14em!important}
+
+  [data-view="dashboard"] .future-main{gap:10px}
+  [data-view="dashboard"] .future-main>div>section{margin-bottom:10px!important}
+
+  [data-view="vocabulary"] .toolbar-panel{display:flex!important;flex-wrap:wrap!important;padding:9px!important}
+  [data-view="vocabulary"] .search-field{flex-basis:100%;min-height:44px!important}
+  [data-view="vocabulary"] .premium-btn{flex:1 1 120px}
+  [data-view="vocabulary"] .vocab-premium-card{padding:15px!important;border-radius:16px!important}
+  [data-view="vocabulary"] .vocab-premium-card h2{font-size:1.8rem!important}
+  [data-view="vocabulary"] .meaning-stack,[data-view="vocabulary"] .example-block{padding:11px!important}
+
+  [data-view="srs"] .grid.grid-cols-2.gap-3.lg\:grid-cols-5{grid-template-columns:1fr 1fr}
+  [data-view="srs"] .metric-card{padding:12px!important}
+  [data-view="srs"] .metric-value{font-size:1.35rem!important}
+  [data-view="srs"] .grid.gap-3.md\:grid-cols-3{grid-template-columns:1fr!important}
+  [data-view="srs"] .srs-card-premium{padding:18px!important;border-radius:20px!important}
+  [data-view="srs"] .srs-card-premium h2{font-size:3rem!important}
+
+  [data-view="spelling"] .practice-card{padding:15px!important;border-radius:18px!important}
+  [data-view="spelling"] .grid.grid-cols-3.gap-2{grid-template-columns:1fr 1fr 1fr}
+  [data-view="spelling"] .grid.grid-cols-2.gap-2{grid-template-columns:1fr}
+  [data-view="spelling"] .result-box{align-items:flex-start;flex-wrap:wrap}
+
+  [data-view="conversation"] .conversation-role-tabs-v57{margin-inline:-2px}
+  [data-view="conversation"] .turn-card-v57{max-width:92%!important}
+  [data-view="conversation"] .turn-card-v57>p{font-size:1.08rem!important}
+  [data-view="conversation"] .conversation-master-play-v57{width:100%}
+
+  [data-view="reading"] .reading-toolbar-v57 button{flex:1 1 150px}
+  [data-view="reading"] .reading-paper-v57{margin-inline:0!important}
+
+  [data-view="listening"] .shadowing-summary-v57{gap:6px!important}
+  [data-view="listening"] .shadowing-summary-v57>div{padding:10px!important;min-height:62px!important}
+  [data-view="listening"] .shadow-player-v57,[data-view="listening"] .shadow-library-v57{padding:13px!important;border-radius:17px!important}
+  [data-view="listening"] .shadow-wave-v57{overflow:hidden}
+  [data-view="listening"] .shadow-list-v57{max-height:none!important}
+  [data-view="listening"] .shadow-list-v57>button{grid-template-columns:auto minmax(0,1fr) auto!important}
+
+  [data-view="grammar"] .grammar-note-card{padding:15px!important;border-radius:17px!important}
+  [data-view="grammar"] .grammar-pattern-title{font-size:1.5rem!important}
+  [data-view="grammar"] .grammar-formula-board{padding:12px!important}
+  [data-view="grammar"] .grammar-token{font-size:.88rem!important}
+  [data-view="grammar"] .grammar-matrix{border-radius:16px!important}
+
+  [data-view="kanji"] .klc-dataset-stats{grid-template-columns:1fr 1fr!important}
+  [data-view="kanji"] .kanji-layout{gap:9px!important}
+  [data-view="kanji"] .kanji-browser{max-height:340px!important}
+  [data-view="kanji"] .kanji-result-grid{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  [data-view="kanji"] .kanji-result-grid button{min-width:0}
+  [data-view="kanji"] .kanji-identity{grid-template-columns:80px minmax(0,1fr)!important;gap:14px!important}
+  [data-view="kanji"] .kanji-glyph{font-size:4rem!important}
+
+  [data-view="mock"] .mock-sticky-head{grid-template-columns:minmax(0,1fr) auto auto!important;gap:8px!important;padding:10px!important}
+  [data-view="mock"] .mock-sticky-head small{font-size:.65rem}
+  [data-view="mock"] .mock-question{padding:15px!important;border-radius:17px!important}
+  [data-view="mock"] .mock-options button{min-height:56px!important;padding:10px 12px!important}
+  [data-view="mock"] .mock-result-actions{display:grid!important;grid-template-columns:1fr!important}
+  [data-view="mock"] .mock-result-actions>*{width:100%}
+
+  .history-metrics-v65{grid-template-columns:1fr 1fr;gap:6px}
+  .history-metrics-v65 article{padding:12px}
+  .history-metrics-v65 article b{font-size:1.45rem}
+  .history-list-v65{padding:12px;border-radius:17px}
+  .history-list-v65>header{display:block}.history-list-v65>header>small{display:block;margin-top:5px}
+  .history-card-v65{grid-template-columns:68px minmax(0,1fr);gap:10px;padding:12px}
+  .history-score-v65 strong{font-size:1.18rem}
+
+  [data-view="kana"] .kana-focus-card{padding:15px!important;border-radius:18px!important}
+  [data-view="kana"] .kana-focus-glyph{font-size:5.5rem!important;border-radius:20px!important}
+  [data-view="kana"] .kana-trace-section,[data-view="kana"] .kana-recognition-lab{padding:14px!important;border-radius:18px!important}
+  [data-view="kana"] .kana-trace-stage{border-radius:18px!important}
+  [data-view="kana"] .kana-trace-stage>span{font-size:9rem!important}
+
+  [data-view="arcade"] .arcade-mode-grid>button{min-height:170px!important;padding:16px!important}
+  [data-view="arcade"] .arcade-mode-grid h2{margin:18px 0 5px!important}
+  [data-view="arcade"] .arcade-runner{border-radius:18px!important}
+  [data-view="arcade"] .arcade-runner>article{padding:17px!important}
+  [data-view="arcade"] .arcade-runner article>h2{font-size:1.65rem!important;margin:14px 0 18px!important}
+
+  .vault-actions{grid-template-columns:1fr}
+  .kana-pad-v42{inset:auto 8px 74px!important;width:auto!important;left:8px!important;right:8px!important;top:auto!important;border-radius:18px!important}
+}
+
+@media (max-width:420px){
+  [data-view="srs"] .grid.grid-cols-2.gap-3.lg\:grid-cols-5{grid-template-columns:1fr 1fr}
+  [data-view="spelling"] .grid.grid-cols-3.gap-2{grid-template-columns:1fr}
+  [data-view="kanji"] .kanji-result-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  .history-metrics-v65{grid-template-columns:1fr 1fr}
+}
