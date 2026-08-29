@@ -66,7 +66,7 @@ export default function KanaAcademy({onAttempt}:Props){
   const items=useMemo(()=>BASE.map(x=>({...x,char:script==='hiragana'?x.h:hiraToKata(x.h)})),[script]);
   const groupItems=items.filter(x=>x.group===group);
   const card=groupItems[Math.min(selected,Math.max(0,groupItems.length-1))]||items[0];
-  const quiz=useMemo(()=>shuffle(items).slice(0,1)[0]||items[0],[items,quizSeed]);
+  const quiz=useMemo(()=>{const rows=shuffle(items);return rows[quizSeed%Math.max(1,rows.length)]||items[0]},[items,quizSeed]);
   const options=useMemo(()=>shuffle([quiz.r,...shuffle(items.filter(x=>x.r!==quiz.r).map(x=>x.r)).slice(0,3)]),[items,quiz]);
   const completed=Object.keys(done).filter(k=>k.startsWith(`${script}:`)&&done[k]).length;
   const total=items.length;
