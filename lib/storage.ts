@@ -59,6 +59,9 @@ export function readLearningState(): LearningState {
           updatedAt: raw.studyPlan.updatedAt || null,
         }
       : fallback.studyPlan,
+    journeyProgress: raw.journeyProgress && typeof raw.journeyProgress === 'object'
+      ? raw.journeyProgress
+      : fallback.journeyProgress,
   };
 }
 
@@ -105,6 +108,9 @@ export function importBackup(value: unknown) {
       version: LEARNING_STATE_VERSION,
       mistakes: Array.isArray(b.learning.mistakes) ? b.learning.mistakes : [],
       studyPlan: b.learning.studyPlan || fallback.studyPlan,
+      journeyProgress: b.learning.journeyProgress && typeof b.learning.journeyProgress === 'object'
+        ? b.learning.journeyProgress
+        : fallback.journeyProgress,
     });
   }
 }
