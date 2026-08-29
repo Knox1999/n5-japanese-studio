@@ -36,7 +36,7 @@ export default function LessonJourneyPanel({ journey, completed, onOpen, onToggl
         {journey.stages.map((stage, index) => {
           const done = completed.includes(stage.id);
           const active = current?.id === stage.id;
-          return <div key={stage.id} className={`flex items-center gap-3 rounded-2xl border p-3 transition ${active?'border-cyan-300/35 bg-cyan-300/[.06]':'border-white/8 bg-black/10'}`}>
+          return <div key={stage.id} className={`flex items-center gap-3 rounded-2xl border p-3 transition ${active?'border-cyan-300/35 bg-cyan-300/[.06]':'border-white/10 bg-black/10'}`}>
             <button onClick={() => onToggleComplete(stage.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5" aria-label={`${stage.title} ${done?'অসম্পূর্ণ করুন':'সম্পন্ন করুন'}`}>{done?<Check size={17}/>:<Circle size={16} className="text-white/35"/>}</button>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-bold tracking-[.16em] text-white/30">{String(index+1).padStart(2,'0')}</span><b className={done?'text-white/45 line-through':''}>{stage.title}</b>{stage.optional&&<span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/35">optional</span>}</div>
