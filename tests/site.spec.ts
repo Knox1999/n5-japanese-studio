@@ -46,6 +46,51 @@ test('mobile drawer receives focus and exposes search',async({page},testInfo)=>{
   await expect(dialog.getByRole('button',{name:'পুরো কোর্সে খুঁজুন'})).toBeFocused();
 });
 
+test('mobile brand lockup stays visible and untruncated',async({page},testInfo)=>{
+  test.skip(testInfo.project.name!=='mobile-chromium');
+  await page.goto('?lesson=1&view=dashboard');
+  const brand=page.locator('.future-header .nv60-brand-copy strong');
+  await expect(brand).toHaveText('THE NIHONGO VIBES');
+  await expect(brand).toBeVisible();
+  const box=await brand.boundingBox();
+  expect(box).not.toBeNull();
+  expect((box?.x||0)+(box?.width||0)).toBeLessThanOrEqual(await page.evaluate(()=>window.innerWidth));
+});
+
+test('Data Vault opens as the only fixed modal and never as page content',async({page},testInfo)=>{
+  test.skip(testInfo.project.name!=='mobile-chromium');
+  await page.goto('?lesson=1&view=dashboard');
+  await page.getByRole('navigation',{name:'মোবাইল নেভিগেশন'}).getByRole('button',{name:'আরও বিভাগ খুলুন'}).click();
+  const drawer=page.getByRole('dialog',{name:'কোর্স মেনু'});
+  await drawer.getByRole('button',{name:/Backup \/ Restore/}).click();
+  await expect(drawer).toBeHidden();
+  const vault=page.getByRole('dialog',{name:'Backup & Restore Progress'});
+  await expect(vault).toBeVisible();
+  expect(await vault.evaluate(el=>getComputedStyle(el).position)).toBe('fixed');
+  const box=await vault.boundingBox();
+  expect(box?.y).toBeGreaterThanOrEqual(0);
+  expect((box?.y||0)+(box?.height||0)).toBeLessThanOrEqual((await page.evaluate(()=>window.innerHeight))+1);
+  await vault.getByRole('button',{name:'Close'}).click();
+  await expect(vault).toBeHidden();
+});
+
+test('Verb Forms Lab shows only the four requested core forms',async({page})=>{
+  await page.goto('?lesson=1&view=vocabulary');
+  await page.getByRole('button',{name:/動詞|Verb/}).first().click();
+  const formsButton=page.getByRole('button',{name:/Forms/}).first();
+  await expect(formsButton).toBeVisible();
+  await formsButton.click();
+  const lab=page.getByRole('dialog',{name:/.+/});
+  await expect(lab).toBeVisible();
+  await expect(lab.locator('.verb-family-box')).toHaveCount(4);
+  await expect(lab).toContainText('ます Form');
+  await expect(lab).toContainText('た Form');
+  await expect(lab).toContainText('ない Form');
+  await expect(lab).toContainText('Dictionary Form');
+  await expect(lab).not.toContainText('ませんでした');
+  await expect(lab).not.toContainText('て Form');
+});
+
 test('vocabulary audio controls have names and touch-sized targets',async({page})=>{
   await page.goto('?lesson=1&view=vocabulary');
   const audio=page.locator('.mini-audio').first();
