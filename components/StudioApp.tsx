@@ -1,16 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Loader2, RefreshCcw, WifiOff, X } from 'lucide-react';
 import type { LessonPayload, MockAttempt, StudioMeta, ViewName } from '@/lib/types';
 import { loadLesson, loadMeta } from '@/lib/data';
-import { readHistory, readLesson, readProgress, readSrs, saveHistory, saveProgress, saveSrs, writeLesson, type ProgressMap, type SrsMap } from '@/lib/storage';
+import { readHistory, readLearningState, readLesson, readProgress, readSrs, saveHistory, saveLearningState, saveProgress, saveSrs, writeLesson, type ProgressMap, type SrsMap } from '@/lib/storage';
+import { buildDailyRecommendations, getRepairQueue, upsertMistake, type LearningState } from '@/lib/learning';
 import { track, trackError, trackVirtualPage } from '@/lib/analytics';
 import { stopAudio } from '@/lib/audio';
 import Shell from './Shell';
 import Dashboard from './Dashboard';
+import DailyCoachPanel from './DailyCoachPanel';
 import Vocabulary from './Vocabulary';
 import KanaPad from './KanaPad';
 import DataVault from './DataVault';
@@ -57,6 +59,7 @@ export default function StudioApp(){
  const [progress,setProgress]=useState<ProgressMap>({});
  const [srs,setSrs]=useState<SrsMap>({});
  const [historyRows,setHistory]=useState<MockAttempt[]>([]);
+ const [learning,setLearning]=useState<LearningState>(()=>({version:1,mistakes:[],studyPlan:{dailyMinutes:20,updatedAt:null}}));
  const [fatal,setFatal]=useState<FatalState>(null);
  const [resourceNotice,setResourceNotice]=useState<ResourceNotice>(null);
  const [metaNonce,setMetaNonce]=useState(0);
@@ -66,7 +69,7 @@ export default function StudioApp(){
  useEffect(()=>{
    const s=urlState();
    setLessonState(s.lesson);setView(s.view);writeLesson(s.lesson);
-   setProgress(readProgress());setSrs(readSrs());setHistory(readHistory());
+   setProgress(readProgress());setSrs(readSrs());setHistory(readHistory());setLearning(readLearningState());
    syncUrl(s.lesson,s.view,true);
  },[]);
 
@@ -135,6 +138,10 @@ export default function StudioApp(){
  const updateProgress=(n:ProgressMap)=>{setProgress(n);saveProgress(n)};
  const addHistory=(a:MockAttempt)=>{setHistory(h=>{const n=[a,...h];saveHistory(n);return n})};
 
+ const updateLearning=(recipe:(prev:LearningState)=>LearningState)=>{
+   setLearning(prev=>{const next=recipe(prev);saveLearningState(next);return next});
+ };
+
  const queueMockMistakes=(ids:number[])=>{
    if(!ids.length)return;
    setSrs(prev=>{
@@ -142,8 +149,27 @@ export default function StudioApp(){
      ids.forEach(id=>{const old=next[String(id)]||{};next[String(id)]={...old,phase:'recall',due_at:now,last_rating:'again',lapses:Number(old.lapses||0)+1}});
      saveSrs(next);return next;
    });
+   updateLearning(prev=>({
+     ...prev,
+     mistakes:ids.reduce((rows,id)=>upsertMistake(rows,{
+       itemId:String(id),lessonId:String(lesson),level:'N5',skill:'mock',questionType:'mock-vocabulary',confidence:'unsure',severity:'high',sourceId:'mock-test'
+     }),prev.mistakes),
+   }));
    track('mock_mistakes_to_srs',{lesson_number:lesson,mistake_count:ids.length});
+   track('mistake_recorded',{lesson_number:lesson,mistake_count:ids.length,source:'mock'});
  };
+
+ const currentMeta=meta?.lessons.find(x=>x.lesson===lesson);
+ const currentMastered=(currentMeta?.ids||[]).reduce((count,id)=>count+(progress[String(id)]?1:0),0);
+ const lessonPct=Math.round(currentMastered/Math.max(1,currentMeta?.count||1)*100);
+ const dueSrs=useMemo(()=>{
+   const now=Date.now();
+   return Object.values(srs).reduce((count,state)=>count+(state.due_at&&new Date(state.due_at).getTime()<=now?1:0),0);
+ },[srs]);
+ const lastMockScore=historyRows[0]?.score;
+ const recommendations=useMemo(()=>buildDailyRecommendations({lesson,lessonPercent:lessonPct,dueSrs,mistakes:learning.mistakes,dailyMinutes:Number(learning.studyPlan.dailyMinutes||20),lastMockScore}),[lesson,lessonPct,dueSrs,learning.mistakes,learning.studyPlan.dailyMinutes,lastMockScore]);
+ const repairCount=useMemo(()=>getRepairQueue(learning.mistakes,500).length,[learning.mistakes]);
+ const setDailyMinutes=(dailyMinutes:number)=>updateLearning(prev=>({...prev,studyPlan:{dailyMinutes,updatedAt:new Date().toISOString()}}));
 
  if(fatal){
    return <div className="nv58-fatal">
@@ -164,7 +190,7 @@ export default function StudioApp(){
 
  const content=(()=>{
    switch(view){
-     case'dashboard':return <Dashboard meta={meta} lesson={lesson} progress={progress} srs={srs} history={historyRows} onNavigate={changeView} onLesson={changeLesson}/>;
+     case'dashboard':return <><DailyCoachPanel plan={learning.studyPlan} recommendations={recommendations} unresolvedMistakes={repairCount} onMinutes={setDailyMinutes} onNavigate={changeView}/><Dashboard meta={meta} lesson={lesson} progress={progress} srs={srs} history={historyRows} onNavigate={changeView} onLesson={changeLesson}/></>;
      case'vocabulary':return <Vocabulary data={data} progress={progress} onToggle={toggleMastery}/>;
      case'srs':return <SRS data={data} meta={meta} srs={srs} progress={progress} onSrsChange={updateSrs} onProgressChange={updateProgress}/>;
      case'spelling':return <Spelling data={data}/>;
