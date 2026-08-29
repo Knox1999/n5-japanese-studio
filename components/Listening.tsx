@@ -61,6 +61,16 @@ function rangeFromProgress(text:string,progress:number,minimumIndex=0){
   const word=words[index];
   return{range:{start:word.start,end:word.end} as ActiveRange,index};
 }
+function rangeFromCharIndex(text:string,charIndex:number,minimumIndex=0){
+  const words=wordRanges(text);if(!words.length)return{range:null as ActiveRange,index:0};
+  const safe=Math.max(0,Math.min(text.length-1,Number.isFinite(charIndex)?charIndex:0));
+  let exact=words.findIndex(word=>safe>=word.start&&safe<word.end);
+  if(exact<0)exact=words.findIndex(word=>word.start>=safe);
+  if(exact<0)exact=words.length-1;
+  const index=Math.max(Math.min(words.length-1,minimumIndex),exact);
+  const word=words[index];
+  return{range:{start:word.start,end:word.end} as ActiveRange,index};
+}
 
 function Waveform({text,progress}:{text:string;progress:number}){
   const peaks=useMemo(()=>Array.from({length:72},(_,i)=>{const code=text.charCodeAt(i%Math.max(1,text.length))||31;const envelope=.62+.38*Math.sin((i/71)*Math.PI);return Math.max(.18,Math.min(1,((.22+((code*(i+9))%73)/100)*envelope))) }),[text]);
@@ -86,13 +96,20 @@ export default function Listening({data}:{data:LessonPayload}){
 
   const resetSync=()=>{setActiveRange(null);lastBoundaryAt.current=0;highlightWordIndex.current=0;highestProgress.current=0};
   const stop=()=>{run.current++;stopAudio();setPlaying(false);setProgress(0);resetSync();setMode('listen')};
-  const applyHighlight=(text:string,nextProgress:number)=>{
+  const applyEstimatedHighlight=(text:string,nextProgress:number)=>{
     const safeProgress=Math.max(highestProgress.current,Math.max(0,Math.min(1,nextProgress)));
     highestProgress.current=safeProgress;
     const mapped=rangeFromProgress(text,safeProgress,highlightWordIndex.current);
     highlightWordIndex.current=mapped.index;
     setActiveRange(mapped.range);
     setProgress(safeProgress);
+  };
+  const applyBoundaryHighlight=(text:string,boundary:AudioBoundary)=>{
+    const mapped=rangeFromCharIndex(text,boundary.charIndex,highlightWordIndex.current);
+    highlightWordIndex.current=mapped.index;
+    highestProgress.current=Math.max(highestProgress.current,boundary.progress);
+    setActiveRange(mapped.range);
+    setProgress(prev=>Math.max(prev,boundary.progress));
   };
 
   const speakLine=async(line:ListeningLine,index:number,token:number,sessionMode:string):Promise<PlaybackResult>=>{
@@ -102,16 +119,14 @@ export default function Listening({data}:{data:LessonPayload}){
       onBoundary:(boundary:AudioBoundary)=>{
         if(token!==run.current)return;
         lastBoundaryAt.current=performance.now();
-        // Boundary progress is relative to the normalized spoken text; map that
-        // ratio to original Japanese word segments instead of reusing charIndex.
-        applyHighlight(line.jp,boundary.progress);
+        applyBoundaryHighlight(line.jp,boundary);
       },
       onProgress:r=>{
         if(token!==run.current)return;
         const now=performance.now();
-        // Use estimated progress only when the voice engine is not supplying
-        // recent word boundaries. The monotonic cursor prevents backtracking.
-        if(!lastBoundaryAt.current||now-lastBoundaryAt.current>700)applyHighlight(line.jp,r);
+        // Engines without reliable boundary events still get a monotonic visual
+        // fallback. Exact browser boundaries always take precedence when present.
+        if(!lastBoundaryAt.current||now-lastBoundaryAt.current>850)applyEstimatedHighlight(line.jp,r);
         else setProgress(prev=>Math.max(prev,r));
       },
     },{lesson_number:data.lesson,segment_number:index+1,source:line.source,session_mode:sessionMode,synchronized_transcript:true,natural_full_sentence:true},line.voiceRole);
