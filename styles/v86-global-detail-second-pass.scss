@@ -1,3 +1,5 @@
+@import './v87-mobile-native-and-reactive-dashboard.scss';
+
 /* V86 — second-pass product-wide detail polish */
 
 .future-main>*{min-width:0}
@@ -12,9 +14,7 @@
 .future-main b,.future-main span,.future-main small{overflow-wrap:anywhere}
 
 /* Consistent surface rhythm */
-[data-view]:not([data-view="dashboard"]) .future-main>div{
-  width:100%;
-}
+[data-view]:not([data-view="dashboard"]) .future-main>div{width:100%}
 [data-view]:not([data-view="dashboard"]) .future-main section+section{margin-top:14px}
 
 /* Buttons/touch targets */
