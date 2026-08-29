@@ -101,8 +101,10 @@ test('mobile SRS session keeps fixed navigation away from study controls',async(
   await expect(reveal).toBeVisible();
   const dock=page.getByRole('navigation',{name:'মোবাইল নেভিগেশন'});
   await expect(dock).toBeHidden();
+  await reveal.scrollIntoViewIfNeeded();
   const revealBox=await reveal.boundingBox();
   expect(revealBox).not.toBeNull();
+  expect(revealBox?.y).toBeGreaterThanOrEqual(0);
   expect((revealBox?.y||0)+(revealBox?.height||0)).toBeLessThanOrEqual((await page.evaluate(()=>window.innerHeight))+1);
 });
 
