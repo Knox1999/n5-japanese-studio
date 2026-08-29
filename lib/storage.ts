@@ -1,5 +1,5 @@
 import type { MockAttempt, SrsCardState } from './types';
-import { createLearningState, LEARNING_STATE_VERSION, type LearningState } from './learning';
+import { createLearningState, LEARNING_STATE_VERSION, normalizeDailyMinutes, type LearningState } from './learning';
 
 export const STORAGE_VERSION = 61;
 export const KEYS = {
@@ -34,7 +34,7 @@ export function readLesson(): number {
 
 export function writeLesson(n: number) {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(KEYS.lesson, String(n));
+  try { window.localStorage.setItem(KEYS.lesson, String(Math.min(25, Math.max(1, Math.round(n))))); } catch {}
 }
 
 export type ProgressMap = Record<string, boolean | number>;
@@ -55,7 +55,7 @@ export function readLearningState(): LearningState {
     mistakes: Array.isArray(raw.mistakes) ? raw.mistakes : [],
     studyPlan: raw.studyPlan && typeof raw.studyPlan === 'object'
       ? {
-          dailyMinutes: Number(raw.studyPlan.dailyMinutes || 20),
+          dailyMinutes: normalizeDailyMinutes(raw.studyPlan.dailyMinutes),
           updatedAt: raw.studyPlan.updatedAt || null,
         }
       : fallback.studyPlan,
@@ -66,7 +66,14 @@ export function readLearningState(): LearningState {
 }
 
 export function saveLearningState(value: LearningState) {
-  writeJSON(KEYS.learning, { ...value, version: LEARNING_STATE_VERSION });
+  writeJSON(KEYS.learning, {
+    ...value,
+    version: LEARNING_STATE_VERSION,
+    studyPlan: {
+      ...value.studyPlan,
+      dailyMinutes: normalizeDailyMinutes(value.studyPlan.dailyMinutes),
+    },
+  });
 }
 
 export interface StudioBackup {
@@ -107,7 +114,12 @@ export function importBackup(value: unknown) {
     saveLearningState({
       version: LEARNING_STATE_VERSION,
       mistakes: Array.isArray(b.learning.mistakes) ? b.learning.mistakes : [],
-      studyPlan: b.learning.studyPlan || fallback.studyPlan,
+      studyPlan: b.learning.studyPlan && typeof b.learning.studyPlan === 'object'
+        ? {
+            dailyMinutes: normalizeDailyMinutes(b.learning.studyPlan.dailyMinutes),
+            updatedAt: b.learning.studyPlan.updatedAt || null,
+          }
+        : fallback.studyPlan,
       journeyProgress: b.learning.journeyProgress && typeof b.learning.journeyProgress === 'object'
         ? b.learning.journeyProgress
         : fallback.journeyProgress,
