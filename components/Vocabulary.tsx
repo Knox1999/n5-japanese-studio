@@ -76,14 +76,14 @@ export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;
       <div>
         <div className="section-kicker">Vocabulary · Lesson {String(data.lesson).padStart(2,'0')}</div>
         <h1>{data.title}</h1>
-        <p className="font-bn">প্রথমে শব্দ, অর্থ, উচ্চারণ ও example—cleanভাবে শিখুন। Verb-এর conjugation দরকার হলে Verb mode থেকে Forms Lab খুলুন।</p>
+        <p className="font-bn">প্রথমে শব্দ, অর্থ, উচ্চারণ ও example—cleanভাবে শিখুন। Verb-এর চারটি core form দরকার হলে Verb mode থেকে Forms Lab খুলুন।</p>
       </div>
       <div className="header-progress"><b>{done}/{data.vocabulary.length}</b><span>Mastered</span><div><i style={{width:`${pct}%`}}/></div></div>
     </section>
 
     <section className="word-class-guide word-class-guide-v54" aria-label="Vocabulary categories">
       <button className={`word-guide-card verb ${filter==='verb'?'active':''}`} onClick={()=>setPrimary('verb')}>
-        <span className="guide-icon"><Layers3/></span><div><b>動詞</b><strong>Verb</strong><small>Forms Lab এখান থেকে খুলুন</small></div><em>{counts.verb||0}</em>
+        <span className="guide-icon"><Layers3/></span><div><b>動詞</b><strong>Verb</strong><small>চারটি core form দেখুন</small></div><em>{counts.verb||0}</em>
       </button>
       <button className={`word-guide-card i-adj ${filter==='i-adjective'?'active':''}`} onClick={()=>setPrimary('i-adjective')}>
         <span className="guide-icon">い</span><div><b>い形容詞</b><strong>い-adjective</strong><small>শুধু এই lesson-এর い-adjective</small></div><em>{counts['i-adjective']||0}</em>
@@ -94,7 +94,7 @@ export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;
     </section>
 
     {filter==='verb'&&<section className="verb-mode-bar">
-      <div className="verb-mode-copy"><span>VERB MODE</span><b>Group বেছে নিন → তারপর প্রয়োজনীয় Verb-এর Forms খুলুন</b></div>
+      <div className="verb-mode-copy"><span>VERB MODE</span><b>Group বেছে নিন → প্রয়োজনীয় Verb-এর ます・た・ない・Dictionary form খুলুন</b></div>
       <div className="verb-mode-tabs">
         {VERB_FILTERS.map(([id,label])=><button key={id} className={verbFilter===id?'active':''} onClick={()=>setVerbMode(id)}>
           {label}<small>{id==='all-verbs'?(counts.verb||0):(counts[id]||0)}</small>
@@ -162,55 +162,13 @@ function VerbFormsLab({v,onClose}:{v:VocabItem;onClose:()=>void}){
   const forms=verbForms(v);
   if(!forms)return null;
 
-  const stem=forms.masu.endsWith('ます')?forms.masu.slice(0,-2):forms.masu;
-  const naiStem=forms.nai.endsWith('ない')?forms.nai.slice(0,-2):forms.nai;
   const play=(text:string,label:string)=>playText(text,1,'verb_form',{}, {lesson_number:v.lesson,word_id:v.id,form_name:label,verb_group:meta.groupId});
 
   const families=[
-    {
-      id:'masu',eyebrow:'01 · ます FORM',title:'Polite tense box',note:'丁寧形',cls:'family-masu',
-      cells:[
-        ['ます',forms.masu,'Present / Future +'],
-        ['ません',forms.masen,'Present / Future −'],
-        ['ました',forms.mashita,'Past +'],
-        ['ませんでした',forms.masenDeshita,'Past −'],
-      ]
-    },
-    {
-      id:'ta',eyebrow:'02 · た FORM',title:'Plain past box',note:'普通形 · 過去',cls:'family-ta',
-      cells:[
-        ['た-form',forms.ta,'Plain Past +'],
-        ['なかった-form',forms.nakatta,'Plain Past −'],
-      ]
-    },
-    {
-      id:'nai',eyebrow:'03 · ない FORM',title:'Negative family box',note:'否定形',cls:'family-nai',
-      cells:[
-        ['ない-form',forms.nai,'Plain Present −'],
-        ['〜ないでください',`${forms.nai}でください`,'Please do not'],
-        ['〜なければなりません',`${naiStem}なければなりません`,'Must do'],
-        ['〜なくてもいいです',`${naiStem}なくてもいいです`,'Need not do'],
-      ]
-    },
-    {
-      id:'dictionary',eyebrow:'04 · DICTIONARY FORM',title:'Plain base box',note:'辞書形',cls:'family-dictionary',
-      cells:[
-        ['Dictionary',forms.dictionary,'Plain Present +'],
-        ['〜たいです',`${stem}たいです`,'Want to do'],
-        ['〜ましょう',`${stem}ましょう`,'Let us do'],
-        ['〜ませんか',`${stem}ませんか`,'Invitation'],
-      ]
-    },
-    {
-      id:'te',eyebrow:'05 · て FORM',title:'Connect & usage box',note:'接続形',cls:'family-te',
-      cells:[
-        ['て-form',forms.te,'Connect / request base'],
-        ['〜ています',`${forms.te}います`,'Ongoing / state'],
-        ['〜てください',`${forms.te}ください`,'Please do'],
-        ['〜てもいいです',`${forms.te}もいいです`,'Permission'],
-        ['〜てはいけません',`${forms.te}はいけません`,'Prohibition'],
-      ]
-    },
+    {id:'masu',eyebrow:'01 · ます FORM',title:'ます Form',note:'丁寧形',cls:'family-masu',cells:[['ます-form',forms.masu,'Polite form']]},
+    {id:'ta',eyebrow:'02 · た FORM',title:'た Form',note:'過去形',cls:'family-ta',cells:[['た-form',forms.ta,'Plain past form']]},
+    {id:'nai',eyebrow:'03 · ない FORM',title:'ない Form',note:'否定形',cls:'family-nai',cells:[['ない-form',forms.nai,'Plain negative form']]},
+    {id:'dictionary',eyebrow:'04 · DICTIONARY FORM',title:'Dictionary Form',note:'辞書形',cls:'family-dictionary',cells:[['Dictionary',forms.dictionary,'Plain base form']]},
   ] as const;
 
   return <div className="verb-lab-layer" role="dialog" aria-modal="true" aria-labelledby="verb-lab-title">
@@ -226,7 +184,7 @@ function VerbFormsLab({v,onClose}:{v:VocabItem;onClose:()=>void}){
       <div className="verb-family-stack">
         {families.map(f=><section className={`verb-family-box ${f.cls}`} key={f.id}>
           <header><div><span>{f.eyebrow}</span><b className="font-bn">{f.title}</b></div><span className="font-jp">{f.note}</span></header>
-          <div className={`verb-family-grid ${f.cells.length===2?'two':''}`}>
+          <div className="verb-family-grid">
             {f.cells.map(([label,value,note])=><FormCell key={`${f.id}-${label}`} label={label} value={value} note={note} onPlay={()=>play(value,label)}/>) }
           </div>
         </section>)}
@@ -236,7 +194,7 @@ function VerbFormsLab({v,onClose}:{v:VocabItem;onClose:()=>void}){
         <AlertTriangle/><div><span>কেন ব্যতিক্রম?</span><b className="font-bn">{meta.irregularTitle}</b><p className="font-bn">{meta.irregularNote}</p></div>
       </section>}
 
-      <footer className="verb-lab-footer font-bn">Vocabulary card clean রাখা হয়েছে। সব conjugation শুধু Verb → Group → Forms খুললে দেখা যাবে।</footer>
+      <footer className="verb-lab-footer font-bn">Core conjugation: ます・た・ない・Dictionary — শুধু এই চারটি form রাখা হয়েছে।</footer>
     </section>
   </div>
 }
