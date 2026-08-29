@@ -44,7 +44,12 @@ export default function PracticeArcade({data,onAttempt}:Props){
   const [score,setScore]=useState(0);
   const [choice,setChoice]=useState<string|null>(null);
   const [finished,setFinished]=useState(false);
-  const questions=useMemo(()=>mode==='meaning-match'?buildMeaning(data):mode==='quick-recognition'?buildRecognition(data):mode==='particle-pick'?buildParticles(data):[],[data,mode,seed]);
+  const questions=useMemo(()=>{
+    const rows=mode==='meaning-match'?buildMeaning(data):mode==='quick-recognition'?buildRecognition(data):mode==='particle-pick'?buildParticles(data):[];
+    if(!rows.length)return rows;
+    const offset=seed%rows.length;
+    return [...rows.slice(offset),...rows.slice(0,offset)];
+  },[data,mode,seed]);
   const q=questions[index];
   const start=(next:GameMode)=>{setMode(next);setSeed(x=>x+1);setIndex(0);setScore(0);setChoice(null);setFinished(false);track('section_open',{section_name:'practice_arcade',game_mode:next,lesson_number:data.lesson})};
   const answer=(value:string)=>{if(!q||choice)return;setChoice(value);const ok=value===q.correct;if(ok)setScore(x=>x+1);onAttempt?.({itemId:q.id,userAnswer:value,correctAnswer:q.correct,correct:ok,questionType:q.type,skill:q.skill});track('practice_result',{practice_type:`arcade_${q.type}`,result:ok?'correct':'wrong',lesson_number:data.lesson});};
