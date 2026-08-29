@@ -31,6 +31,9 @@ import '@/styles/v78-mock-perfect.scss';
 import '@/styles/v79-history-perfect.scss';
 import '@/styles/v80-privacy-perfect.scss';
 import '@/styles/v81-not-found-perfect.scss';
+import '@/styles/v82-listening-red-studio.scss';
+import '@/styles/v83-scroll-hardening.scss';
+import '@/styles/v84-final-responsive-polish.scss';
 
 const SITE = 'https://knox1999.github.io/n5-japanese-studio/';
 
