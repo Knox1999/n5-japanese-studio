@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import json,re,sys
+import json,sys
 
 ROOT=Path(__file__).resolve().parents[1]
 checks=[]
@@ -22,6 +22,7 @@ kanji=(ROOT/"components/KanjiExplorer.tsx").read_text(encoding="utf-8")
 spell=(ROOT/"components/Spelling.tsx").read_text(encoding="utf-8")
 app=(ROOT/"components/StudioApp.tsx").read_text(encoding="utf-8")
 dashboard=(ROOT/"components/Dashboard.tsx").read_text(encoding="utf-8")
+daily=(ROOT/"components/DailyCoachPanel.tsx").read_text(encoding="utf-8")
 srs=(ROOT/"components/SRS.tsx").read_text(encoding="utf-8")
 shell=(ROOT/"components/Shell.tsx").read_text(encoding="utf-8")
 audio=(ROOT/"lib/audio.ts").read_text(encoding="utf-8")
@@ -41,7 +42,7 @@ check("<KanaPad/>" in app,"Global Kana Pad mounted")
 check("ひらがな" in kana and "カタカナ" in kana,"Hiragana/Katakana modes")
 check("Recursive KLC Construction" in kanji and "RecursiveNode" in kanji,"Recursive KLC tree UI")
 
-check('Link href="/?view=dashboard"' in notfound,"404 uses basePath-aware Next Link")
+check("NEXT_PUBLIC_BASE_PATH" in notfound and 'href={`${basePath}/?view=dashboard`}' in notfound,"404 uses basePath-aware Next Link")
 check("Global Due Queue" in srs and "startGlobal" in srs,"Global SRS due queue present")
 check("dueByLesson" in srs,"Lesson-by-lesson due map present")
 check("meta={meta}" in app,"StudioApp passes metadata to SRS")
@@ -64,13 +65,15 @@ check("v58-design-system.scss" in layout,"V58 compatibility design system retain
 check("v44-editorial.scss" not in layout and "v51-masterpiece.scss" not in layout,"Obsolete global style layers removed")
 check("--nv-bg:#031326" in ui58 and "--nv-touch:44px" in ui58,"44px canonical base tokens")
 check("@media(max-width:760px)" in ui58 and "min-height:var(--nv-touch)" in ui58,"Mobile touch target baseline")
+check("v87-mobile-native-and-reactive-dashboard.scss" in layout,"True mobile app layout loaded")
+check("v88-universal-phone-compat.scss" in layout,"Universal phone compatibility layer loaded")
 
-compact_dashboard=re.sub(r"\s+","",dashboard)
-check("TODAY&apos;SSTUDY" in compact_dashboard or "TODAY'SSTUDY" in compact_dashboard,"Today's Study present")
-check(bool(re.search(r"currentPct\s*>=\s*80\s*&&\s*currentDue\s*===\s*0",dashboard)),"Lesson completion rule encoded")
-check("80% vocabulary mastered" in dashboard and "0 due SRS card" in dashboard,"Completion rule visible")
+check("DAILY STUDY COACH" in daily and "এখন কী পড়বেন?" in daily and "Next best action" in daily,"Daily Study Coach present")
+check("COURSE PULSE · LIVE ON THIS DEVICE" in dashboard and "readStudyActivity" in dashboard,"Reactive dashboard present")
+check("complete:pct>=80" in dashboard.replace(" ","") and "Vocabulary mastery" in dashboard,"Vocabulary mastery completion rule encoded")
+check("vocabulary mastery map" in dashboard and "এখানকার % শুধু vocabulary mastery দেখায়" in dashboard,"Vocabulary-only mastery semantics visible")
+check("এক lesson · সব core skill connected" in dashboard and "Lesson খুলুন" in dashboard,"Bangla-first connected learning dashboard")
 
-check("বাংলায় বুঝুন" in dashboard and "জাপানিজে আত্মবিশ্বাসী হন" in dashboard,"Approved Bangla-first hero")
 check("MOBILE_PRIMARY" in shell and shell.count("'dashboard','vocabulary','srs','listening'")==1,"4 primary mobile destinations + More")
 check("future-subnav" not in shell,"Duplicate Quick Access subnav removed")
 check("শব্দভান্ডার" in shell and "স্মার্ট রিভিউ" in shell,"Bangla-first navigation")
@@ -124,7 +127,7 @@ check(len(lessons)==25,"25 visual grammar lessons")
 check(len(rules)>=100 and len(examples)>=500,"Grammar rule/example scale retained")
 check(all(len(r.get("examples") or [])==5 for r in rules),"Exactly 5 examples per visual grammar rule")
 check("G-FG3JCWGSPR" in layout,"GA4 ID preserved")
-check("AnalyticsConsent" in layout and "consent==='accepted'" in consent,"Analytics gated behind explicit consent")
+check("AnalyticsConsent" in layout and "if(consent!=='accepted') return null" in consent and "gtag('config'" in consent,"Analytics remains explicit opt-in")
 check((ROOT/"app/privacy/page.tsx").exists(),"Privacy page present")
 check("playbackGeneration" in audio and "exclusive_audio:true" in audio,"One-audio-at-a-time mutex")
 check(package.get("version")=="61.0.0","V61 release metadata")
