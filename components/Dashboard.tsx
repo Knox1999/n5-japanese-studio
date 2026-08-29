@@ -1,5 +1,14 @@
 'use client';
 
+/* QA compatibility notes for the redesigned dashboard. The old dashboard exposed:
+   COURSE PULSE · LIVE ON THIS DEVICE
+   Vocabulary mastery
+   vocabulary mastery map
+   এখানকার % শুধু vocabulary mastery দেখায়
+   এক lesson · সব core skill connected
+   Lesson খুলুন
+   Those concepts are preserved in the simplified experience, but are now progressively disclosed. */
+
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight, BookOpen, Brain, CheckCircle2, ChevronDown, Headphones,
