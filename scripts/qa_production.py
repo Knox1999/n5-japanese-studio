@@ -68,7 +68,7 @@ check("@media(max-width:760px)" in ui58 and "min-height:var(--nv-touch)" in ui58
 check("v87-mobile-native-and-reactive-dashboard.scss" in layout,"True mobile app layout loaded")
 check("v88-universal-phone-compat.scss" in layout,"Universal phone compatibility layer loaded")
 
-check("DAILY STUDY COACH" in daily and "এখন কী পড়বেন?" in daily and "Next best action" in daily,"Daily Study Coach present")
+check("Daily Study Coach" in daily and "এখন কী পড়বেন?" in daily and "Next best action" in daily,"Daily Study Coach present")
 check("COURSE PULSE · LIVE ON THIS DEVICE" in dashboard and "readStudyActivity" in dashboard,"Reactive dashboard present")
 check("complete:pct>=80" in dashboard.replace(" ","") and "Vocabulary mastery" in dashboard,"Vocabulary mastery completion rule encoded")
 check("vocabulary mastery map" in dashboard and "এখানকার % শুধু vocabulary mastery দেখায়" in dashboard,"Vocabulary-only mastery semantics visible")
