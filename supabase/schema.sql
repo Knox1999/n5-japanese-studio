@@ -79,16 +79,15 @@ for update to authenticated
 using (auth.uid()=user_id)
 with check (auth.uid()=user_id);
 
-drop policy if exists "profile admin status update" on public.user_profiles;
-create policy "profile admin status update" on public.user_profiles
-for update to authenticated
-using (public.is_admin())
-with check (public.is_admin());
-
 drop policy if exists "profile own insert" on public.user_profiles;
 create policy "profile own insert" on public.user_profiles
 for insert to authenticated
 with check (auth.uid()=user_id);
+
+-- Limit normal authenticated updates to harmless profile columns. Status is admin-RPC only.
+revoke update on public.user_profiles from authenticated;
+grant select,insert on public.user_profiles to authenticated;
+grant update(email,display_name,last_active_at) on public.user_profiles to authenticated;
 
 -- Progress is strictly per-user; admins may read it for support, but student writes remain self-only.
 drop policy if exists "progress own or admin read" on public.user_progress;
@@ -107,11 +106,39 @@ for update to authenticated
 using (auth.uid()=user_id)
 with check (auth.uid()=user_id);
 
+grant select,insert,update on public.user_progress to authenticated;
+
 -- Users may read their own role; admins may inspect role assignments.
 drop policy if exists "role own or admin read" on public.user_roles;
 create policy "role own or admin read" on public.user_roles
 for select to authenticated
 using (auth.uid()=user_id or public.is_admin());
+
+grant select on public.user_roles to authenticated;
+revoke insert,update,delete on public.user_roles from authenticated;
+
+-- Admin-only account status mutation. This avoids exposing status updates to students.
+create or replace function public.set_user_status(target_user_id uuid,new_status text)
+returns void
+language plpgsql
+security definer
+set search_path=public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'admin access required';
+  end if;
+  if new_status not in ('active','disabled') then
+    raise exception 'invalid account status';
+  end if;
+  update public.user_profiles
+  set status=new_status
+  where user_id=target_user_id;
+end;
+$$;
+
+revoke all on function public.set_user_status(uuid,text) from public;
+grant execute on function public.set_user_status(uuid,text) to authenticated;
 
 -- Intentionally no browser policy that lets a user promote themselves to admin.
 -- Assign the first admin from the SQL editor/service-role environment only:
