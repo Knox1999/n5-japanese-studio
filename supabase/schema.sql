@@ -1,7 +1,11 @@
 -- The Nihongo Vibes secure multi-user schema.
--- Run in a Supabase project SQL editor. Never expose the service-role key to the browser.
+-- Client code may contain only the public project URL/publishable key. Never expose service-role secrets.
 
 create extension if not exists pgcrypto;
+create schema if not exists private;
+revoke all on schema private from public;
+revoke all on schema private from anon;
+grant usage on schema private to authenticated;
 
 create table if not exists public.user_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -28,27 +32,27 @@ alter table public.user_profiles enable row level security;
 alter table public.user_progress enable row level security;
 alter table public.user_roles enable row level security;
 
-create or replace function public.is_admin()
+create or replace function private.is_admin()
 returns boolean
 language sql
 stable
 security definer
-set search_path=public
+set search_path=public,private
 as $$
   select exists(
     select 1 from public.user_roles
     where user_id=auth.uid() and role='admin'
   );
 $$;
+revoke all on function private.is_admin() from public;
+revoke all on function private.is_admin() from anon;
+grant execute on function private.is_admin() to authenticated;
 
-revoke all on function public.is_admin() from public;
-grant execute on function public.is_admin() to authenticated;
-
-create or replace function public.handle_new_user()
+create or replace function private.handle_new_user()
 returns trigger
 language plpgsql
 security definer
-set search_path=public
+set search_path=public,private
 as $$
 begin
   insert into public.user_profiles(user_id,email,display_name)
@@ -61,11 +65,14 @@ begin
   return new;
 end;
 $$;
+revoke all on function private.handle_new_user() from public;
+revoke all on function private.handle_new_user() from anon;
+revoke all on function private.handle_new_user() from authenticated;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
-for each row execute function public.handle_new_user();
+for each row execute function private.handle_new_user();
 
 -- Backfill Auth users that existed before this schema/trigger was installed.
 insert into public.user_profiles(user_id,email,display_name,joined_at,last_active_at)
@@ -82,11 +89,11 @@ insert into public.user_roles(user_id,role)
 select id,'student' from auth.users
 on conflict(user_id) do nothing;
 
--- Students can only read/update their own profile. Admins can support all users.
+-- Students read only their own profile; admins can support all users.
 drop policy if exists "profile own or admin read" on public.user_profiles;
 create policy "profile own or admin read" on public.user_profiles
 for select to authenticated
-using (auth.uid()=user_id or public.is_admin());
+using (auth.uid()=user_id or private.is_admin());
 
 drop policy if exists "profile own update" on public.user_profiles;
 create policy "profile own update" on public.user_profiles
@@ -99,16 +106,21 @@ create policy "profile own insert" on public.user_profiles
 for insert to authenticated
 with check (auth.uid()=user_id);
 
--- Limit normal authenticated updates to harmless profile columns. Status is admin-RPC only.
+drop policy if exists "profile admin update" on public.user_profiles;
+create policy "profile admin update" on public.user_profiles
+for update to authenticated
+using (private.is_admin())
+with check (private.is_admin());
+
 revoke update on public.user_profiles from authenticated;
 grant select,insert on public.user_profiles to authenticated;
-grant update(email,display_name,last_active_at) on public.user_profiles to authenticated;
+grant update(email,display_name,last_active_at,status) on public.user_profiles to authenticated;
 
--- Progress is strictly per-user; admins may read it for support, but student writes remain self-only.
+-- Progress is strictly per-user; admins may read it for support.
 drop policy if exists "progress own or admin read" on public.user_progress;
 create policy "progress own or admin read" on public.user_progress
 for select to authenticated
-using (auth.uid()=user_id or public.is_admin());
+using (auth.uid()=user_id or private.is_admin());
 
 drop policy if exists "progress own insert" on public.user_progress;
 create policy "progress own insert" on public.user_progress
@@ -127,20 +139,20 @@ grant select,insert,update on public.user_progress to authenticated;
 drop policy if exists "role own or admin read" on public.user_roles;
 create policy "role own or admin read" on public.user_roles
 for select to authenticated
-using (auth.uid()=user_id or public.is_admin());
+using (auth.uid()=user_id or private.is_admin());
 
 grant select on public.user_roles to authenticated;
 revoke insert,update,delete on public.user_roles from authenticated;
 
--- Admin-only account status mutation. This avoids exposing status updates to students.
+-- Admin-only status mutation. SECURITY INVOKER means RLS still applies.
 create or replace function public.set_user_status(target_user_id uuid,new_status text)
 returns void
 language plpgsql
-security definer
-set search_path=public
+security invoker
+set search_path=public,private
 as $$
 begin
-  if not public.is_admin() then
+  if not private.is_admin() then
     raise exception 'admin access required';
   end if;
   if new_status not in ('active','disabled') then
@@ -151,12 +163,12 @@ begin
   where user_id=target_user_id;
 end;
 $$;
-
 revoke all on function public.set_user_status(uuid,text) from public;
+revoke all on function public.set_user_status(uuid,text) from anon;
 grant execute on function public.set_user_status(uuid,text) to authenticated;
 
--- Intentionally no browser policy that lets a user promote themselves to admin.
--- Assign the first admin from the SQL editor/service-role environment only:
+-- Intentionally no browser policy allows a user to promote themselves to admin.
+-- Assign the first admin only from a trusted SQL/service-role environment:
 -- update public.user_roles set role='admin' where user_id='<ADMIN_UUID>';
 
 create or replace view public.admin_user_directory
@@ -177,6 +189,8 @@ left join public.user_roles r on r.user_id=p.user_id
 left join public.user_progress g on g.user_id=p.user_id;
 
 grant select on public.admin_user_directory to authenticated;
-
 comment on view public.admin_user_directory is
 'Admin reporting source for Google Sheets sync. Contains account metadata and progress summary, never passwords.';
+
+drop function if exists public.handle_new_user();
+drop function if exists public.is_admin();
