@@ -8,6 +8,7 @@ export type LearningSkill =
   | 'particles' | 'reading' | 'spelling' | 'conversation' | 'mock' | 'game';
 export type ConfidenceLevel = 'guess' | 'unsure' | 'confident';
 export type MistakeSeverity = 'low' | 'medium' | 'high';
+export type DailyMinutes = 5 | 10 | 20 | 30 | 45;
 
 export interface MistakeRecord {
   id: string;
@@ -36,7 +37,7 @@ export interface ConfidenceRecord {
 }
 
 export interface StudyPlan {
-  dailyMinutes: 5 | 10 | 20 | 30 | 45 | number;
+  dailyMinutes: DailyMinutes;
   updatedAt: string | null;
 }
 

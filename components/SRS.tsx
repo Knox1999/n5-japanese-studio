@@ -10,13 +10,16 @@ import { playText } from '@/lib/audio';
 import { track, trackError } from '@/lib/analytics';
 
 const DAY=86400000;
+type ReviewRating='again'|'hard'|'good'|'easy';
+type ReviewResult={itemId:number;lesson:number;rating:ReviewRating;correctAnswer:string};
 function def():SrsCardState{return{phase:'learn',repetitions:0,lapses:0,ease:2.3,interval_days:0,due_at:null,last_rating:null,recall_count:0,use_count:0}}
 function shuffled<T>(a:T[]){const x=[...a];for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}return x}
 function dueNow(st?:SrsCardState){return !!st?.due_at&&new Date(st.due_at).getTime()<=Date.now()}
 
-export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange}:{
+export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange,onReviewResult}:{
   data:LessonPayload;meta:StudioMeta;srs:SrsMap;progress:ProgressMap;
-  onSrsChange:(v:SrsMap)=>void;onProgressChange:(v:ProgressMap)=>void
+  onSrsChange:(v:SrsMap)=>void;onProgressChange:(v:ProgressMap)=>void;
+  onReviewResult?:(result:ReviewResult)=>void
 }){
   const [session,setSession]=useState<VocabItem[]>([]);
   const [idx,setIdx]=useState(0);
@@ -70,7 +73,7 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
 
   const card=session[idx];
 
-  const rate=(rating:'again'|'hard'|'good'|'easy')=>{
+  const rate=(rating:ReviewRating)=>{
     if(!card)return;
     const old=srs[String(card.id)]||def();
     let ease=Number(old.ease||2.3),interval=Number(old.interval_days||0),reps=Number(old.repetitions||0),lapses=Number(old.lapses||0),next=old.phase||'learn';
@@ -82,6 +85,7 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
     const nextS={...srs,[String(card.id)]:{...old,phase:next,repetitions:reps,lapses,ease,interval_days:interval,due_at:new Date(Date.now()+interval*DAY).toISOString(),last_rating:rating}};
     onSrsChange(nextS);
     if(interval>=7||reps>=5)onProgressChange({...progress,[String(card.id)]:true});
+    onReviewResult?.({itemId:card.id,lesson:card.lesson||data.lesson,rating,correctAnswer:card.kanji||card.japanese});
     track('practice_result',{practice_type:'srs',result:rating,word_id:card.id,lesson_number:card.lesson||data.lesson,queue_scope:scope});
     setReveal(false);
     if(idx+1>=session.length){setSession([]);setIdx(0)}else setIdx(x=>x+1)

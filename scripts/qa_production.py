@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import json,sys
+import json,re,sys
 
 ROOT=Path(__file__).resolve().parents[1]
 checks=[]
@@ -23,6 +23,7 @@ spell=(ROOT/"components/Spelling.tsx").read_text(encoding="utf-8")
 app=(ROOT/"components/StudioApp.tsx").read_text(encoding="utf-8")
 dashboard=(ROOT/"components/Dashboard.tsx").read_text(encoding="utf-8")
 daily=(ROOT/"components/DailyCoachPanel.tsx").read_text(encoding="utf-8")
+journey=(ROOT/"components/LessonJourneyPanel.tsx").read_text(encoding="utf-8")
 srs=(ROOT/"components/SRS.tsx").read_text(encoding="utf-8")
 shell=(ROOT/"components/Shell.tsx").read_text(encoding="utf-8")
 audio=(ROOT/"lib/audio.ts").read_text(encoding="utf-8")
@@ -34,8 +35,11 @@ manifest=json.loads((ROOT/"public/manifest.webmanifest").read_text(encoding="utf
 package=json.loads((ROOT/"package.json").read_text(encoding="utf-8"))
 workflow=(ROOT/".github/workflows/deploy-pages.yml").read_text(encoding="utf-8")
 consent=(ROOT/"components/AnalyticsConsent.tsx").read_text(encoding="utf-8")
-ui58=(ROOT/"styles/v58-design-system.scss").read_text(encoding="utf-8")
-ui60=(ROOT/"styles/v60-ultimate.scss").read_text(encoding="utf-8")
+style_index=(ROOT/"styles/index.scss").read_text(encoding="utf-8")
+tokens=(ROOT/"styles/tokens.scss").read_text(encoding="utf-8")
+ui58=(ROOT/"styles/foundation/design-system.scss").read_text(encoding="utf-8")
+ui60=(ROOT/"styles/foundation/platform.scss").read_text(encoding="utf-8")
+tests=(ROOT/"tests/site.spec.ts").read_text(encoding="utf-8")
 
 check('data-kana-input="Spelling answer"' in spell,"Spelling wired to Kana Pad")
 check("<KanaPad/>" in app,"Global Kana Pad mounted")
@@ -50,7 +54,8 @@ check("meta={meta}" in app,"StudioApp passes metadata to SRS")
 check("APP_SHELL" in sw,"PWA app-shell source present")
 check((ROOT/"scripts/build_sw.py").exists(),"Post-build service-worker generator present")
 check("python scripts/build_sw.py out" in workflow,"Deployment generates service worker")
-check(manifest.get("background_color")=="#031326" and manifest.get("theme_color")=="#031326","PWA navy palette retained")
+check(manifest.get("background_color")=="#06172d" and manifest.get("theme_color")=="#06172d","PWA semantic navy palette retained")
+check("dataNetworkFirst" in (ROOT/"scripts/build_sw.py").read_text(encoding="utf-8"),"JSON offline fallback cannot return HTML shell")
 
 check("maxAttempts=3" in data and "AbortController" in data,"Data retry + timeout")
 check("Search index unavailable" in shell and "Retry search" in shell,"Search retry/error state")
@@ -61,18 +66,20 @@ check("aria-label={`${v.kanji||v.japanese} শব্দের উদাহরণ
 check("nv:resource-error" in audio,"Audio final error notice")
 check("nv:resource-error" in app and "Retry" in app,"Global resource error UI")
 
-check("v58-design-system.scss" in layout,"V58 compatibility design system retained")
-check("v44-editorial.scss" not in layout and "v51-masterpiece.scss" not in layout,"Obsolete global style layers removed")
-check("--nv-bg:#031326" in ui58 and "--nv-touch:44px" in ui58,"44px canonical base tokens")
-check("@media(max-width:760px)" in ui58 and "min-height:var(--nv-touch)" in ui58,"Mobile touch target baseline")
-check("v87-mobile-native-and-reactive-dashboard.scss" in layout,"True mobile app layout loaded")
-check("v88-universal-phone-compat.scss" in layout,"Universal phone compatibility layer loaded")
+check("@/styles/index.scss" in layout,"Single semantic production stylesheet entrypoint")
+check(not re.search(r"v\d+[\w-]*\.scss",layout),"Versioned stylesheet patches removed from production layout")
+check("./foundation/design-system" in style_index and "./modules/listening" in style_index and "./system/accessibility" in style_index,"Semantic style architecture loaded")
+check("--nv-bg:#06172d" in tokens and "--nv-touch:44px" in tokens,"Canonical semantic design tokens")
+check("@media(max-width:760px)" in ui58 and "min-height:var(--nv-touch)" in ui58,"Mobile touch target baseline retained")
+check((ROOT/"styles/system/mobile.scss").exists() and "./system/mobile" in style_index,"True mobile app layout loaded")
+check((ROOT/"styles/system/phone.scss").exists() and "./system/phone" in style_index,"Universal phone compatibility layer loaded")
 
 check("Daily Study Coach" in daily and "এখন কী পড়বেন?" in daily and "Next best action" in daily,"Daily Study Coach present")
-check("COURSE PULSE · LIVE ON THIS DEVICE" in dashboard and "readStudyActivity" in dashboard,"Reactive dashboard present")
-check("complete:pct>=80" in dashboard.replace(" ","") and "Vocabulary mastery" in dashboard,"Vocabulary mastery completion rule encoded")
-check("vocabulary mastery map" in dashboard and "এখানকার % শুধু vocabulary mastery দেখায়" in dashboard,"Vocabulary-only mastery semantics visible")
-check("এক lesson · সব core skill connected" in dashboard and "Lesson খুলুন" in dashboard,"Bangla-first connected learning dashboard")
+check("Guided Lesson Journey" in journey and "Lesson progress" in journey,"Guided lesson journey present")
+check("readStudyActivity" in dashboard and "coach" in dashboard and "journey" in dashboard,"Reactive dashboard uses connected guidance")
+check("complete:pct>=80" in dashboard.replace(" ","") and "এই lesson-এর vocabulary" in dashboard,"Vocabulary mastery completion semantics retained")
+check("আরও explore করুন" in dashboard and "Learning tools" in dashboard,"Secondary tools progressively disclosed")
+check("buildDailyRecommendations" in app and "buildLessonJourney" in app and "getRepairQueue" in app,"Shared learning state drives dashboard guidance")
 
 check("MOBILE_PRIMARY" in shell and shell.count("'dashboard','vocabulary','srs','listening'")==1,"4 primary mobile destinations + More")
 check("future-subnav" not in shell,"Duplicate Quick Access subnav removed")
@@ -97,7 +104,7 @@ check("SpeechSynthesisUtterance" in audio and "speechSynthesis" in audio,"Browse
 check("voiceschanged" in audio and "getVoices()" in audio,"Japanese device voice discovery")
 check("ja-JP" in audio and "web-speech-api-ja-JP" in audio,"Japanese browser voice selected")
 check("billed_api:false" in audio and "AZURE_SPEECH" not in workflow,"No paid speech API or credentials")
-check("splitForSpeech" in audio,"Long Japanese text chunking")
+check("splitSpeech" in audio and "speechToDisplay" in audio,"Long Japanese text chunking with display-boundary mapping")
 check("rolePitch" in audio and "pickVoice" in audio,"Distinct dialogue role voices")
 check("playDialogueTrack" in audio,"Full dialogue track helper present")
 check("innerHTML" not in kanji and "safeStrokeSvg" in kanji and "replaceChildren" in kanji,"Kanji SVG runtime injection hardened")
@@ -108,8 +115,8 @@ check("vocabulary:20" in mock and "'grammar-reading':20" in mock and "listening:
 check("minutes:{vocabulary:20,'grammar-reading':40,listening:30}" in mock.replace(" ",""),"Full 20/40/30 timing blueprint")
 check("onReviewMistakes" in mock,"Vocabulary mistakes can return to Recall")
 
-check("/* FINAL_PRODUCTION_NEO_TORII */" in ui60,"Final Neo Torii style block applied")
-check("#050D18" in ui60 and "#EF3F3A" in ui60 and "#F7F9FC" in ui60,"Final navy/red/white palette encoded")
+check("/* FINAL_PRODUCTION_NEO_TORII */" in ui60,"Final Neo Torii style foundation retained")
+check("#050D18" in ui60 and "#EF3F3A" in ui60 and "#F7F9FC" in ui60,"Navy/red/white brand foundation retained")
 
 for logo in [
     "nihongo-vibes-logo-96.png",
@@ -130,10 +137,12 @@ check("G-FG3JCWGSPR" in layout,"GA4 ID preserved")
 check("AnalyticsConsent" in layout and "if(consent!=='accepted') return null" in consent and "gtag('config'" in consent,"Analytics remains explicit opt-in")
 check((ROOT/"app/privacy/page.tsx").exists(),"Privacy page present")
 check("playbackGeneration" in audio and "exclusive_audio:true" in audio,"One-audio-at-a-time mutex")
-check(package.get("version")=="61.0.0","V61 release metadata")
+check(package.get("version")=="61.0.0","V61 storage-compatible release metadata retained")
 check(package.get("dependencies",{}).get("next")=="16.3.3","Patched Next.js release")
 check("AUDIO_CACHE" not in sw and "source-v61" in sw,"Obsolete audio cache removed from source service worker")
 check((ROOT/"tests/site.spec.ts").exists() and "test:e2e" in package.get("scripts",{}),"Responsive accessibility E2E suite present")
+check("disableRules(['color-contrast'])" not in tests and 'new AxeBuilder({page}).analyze()' in tests,"Accessibility tests include color contrast")
+check("mobile-webkit" in (ROOT/"playwright.config.ts").read_text(encoding="utf-8"),"Mobile WebKit regression project present")
 
 if post:
     out=ROOT/"out"

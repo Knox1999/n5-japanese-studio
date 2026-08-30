@@ -1,30 +1,73 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const views=['dashboard','vocabulary','srs','spelling','conversation','reading','listening','grammar','kanji','kana','arcade','mock','history'];
+const phoneWidths=[320,360,375,390,414];
+const visibleHeading=(page:Page)=>page.locator('main#main-content').locator('h1:visible,h2:visible').first();
+const isMobile=(name:string)=>name.startsWith('mobile-');
 
-const visibleHeading=(page:import('@playwright/test').Page)=>page.locator('main#main-content').locator('h1:visible,h2:visible').first();
+async function expectNoHorizontalOverflow(page:Page){
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+}
 
 test.beforeEach(async({page})=>{
   await page.addInitScript(()=>localStorage.setItem('nv_analytics_consent_v1','declined'));
 });
 
 for(const view of views){
-  test(`${view} renders without overflow or runtime errors`,async({page},testInfo)=>{
-    test.skip(testInfo.project.name==='desktop-chromium'&&!['dashboard','vocabulary','kanji'].includes(view));
+  test(`${view} renders without overflow or runtime errors`,async({page})=>{
     const errors:string[]=[];
     page.on('pageerror',error=>errors.push(error.message));
     await page.goto(`?lesson=1&view=${view}`,{waitUntil:'networkidle'});
     const main=page.locator('main#main-content');
     await expect(main).toBeVisible();
     await expect(visibleHeading(page)).toBeVisible();
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+    await expectNoHorizontalOverflow(page);
     expect(errors).toEqual([]);
   });
 }
 
+test('dashboard exposes one clear coach and guided lesson journey',async({page})=>{
+  await page.goto('?lesson=1&view=dashboard');
+  await expect(page.locator('#home-title')).toBeVisible();
+  await expect(page.locator('#daily-coach-title')).toBeVisible();
+  await expect(page.locator('#lesson-journey-title')).toBeVisible();
+  await expect(page.locator('#daily-coach-title')).toHaveText('এখন কী পড়বেন?');
+});
+
+test('daily study time persists locally',async({page})=>{
+  await page.goto('?lesson=1&view=dashboard');
+  const ten=page.getByRole('button',{name:'10m'});
+  await ten.click();
+  await expect(ten).toHaveAttribute('aria-pressed','true');
+  await page.reload();
+  await expect(page.getByRole('button',{name:'10m'})).toHaveAttribute('aria-pressed','true');
+});
+
+test('guided lesson stage completion persists',async({page})=>{
+  await page.goto('?lesson=1&view=dashboard');
+  const incomplete=page.getByRole('button',{name:/Lesson goal দেখুন সম্পন্ন করুন/});
+  await incomplete.click();
+  // The accessible name intentionally changes when the state changes, so re-query
+  // the control instead of retaining a locator whose name no longer matches.
+  const completed=page.getByRole('button',{name:/Lesson goal দেখুন অসম্পূর্ণ করুন/});
+  await expect(completed).toHaveAttribute('aria-pressed','true');
+  await page.reload();
+  await expect(page.getByRole('button',{name:/Lesson goal দেখুন অসম্পূর্ণ করুন/})).toHaveAttribute('aria-pressed','true');
+});
+
+test('lesson picker changes lesson without full-page routing',async({page})=>{
+  await page.goto('?lesson=1&view=dashboard');
+  await page.locator('.lesson-picker-trigger').click();
+  const options=page.getByRole('option');
+  await expect(options).toHaveCount(25);
+  await options.nth(1).click();
+  await expect(page).toHaveURL(/lesson=2/);
+  await expect(page.locator('#home-title')).toBeVisible();
+});
+
 test('mobile course search is labelled and keyboard-contained',async({page},testInfo)=>{
-  test.skip(testInfo.project.name!=='mobile-chromium');
+  test.skip(!isMobile(testInfo.project.name));
   await page.goto('?lesson=1&view=dashboard');
   await page.getByRole('navigation',{name:'মোবাইল নেভিগেশন'}).getByRole('button',{name:'আরও বিভাগ খুলুন'}).click();
   const drawer=page.getByRole('dialog',{name:'কোর্স মেনু'});
@@ -40,7 +83,7 @@ test('mobile course search is labelled and keyboard-contained',async({page},test
 });
 
 test('mobile drawer receives focus and exposes search',async({page},testInfo)=>{
-  test.skip(testInfo.project.name!=='mobile-chromium');
+  test.skip(!isMobile(testInfo.project.name));
   await page.goto('?lesson=1&view=dashboard');
   await page.getByRole('navigation',{name:'মোবাইল নেভিগেশন'}).getByRole('button',{name:'আরও বিভাগ খুলুন'}).click();
   const dialog=page.getByRole('dialog',{name:'কোর্স মেনু'});
@@ -49,7 +92,7 @@ test('mobile drawer receives focus and exposes search',async({page},testInfo)=>{
 });
 
 test('mobile brand lockup stays visible and untruncated',async({page},testInfo)=>{
-  test.skip(testInfo.project.name!=='mobile-chromium');
+  test.skip(!isMobile(testInfo.project.name));
   await page.goto('?lesson=1&view=dashboard');
   const brand=page.locator('.future-header .nv60-brand-copy strong');
   await expect(brand).toHaveText('THE NIHONGO VIBES');
@@ -60,7 +103,7 @@ test('mobile brand lockup stays visible and untruncated',async({page},testInfo)=
 });
 
 test('Data Vault opens as the only fixed modal and never as page content',async({page},testInfo)=>{
-  test.skip(testInfo.project.name!=='mobile-chromium');
+  test.skip(!isMobile(testInfo.project.name));
   await page.goto('?lesson=1&view=dashboard');
   await page.getByRole('navigation',{name:'মোবাইল নেভিগেশন'}).getByRole('button',{name:'আরও বিভাগ খুলুন'}).click();
   const drawer=page.getByRole('dialog',{name:'কোর্স মেনু'});
@@ -94,7 +137,7 @@ test('Verb Forms Lab shows only the four requested core forms',async({page})=>{
 });
 
 test('mobile SRS session keeps fixed navigation away from study controls',async({page},testInfo)=>{
-  test.skip(testInfo.project.name!=='mobile-chromium');
+  test.skip(!isMobile(testInfo.project.name));
   await page.goto('?lesson=1&view=srs');
   await page.getByRole('button',{name:/Lesson Smart Session/}).click();
   const shell=page.locator('.srs-shell');
@@ -119,13 +162,33 @@ test('vocabulary audio controls have names and touch-sized targets',async({page}
   expect(box?.height).toBeGreaterThanOrEqual(44);
 });
 
-test('representative pages have no serious axe violations',async({page})=>{
-  for(const view of ['dashboard','vocabulary','conversation']){
+test('listening transport controls are named and touch-sized',async({page})=>{
+  await page.goto('?lesson=1&view=listening');
+  const play=page.getByRole('button',{name:'Play'}).first();
+  await expect(play).toBeVisible();
+  const box=await play.boundingBox();
+  expect(box?.width).toBeGreaterThanOrEqual(44);
+  expect(box?.height).toBeGreaterThanOrEqual(44);
+  await expect(page.locator('.shadow-token-line-v57')).toBeVisible();
+});
+
+for(const width of phoneWidths){
+  test(`dashboard has no horizontal overflow at ${width}px`,async({page},testInfo)=>{
+    test.skip(testInfo.project.name!=='desktop-chromium');
+    await page.setViewportSize({width,height:780});
+    await page.goto('?lesson=1&view=dashboard');
+    await expectNoHorizontalOverflow(page);
+    await expect(page.getByRole('navigation',{name:'মোবাইল নেভিগেশন'})).toBeVisible();
+  });
+}
+
+test('representative major screens have no serious or critical axe violations',async({page})=>{
+  for(const view of ['dashboard','vocabulary','srs','listening','grammar','conversation']){
     await page.goto(`?lesson=1&view=${view}`);
     const main=page.locator('main#main-content');
     await expect(main).toBeVisible();
     await expect(visibleHeading(page)).toBeVisible();
-    const results=await new AxeBuilder({page}).disableRules(['color-contrast']).analyze();
+    const results=await new AxeBuilder({page}).analyze();
     const serious=results.violations.filter(item=>['serious','critical'].includes(item.impact||''));
     expect(serious,JSON.stringify(serious,null,2)).toEqual([]);
   }

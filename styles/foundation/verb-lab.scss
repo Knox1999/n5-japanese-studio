@@ -1,0 +1,169 @@
+/* ==========================================================================
+   THE NIHONGO VIBES — V54 CLEAN VOCABULARY + VERB FORMS LAB
+   Progressive disclosure: vocabulary first, conjugation only on demand.
+   ========================================================================== */
+
+/* Remove V52's always-visible Verb Group Memory Map entirely. */
+.verb-group-memory{display:none!important}
+
+/* Cleaner category cards: only three learning doors. */
+.word-class-guide-v54{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:9px!important
+}
+.word-class-guide-v54 .word-guide-card{
+  min-height:86px!important;
+  grid-template-columns:44px minmax(0,1fr) auto!important;
+  padding:12px 13px!important
+}
+.word-class-guide-v54 .guide-icon{
+  width:40px!important;height:40px!important;
+  font-family:"Noto Sans JP",sans-serif;font-size:18px;font-weight:800
+}
+.word-class-guide-v54 .word-guide-card>div>b{font-size:18px!important}
+.word-class-guide-v54 .word-guide-card>div>strong{font-size:10px!important}
+.word-class-guide-v54 .word-guide-card>div>small{font-size:8px!important}
+
+/* Verb mode appears only after user asks for verbs. */
+.verb-mode-bar{
+  display:grid;grid-template-columns:minmax(220px,.7fr) minmax(0,1.3fr);
+  align-items:center;gap:14px;padding:12px 14px;
+  border:1px solid rgba(98,213,229,.13);border-radius:16px;
+  background:linear-gradient(135deg,rgba(98,213,229,.035),rgba(5,24,44,.95))
+}
+.verb-mode-copy>span{display:block;color:#62cbd7;font-size:7px;font-weight:900;letter-spacing:.15em}
+.verb-mode-copy>b{display:block;margin-top:4px;color:#a8c1cf;font-size:10px}
+.verb-mode-tabs{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:6px}
+.verb-mode-tabs button{
+  min-height:38px;display:flex;align-items:center;gap:7px;padding:0 10px;
+  border:1px solid rgba(184,215,235,.10);border-radius:999px;
+  background:#071e36;color:#7e9eb1;font-size:8px;font-weight:900;cursor:pointer
+}
+.verb-mode-tabs button small{min-width:21px;height:21px;display:grid;place-items:center;border-radius:999px;background:rgba(255,255,255,.045);font-size:7px}
+.verb-mode-tabs button:hover{border-color:rgba(98,213,229,.20);color:#cce8f0}
+.verb-mode-tabs button.active{border-color:rgba(240,68,62,.30);background:rgba(240,68,62,.09);color:#fff;box-shadow:0 0 24px rgba(240,68,62,.05)}
+
+/* Toolbar no longer carries Group 1/2/3 clutter. */
+.vocab-toolbar-v54{
+  display:grid!important;
+  grid-template-columns:minmax(280px,1fr) auto!important
+}
+.vocab-toolbar-v54 .word-filter-row{
+  grid-column:1/-1!important;display:flex!important;flex-wrap:wrap!important;gap:6px!important
+}
+
+/* Default vocabulary card = word, meaning, example, mastery. Nothing else. */
+.vocab-clean-card{padding:20px!important}
+.vocab-clean-card .meaning-stack{margin-top:14px!important}
+.vocab-clean-card .example-block{margin-top:13px!important}
+.clean-group-chip{
+  min-height:24px;display:inline-flex;align-items:center;padding:0 8px;
+  border:1px solid rgba(98,213,229,.14);border-radius:999px;
+  background:rgba(98,213,229,.04);color:#86cbd6;font-size:7px;font-weight:900
+}
+.clean-group-chip.group-3{border-color:rgba(240,68,62,.18);background:rgba(240,68,62,.045);color:#ef7771}
+.vocab-card-footer{display:block;margin-top:14px}
+.vocab-card-footer.has-forms{display:grid;grid-template-columns:1fr auto;gap:8px}
+.open-forms-button{
+  min-height:45px;display:flex;align-items:center;gap:7px;padding:0 12px;
+  border:1px solid rgba(98,213,229,.18);border-radius:12px;
+  background:linear-gradient(135deg,rgba(98,213,229,.075),rgba(8,39,68,.76));
+  color:#a9d9e0;font-size:9px;font-weight:900;cursor:pointer
+}
+.open-forms-button svg{width:17px;height:17px}.open-forms-button svg:last-child{width:14px;color:#638fa2}
+.open-forms-button:hover{border-color:rgba(240,68,62,.25);color:#fff;background:linear-gradient(135deg,rgba(240,68,62,.09),rgba(8,39,68,.80))}
+
+/* Verb Forms Lab modal */
+.verb-lab-layer{
+  position:fixed;inset:0;z-index:320;display:grid;place-items:center;padding:18px
+}
+.verb-lab-dialog{
+  position:relative;z-index:2;width:min(920px,100%);max-height:min(850px,92dvh);overflow:auto;
+  border:1px solid rgba(240,68,62,.22);border-radius:23px;
+  background:
+    radial-gradient(circle at 92% 5%,rgba(240,68,62,.12),transparent 27%),
+    linear-gradient(155deg,#071e37,#041426);
+  box-shadow:0 35px 110px rgba(0,0,0,.56);
+  color:#eaf4f9;padding:22px
+}
+.verb-lab-dialog:before{
+  content:"";position:absolute;left:0;top:0;width:100%;height:2px;
+  background:linear-gradient(90deg,#f0443e,rgba(255,255,255,.4) 45%,#62d5e5 72%,transparent)
+}
+.verb-lab-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.verb-lab-head>div>span{display:block;color:#ef746e;font-size:7px;font-weight:900;letter-spacing:.15em}
+.verb-lab-head h2{margin:5px 0 0;color:#fff;font-size:clamp(34px,5vw,55px);line-height:1.15}
+.verb-lab-head p{margin:6px 0 0;color:#91adbd;font-size:12px}
+.verb-lab-head>button{
+  width:43px;height:43px;display:grid;place-items:center;flex:0 0 auto;
+  border:1px solid rgba(184,215,235,.12);border-radius:12px;background:#08213b;color:#93adbd
+}
+.verb-lab-group{
+  width:max-content;max-width:100%;display:flex;align-items:center;gap:9px;margin-top:14px;padding:8px 10px;
+  border:1px solid rgba(98,213,229,.15);border-radius:999px;background:rgba(98,213,229,.04)
+}
+.verb-lab-group span{color:#b7d5df;font-size:9px;font-weight:900}.verb-lab-group b{color:#75ced9;font-size:9px}
+
+.verb-form-section{margin-top:17px;padding:15px;border:1px solid rgba(184,215,235,.10);border-radius:17px;background:rgba(5,23,42,.66)}
+.verb-form-section-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:10px}
+.verb-form-section-head>span{color:#678b9f;font-size:7px;font-weight:900;letter-spacing:.14em}
+.verb-form-section-head>b{color:#a9c4d1;font-size:9px}
+.verb-form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.verb-form-grid-plain{grid-template-columns:repeat(5,minmax(0,1fr))}
+.verb-form-cell{
+  min-height:108px;display:grid;grid-template-columns:minmax(0,1fr) 35px;align-items:center;gap:6px;padding:11px;
+  border:1px solid rgba(184,215,235,.09);border-radius:13px;background:#071d35
+}
+.verb-form-cell span{display:block;color:#68899c;font-size:7px;font-weight:900;letter-spacing:.08em}
+.verb-form-cell b{display:block;margin-top:5px;color:#f2f8fb;font-size:17px;line-height:1.45}
+.verb-form-cell small{display:block;margin-top:4px;color:#657f90;font-size:7px;line-height:1.4}
+.verb-form-cell>button{
+  width:34px;height:34px;display:grid;place-items:center;border:1px solid rgba(240,68,62,.15);border-radius:10px;
+  background:rgba(240,68,62,.045);color:#ef746e
+}
+.verb-form-cell>button svg{width:16px}
+
+.verb-exception-panel{
+  display:flex;align-items:flex-start;gap:10px;margin-top:14px;padding:13px;
+  border:1px solid rgba(221,184,106,.18);border-radius:14px;background:rgba(221,184,106,.045)
+}
+.verb-exception-panel>svg{flex:0 0 auto;width:20px;color:#d9b568}
+.verb-exception-panel span{display:block;color:#9c8151;font-size:7px;font-weight:900;letter-spacing:.12em}
+.verb-exception-panel b{display:block;margin-top:4px;color:#e2c789;font-size:11px}
+.verb-exception-panel p{margin:4px 0 0;color:#9eafb8;font-size:10px;line-height:1.7}
+.verb-lab-footer{margin-top:14px;padding-top:12px;border-top:1px solid rgba(184,215,235,.08);color:#658395;font-size:9px;text-align:center}
+
+/* Kill any old always-visible form strips from previous cached CSS. */
+.vocabulary-view-v54 .verb-identity-strip,
+.vocabulary-view-v54 .class-rule-strip,
+.vocabulary-view-v54 .exception-note,
+.vocabulary-view-v54 .word-group-chip,
+.vocabulary-view-v54 .verb-group-memory{display:none!important}
+
+@media(max-width:900px){
+  .word-class-guide-v54{grid-template-columns:1fr 1fr 1fr!important}
+  .verb-mode-bar{grid-template-columns:1fr}.verb-mode-tabs{justify-content:flex-start}
+  .verb-form-grid,.verb-form-grid-plain{grid-template-columns:1fr 1fr}
+}
+@media(max-width:650px){
+  .word-class-guide-v54{grid-template-columns:1fr!important}
+  .vocab-toolbar-v54{grid-template-columns:1fr!important}.vocab-toolbar-v54>*{grid-column:1!important}
+  .vocab-card-footer.has-forms{grid-template-columns:1fr}.open-forms-button{justify-content:center}
+  .verb-lab-layer{align-items:end;padding:7px}
+  .verb-lab-dialog{max-height:94dvh;border-radius:21px 21px 12px 12px;padding:17px}
+  .verb-form-grid,.verb-form-grid-plain{grid-template-columns:1fr 1fr}
+  .verb-form-cell{min-height:96px}.verb-form-cell b{font-size:15px}
+}
+@media(max-width:410px){
+  .verb-mode-tabs{display:grid;grid-template-columns:1fr 1fr;width:100%}.verb-mode-tabs button{justify-content:space-between}
+  .verb-form-grid,.verb-form-grid-plain{grid-template-columns:1fr}
+}
+
+/* V55: extra patterns stay inside the on-demand Forms Lab only. */
+.verb-usage-section{border-color:rgba(221,184,106,.12)}
+.verb-usage-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+.verb-usage-section .verb-form-cell{background:linear-gradient(145deg,rgba(221,184,106,.025),#071d35)}
+.verb-usage-section .verb-form-cell span{color:#9d8256}
+@media(max-width:900px){.verb-usage-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:410px){.verb-usage-grid{grid-template-columns:1fr}}

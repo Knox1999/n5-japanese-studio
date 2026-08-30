@@ -20,6 +20,7 @@ export default defineConfig({
   },
   projects:[
     {name:'mobile-chromium',use:{...devices['Pixel 5']}},
+    {name:'mobile-webkit',use:{...devices['iPhone 13']}},
     {name:'desktop-chromium',use:{...devices['Desktop Chrome']}},
   ],
 });

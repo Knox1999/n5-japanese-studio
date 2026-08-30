@@ -1,23 +1,24 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, Loader2, RefreshCcw, WifiOff, X } from 'lucide-react';
+import { AlertTriangle, BookOpen, Loader2, RefreshCcw, WifiOff, X } from 'lucide-react';
 import type { ConfidenceLevel, LessonPayload, LearningSkill, MockAttempt, StudioMeta, ViewName } from '@/lib/types';
 import { loadLesson, loadMeta } from '@/lib/data';
 import { readHistory, readLearningState, readLesson, readProgress, readSrs, saveHistory, saveLearningState, saveProgress, saveSrs, writeLesson, type ProgressMap, type SrsMap } from '@/lib/storage';
-import { upsertMistake, type LearningState } from '@/lib/learning';
+import { buildDailyRecommendations, buildLessonJourney, getRepairQueue, normalizeDailyMinutes, upsertMistake, type LearningState } from '@/lib/learning';
 import { track, trackError, trackVirtualPage } from '@/lib/analytics';
 import { stopAudio } from '@/lib/audio';
 import Shell from './Shell';
 import Dashboard from './Dashboard';
-import Vocabulary from './Vocabulary';
+import DailyCoachPanel from './DailyCoachPanel';
+import LessonJourneyPanel from './LessonJourneyPanel';
 import KanaPad from './KanaPad';
 import DataVault from './DataVault';
 
-const LoadingView=()=> <div className="nv58-view-loading"><Loader2 className="animate-spin"/><b>Loading study module…</b></div>;
+const LoadingView=()=> <div className="nv58-view-loading" role="status" aria-live="polite"><Loader2 className="animate-spin"/><b>Loading study module…</b></div>;
 
+const Vocabulary=dynamic(()=>import('./Vocabulary'),{ssr:false,loading:LoadingView});
 const SRS=dynamic(()=>import('./SRS'),{ssr:false,loading:LoadingView});
 const Spelling=dynamic(()=>import('./Spelling'),{ssr:false,loading:LoadingView});
 const Listening=dynamic(()=>import('./Listening'),{ssr:false,loading:LoadingView});
@@ -31,6 +32,7 @@ const Reading=dynamic(()=>import('./StudyViews').then(m=>m.Reading),{ssr:false,l
 const Grammar=dynamic(()=>import('./StudyViews').then(m=>m.Grammar),{ssr:false,loading:LoadingView});
 
 const VIEWS:ViewName[]=['dashboard','vocabulary','srs','spelling','conversation','reading','listening','grammar','kanji','kana','arcade','mock','history'];
+const SESSION_STARTED_AT=Date.now();
 const isView=(x:string|null):x is ViewName=>!!x&&VIEWS.includes(x as ViewName);
 
 function urlState(){
@@ -53,6 +55,18 @@ type FatalState={scope:'meta'|'lesson';message:string}|null;
 type ResourceNotice={kind:string;path?:string;message:string}|null;
 type SpellingAttempt={itemId:number;lesson:number;userAnswer:string;correctAnswer:string;correct:boolean;confidence:ConfidenceLevel};
 type LearningAttempt={itemId:string;userAnswer:string;correctAnswer:string;correct:boolean;questionType:string;skill?:LearningSkill};
+type SrsReviewResult={itemId:number;lesson:number;rating:'again'|'hard'|'good'|'easy';correctAnswer:string};
+
+function WorkspaceBoot({online}:{online:boolean}){
+  return <main className="boot-screen boot-screen-v2" id="main-content" aria-busy="true" aria-labelledby="boot-title">
+    <div className="boot-workspace-card">
+      <div className="boot-brand-row"><div className="boot-seal">日</div><div><span>THE NIHONGO VIBES</span><h1 id="boot-title" className="font-bn">আপনার study workspace প্রস্তুত হচ্ছে</h1></div></div>
+      <p className="font-bn">{online?'Lesson progress ও আজকের next step প্রস্তুত করছি…':'Cached lesson ও progress খোলা হচ্ছে…'}</p>
+      <div className="boot-skeleton-grid" aria-hidden="true"><i/><i/><i/></div>
+      <div className="boot-loading-line"><Loader2 className="animate-spin"/><span>{online?'Loading lesson data':'Offline mode'}</span></div>
+    </div>
+  </main>;
+}
 
 export default function StudioApp(){
  const [meta,setMeta]=useState<StudioMeta|null>(null);
@@ -62,7 +76,7 @@ export default function StudioApp(){
  const [progress,setProgress]=useState<ProgressMap>({});
  const [srs,setSrs]=useState<SrsMap>({});
  const [historyRows,setHistory]=useState<MockAttempt[]>([]);
- const [,setLearning]=useState<LearningState>(()=>({version:1,mistakes:[],studyPlan:{dailyMinutes:20,updatedAt:null},journeyProgress:{}}));
+ const [learning,setLearning]=useState<LearningState>(()=>({version:1,mistakes:[],studyPlan:{dailyMinutes:20,updatedAt:null},journeyProgress:{}}));
  const [fatal,setFatal]=useState<FatalState>(null);
  const [resourceNotice,setResourceNotice]=useState<ResourceNotice>(null);
  const [metaNonce,setMetaNonce]=useState(0);
@@ -84,6 +98,16 @@ export default function StudioApp(){
    });
    return()=>{dead=true};
  },[metaNonce]);
+
+ useEffect(()=>{
+   let dead=false;
+   setData(null);setFatal(null);
+   loadLesson(lesson).then(x=>{if(!dead)setData(x)}).catch(e=>{
+     if(dead)return;setFatal({scope:'lesson',message:e instanceof Error?e.message:String(e)});trackError('resource',e)
+   });
+   track('lesson_open',{lesson_number:lesson,open_source:'app'});
+   return()=>{dead=true};
+ },[lesson,lessonNonce]);
 
  useEffect(()=>{
    if('serviceWorker' in navigator){
@@ -117,17 +141,6 @@ export default function StudioApp(){
    const pop=()=>{const s=urlState();stopAudio();setLessonState(s.lesson);setView(s.view);writeLesson(s.lesson)};
    window.addEventListener('popstate',pop);return()=>window.removeEventListener('popstate',pop)
  },[]);
-
- useEffect(()=>{
-   if(!meta)return;
-   let dead=false;
-   setData(null);setFatal(null);
-   loadLesson(lesson).then(x=>{if(!dead)setData(x)}).catch(e=>{
-     if(dead)return;setFatal({scope:'lesson',message:e instanceof Error?e.message:String(e)});trackError('resource',e)
-   });
-   track('lesson_open',{lesson_number:lesson,open_source:'app'});
-   return()=>{dead=true};
- },[lesson,meta,lessonNonce]);
 
  useEffect(()=>{if(!meta)return;trackVirtualPage(view,lesson);if(view==='vocabulary')track('vocabulary_open',{lesson_number:lesson});},[view,lesson,meta]);
 
@@ -186,28 +199,70 @@ export default function StudioApp(){
    track('mistake_recorded',{lesson_number:lesson,item_id:attempt.itemId,source,skill});
  };
 
+ const recordSrsReview=(attempt:SrsReviewResult)=>{
+   if(attempt.rating!=='again'&&attempt.rating!=='hard')return;
+   updateLearning(prev=>({
+     ...prev,
+     mistakes:upsertMistake(prev.mistakes,{
+       itemId:String(attempt.itemId),lessonId:String(attempt.lesson),level:'N5',skill:'srs',questionType:'smart-recall',correctAnswer:attempt.correctAnswer,confidence:'unsure',severity:attempt.rating==='again'?'high':'medium',sourceId:'srs'
+     }),
+   }));
+   track('mistake_recorded',{lesson_number:attempt.lesson,item_id:attempt.itemId,source:'srs',rating:attempt.rating,skill:'srs'});
+ };
+
+ const currentMeta=meta?.lessons.find(x=>x.lesson===lesson);
+ const currentMastered=(currentMeta?.ids||[]).reduce((count,id)=>count+(progress[String(id)]?1:0),0);
+ const lessonPct=Math.round(currentMastered/Math.max(1,currentMeta?.count||1)*100);
+ const dueSrs=useMemo(()=>Object.values(srs).reduce((count,state)=>count+(state.due_at&&new Date(state.due_at).getTime()<=SESSION_STARTED_AT?1:0),0),[srs]);
+ const lastMockScore=historyRows[0]?.score;
+ const recommendations=useMemo(()=>buildDailyRecommendations({lesson,lessonPercent:lessonPct,dueSrs,mistakes:learning.mistakes,dailyMinutes:learning.studyPlan.dailyMinutes,lastMockScore}),[lesson,lessonPct,dueSrs,learning.mistakes,learning.studyPlan.dailyMinutes,lastMockScore]);
+ const repairCount=useMemo(()=>getRepairQueue(learning.mistakes,500).length,[learning.mistakes]);
+ const journey=useMemo(()=>data?buildLessonJourney(data):null,[data]);
+ const completedJourney=learning.journeyProgress[String(lesson)]||[];
+ const setDailyMinutes=(dailyMinutes:number)=>updateLearning(prev=>({...prev,studyPlan:{dailyMinutes:normalizeDailyMinutes(dailyMinutes),updatedAt:new Date().toISOString()}}));
+ const toggleJourneyStage=(stageId:string)=>updateLearning(prev=>{
+   const key=String(lesson);const rows=prev.journeyProgress[key]||[];const done=rows.includes(stageId);
+   const nextRows=done?rows.filter(x=>x!==stageId):[...rows,stageId];
+   track(done?'lesson_stage_reopened':'lesson_stage_completed',{lesson_number:lesson,stage_id:stageId});
+   return {...prev,journeyProgress:{...prev.journeyProgress,[key]:nextRows}};
+ });
+ const openJourneyStage=(target:ViewName,stageId:string)=>{
+   track('lesson_stage_open',{lesson_number:lesson,stage_id:stageId,target_view:target});
+   changeView(target);
+ };
+
  if(fatal){
-   return <div className="nv58-fatal">
-     <div className="nv58-fatal-card">
+   return <main className="nv58-fatal" id="main-content">
+     <div className="nv58-fatal-card" role="alert">
        {online?<AlertTriangle/>:<WifiOff/>}
        <span>{online?'RESOURCE ERROR':'YOU ARE OFFLINE'}</span>
        <h1>{fatal.scope==='meta'?'Studio data could not load':'Lesson could not load'}</h1>
        <p>{fatal.message}</p>
        <div>
          <button onClick={()=>fatal.scope==='meta'?setMetaNonce(x=>x+1):setLessonNonce(x=>x+1)}><RefreshCcw/> Retry</button>
-         <button onClick={()=>{setFatal(null);changeLesson(1,'dashboard')}}>Go Home</button>
+         <button onClick={()=>{setFatal(null);changeLesson(1,'dashboard')}}><BookOpen/> Go Home</button>
        </div>
      </div>
-   </div>;
+   </main>;
  }
 
- if(!meta||!data)return <div className="boot-screen"><div className="boot-seal">日</div><Loader2 className="animate-spin"/><b>The Nihongo Vibes</b><span>{online?'Preparing your Japanese learning workspace…':'Opening cached study workspace…'}</span></div>;
+ if(!meta||!data)return <WorkspaceBoot online={online}/>;
 
  const content=(()=>{
    switch(view){
-     case'dashboard':return <div className="home-page-v67"><Dashboard meta={meta} lesson={lesson} progress={progress} srs={srs} history={historyRows} onNavigate={changeView} onLesson={changeLesson}/></div>;
+     case'dashboard':return <div className="home-page-v67"><Dashboard
+       meta={meta}
+       lesson={lesson}
+       progress={progress}
+       srs={srs}
+       history={historyRows}
+       onNavigate={changeView}
+       onLesson={changeLesson}
+       coach={<DailyCoachPanel plan={learning.studyPlan} recommendations={recommendations} unresolvedMistakes={repairCount} onMinutes={setDailyMinutes} onNavigate={changeView}/>}
+       journey={journey?<LessonJourneyPanel journey={journey} completed={completedJourney} onOpen={openJourneyStage} onToggleComplete={toggleJourneyStage}/>:null}
+     /></div>;
      case'vocabulary':return <Vocabulary data={data} progress={progress} onToggle={toggleMastery}/>;
-     case'srs':return <SRS data={data} meta={meta} srs={srs} progress={progress} onSrsChange={updateSrs} onProgressChange={updateProgress}/>;
+     case'srs':return <SRS data={data} meta={meta} srs={srs} progress={progress} onSrsChange={updateSrs} onProgressChange={updateProgress} onReviewResult={recordSrsReview}/>;
      case'spelling':return <Spelling data={data} onAttempt={recordSpellingAttempt}/>;
      case'conversation':return <Conversation data={data}/>;
      case'reading':return <Reading data={data}/>;
@@ -224,11 +279,11 @@ export default function StudioApp(){
 
  return <>
    <Shell meta={meta} lesson={lesson} view={view} onLesson={changeLesson} onView={changeView}>
-     <AnimatePresence mode="wait"><motion.div key={`${view}-${lesson}`} initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-4}} transition={{duration:.2,ease:[.2,.8,.2,1]}}>{content}</motion.div></AnimatePresence>
+     <div className="studio-view-content" key={`${view}-${lesson}`}>{content}</div>
    </Shell>
    <KanaPad/><DataVault/>
-   {!online&&<div className="nv58-offline-pill"><WifiOff/> Offline · cached content only</div>}
-   {resourceNotice&&<div className="nv58-resource-toast">
+   {!online&&<div className="nv58-offline-pill" role="status"><WifiOff/> Offline · cached content only</div>}
+   {resourceNotice&&<div className="nv58-resource-toast" role="status">
      <AlertTriangle/><div><b>{resourceNotice.kind==='audio'?'Audio unavailable':'Resource could not load'}</b><span>{resourceNotice.path||resourceNotice.message}</span></div>
      <button onClick={()=>location.reload()}><RefreshCcw/> Retry</button>
      <button onClick={()=>setResourceNotice(null)} aria-label="Dismiss"><X/></button>

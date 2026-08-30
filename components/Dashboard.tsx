@@ -1,19 +1,10 @@
 'use client';
 
-/* QA compatibility notes for the redesigned dashboard. The old dashboard exposed:
-   COURSE PULSE · LIVE ON THIS DEVICE
-   Vocabulary mastery
-   vocabulary mastery map
-   এখানকার % শুধু vocabulary mastery দেখায়
-   এক lesson · সব core skill connected
-   Lesson খুলুন
-   Those concepts are preserved in the simplified experience, but are now progressively disclosed. */
-
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ArrowRight, BookOpen, Brain, CheckCircle2, ChevronDown, Headphones,
   Languages, MessageCircle, PenLine, TreePine, BookOpenText, ClipboardCheck,
-  RotateCcw, type LucideIcon,
+  type LucideIcon,
 } from 'lucide-react';
 
 import type { MockAttempt, SrsCardState, StudioMeta, ViewName } from '@/lib/types';
@@ -28,6 +19,8 @@ type DashboardProps = {
   history: MockAttempt[];
   onNavigate: (view: ViewName) => void;
   onLesson: (lesson: number, view?: ViewName) => void;
+  coach?: ReactNode;
+  journey?: ReactNode;
 };
 
 type Module = { view:ViewName; title:string; bangla:string; icon:LucideIcon };
@@ -48,7 +41,7 @@ function mastered(progress:ProgressMap,ids:number[]){return ids.reduce((n,id)=>n
 function getSrsHealth(srs:SrsMap){const now=Date.now();let due=0;Object.values(srs).forEach((state:SrsCardState)=>{if(state.due_at&&new Date(state.due_at).getTime()<=now)due+=1});return{due}}
 function relativeTime(value:string){const ms=Date.now()-new Date(value).getTime();if(!Number.isFinite(ms)||ms<60000)return'এখনই';const mins=Math.floor(ms/60000);if(mins<60)return`${mins}m আগে`;const hours=Math.floor(mins/60);if(hours<24)return`${hours}h আগে`;return`${Math.floor(hours/24)}d আগে`}
 
-export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,onLesson}:DashboardProps){
+export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,onLesson,coach,journey}:DashboardProps){
   const [activity,setActivity]=useState<StudyActivityState>(()=>({version:1,entries:{}}));
   useEffect(()=>{const refresh=()=>setActivity(readStudyActivity());refresh();window.addEventListener('nv:study-activity',refresh);window.addEventListener('storage',refresh);return()=>{window.removeEventListener('nv:study-activity',refresh);window.removeEventListener('storage',refresh)}},[]);
 
@@ -74,11 +67,8 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
       </div>
     </section>
 
-    <section className="home-next-actions" aria-label="Recommended next actions">
-      <button onClick={()=>onLesson(lesson,'vocabulary')}><BookOpen/><div><b className="font-bn">শেখা চালিয়ে যান</b><span>Lesson {String(lesson).padStart(2,'0')}</span></div><ArrowRight/></button>
-      <button onClick={()=>onNavigate('srs')}><RotateCcw/><div><b className="font-bn">রিভিউ করুন</b><span>{health.due?`${health.due}টি due card`:'Smart Recall'}</span></div><ArrowRight/></button>
-      <button onClick={()=>onNavigate('listening')}><Headphones/><div><b className="font-bn">শুনে practice</b><span>Listen · Follow · Shadow</span></div><ArrowRight/></button>
-    </section>
+    {coach}
+    {journey}
 
     <section className="home-compact-stats" aria-label="Course progress summary">
       <article><span>Course vocabulary</span><b>{overall}%</b></article>
