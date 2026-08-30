@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, RefreshCcw, ShieldAlert, ShieldCheck, UserRound, Users } from 'lucide-react';
-import { accountCloudConfigured } from '@/lib/account';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, KeyRound, LogIn, Mail, RefreshCcw, ShieldAlert, ShieldCheck, UserRound, Users } from 'lucide-react';
+import { accountCloudConfigured, ensureAccountEnabled, signIn, signOut } from '@/lib/account';
 import { listAdminDirectory, setUserStatus, type AdminDirectoryRow } from '@/lib/admin';
 
 const basePath=process.env.NEXT_PUBLIC_BASE_PATH||'';
@@ -13,6 +13,9 @@ export default function AdminPanel(){
   const [error,setError]=useState('');
   const [query,setQuery]=useState('');
   const [busy,setBusy]=useState<string|null>(null);
+  const [email,setEmail]=useState('');
+  const [password,setPassword]=useState('');
+  const [loginBusy,setLoginBusy]=useState(false);
 
   const load=useCallback(async()=>{
     if(!accountCloudConfigured){setLoading(false);return;}
@@ -29,6 +32,24 @@ export default function AdminPanel(){
     if(!q)return rows;
     return rows.filter(row=>[row.email,row.display_name,row.user_id,row.status,row.role].filter(Boolean).join(' ').toLowerCase().includes(q));
   },[query,rows]);
+
+  const needsLogin=error==='Admin login required.';
+
+  const login=async(event:FormEvent)=>{
+    event.preventDefault();
+    setLoginBusy(true);setError('');
+    let next:null|Awaited<ReturnType<typeof signIn>>=null;
+    try{
+      next=await signIn(email.trim(),password);
+      await ensureAccountEnabled(next);
+      const directory=await listAdminDirectory();
+      setRows(directory);
+      setPassword('');
+    }catch(err){
+      if(next)await signOut(next).catch(()=>undefined);
+      setError(err instanceof Error?err.message:String(err));
+    }finally{setLoginBusy(false);setLoading(false)}
+  };
 
   const toggle=async(row:AdminDirectoryRow)=>{
     const next=row.status==='active'?'disabled':'active';
@@ -48,7 +69,18 @@ export default function AdminPanel(){
     </header>
 
     {!accountCloudConfigured&&<section className="admin-state"><ShieldAlert/><h2>Cloud accounts are not configured</h2><p>Supabase public environment variables configure করার পর এই panel active হবে।</p></section>}
-    {error&&<section className="admin-state error" role="alert"><ShieldAlert/><h2>Admin access unavailable</h2><p>{error}</p><small>Main site-এ admin account দিয়ে login করে আবার চেষ্টা করুন।</small></section>}
+
+    {needsLogin&&<section className="admin-login-card" aria-labelledby="admin-login-title">
+      <div className="admin-login-copy"><ShieldCheck/><div><h2 id="admin-login-title">Admin login</h2><p className="font-bn">এই page থেকেই আপনার admin account দিয়ে login করুন। একই secure session Studio-তেও ব্যবহার হবে।</p></div></div>
+      <form onSubmit={login} className="admin-login-form">
+        <label><span>Email</span><div><Mail/><input type="email" value={email} onChange={event=>setEmail(event.target.value)} autoComplete="email" required placeholder="you@example.com"/></div></label>
+        <label><span>Password</span><div><KeyRound/><input type="password" value={password} onChange={event=>setPassword(event.target.value)} autoComplete="current-password" minLength={8} required placeholder="Your password"/></div></label>
+        <button type="submit" disabled={loginBusy}><LogIn/>{loginBusy?'Checking admin access…':'Login as admin'}</button>
+      </form>
+      <small className="font-bn">Password Supabase secure authentication handle করে; Admin Panel password দেখতে বা সংরক্ষণ করতে পারে না।</small>
+    </section>}
+
+    {error&&!needsLogin&&<section className="admin-state error" role="alert"><ShieldAlert/><h2>Admin access unavailable</h2><p>{error}</p><small>{error==='Admin access required.'?'এই account-এ admin role নেই। সঠিক admin account দিয়ে login করুন।':'আবার চেষ্টা করুন অথবা Studio থেকে পুনরায় login করুন।'}</small></section>}
 
     {accountCloudConfigured&&!error&&<>
       <section className="admin-summary"><article><Users/><span>Total users</span><b>{rows.length}</b></article><article><ShieldCheck/><span>Active</span><b>{rows.filter(x=>x.status==='active').length}</b></article><article><ShieldAlert/><span>Disabled</span><b>{rows.filter(x=>x.status==='disabled').length}</b></article></section>
