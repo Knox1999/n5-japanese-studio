@@ -200,7 +200,7 @@ export default function AccountGate({children}:Props){
       ):session?(
         <>
           <button type="button" className={`account-profile-chip sync-${syncState}`} title={syncState==='error'?'Cloud sync pending':'Personal workspace'}>
-            {syncState==='error'?<CloudOff size={16}/>:<ShieldCheck size={16}/>}
+            <span className="account-profile-icons"><UserRound size={16}/>{syncState==='error'?<CloudOff size={12}/>:<ShieldCheck size={12}/>}</span>
             <span>{session.user.displayName||session.user.email}</span>
           </button>
           <button type="button" className="account-header-logout" onClick={()=>void logout()} disabled={submitting} aria-label="Logout">
