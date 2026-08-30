@@ -1,4 +1,4 @@
-import { createBackup, importBackup, type StudioBackup } from './storage';
+import { createBackup, importBackup, KEYS, type StudioBackup } from './storage';
 import { ensureFreshSession, getSupabaseAnonKey, getSupabaseRestBase, type AccountSession } from './account';
 
 type CloudProgressRow={
@@ -7,6 +7,8 @@ type CloudProgressRow={
   updated_at:string;
   device_label?:string|null;
 };
+
+const LAST_ACCOUNT_KEY='nihongo_vibes_last_account_id_v1';
 
 function headers(session:AccountSession,prefer?:string){
   const out:Record<string,string>={
@@ -22,6 +24,23 @@ async function sessionOrThrow(){
   const session=await ensureFreshSession();
   if(!session)throw new Error('Please sign in again.');
   return session;
+}
+
+export function readLastAccountId(){
+  if(typeof window==='undefined')return null;
+  try{return window.localStorage.getItem(LAST_ACCOUNT_KEY)}catch{return null;}
+}
+
+export function rememberAccountId(userId:string){
+  if(typeof window==='undefined')return;
+  try{window.localStorage.setItem(LAST_ACCOUNT_KEY,userId)}catch{}
+}
+
+export function clearLocalStudyDataForAccountSwitch(){
+  if(typeof window==='undefined')return;
+  for(const key of Object.values(KEYS)){
+    try{window.localStorage.removeItem(key)}catch{}
+  }
 }
 
 export async function pushProgressToCloud(deviceLabel?:string){
@@ -60,9 +79,28 @@ export async function restoreProgressFromCloud(){
   return true;
 }
 
-export async function migrateLocalProgressToAccount(){
+export async function prepareAccountWorkspace(userId:string){
+  const previousUserId=readLastAccountId();
   const remote=await readCloudProgress();
-  if(remote)return {uploaded:false,remoteExists:true,updatedAt:remote.updated_at};
-  const updatedAt=await pushProgressToCloud('first-account-migration');
-  return {uploaded:true,remoteExists:false,updatedAt};
+
+  if(previousUserId&&previousUserId!==userId){
+    clearLocalStudyDataForAccountSwitch();
+  }
+
+  if(remote){
+    importBackup(remote.backup);
+    rememberAccountId(userId);
+    return {source:'cloud' as const,updatedAt:remote.updated_at};
+  }
+
+  if(!previousUserId){
+    const updatedAt=await pushProgressToCloud('first-account-migration');
+    rememberAccountId(userId);
+    return {source:'local-migrated' as const,updatedAt};
+  }
+
+  clearLocalStudyDataForAccountSwitch();
+  const updatedAt=await pushProgressToCloud('new-account-workspace');
+  rememberAccountId(userId);
+  return {source:'new-empty' as const,updatedAt};
 }
