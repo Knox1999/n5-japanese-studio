@@ -40,8 +40,10 @@ type AuthResponse={
 };
 
 const SESSION_KEY='nihongo_vibes_account_session_v1';
-const SUPABASE_URL=(process.env.NEXT_PUBLIC_SUPABASE_URL||'').replace(/\/$/,'');
-const SUPABASE_ANON_KEY=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'';
+const DEFAULT_SUPABASE_URL='https://rfrflfaqvzlhuibickvk.supabase.co';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY='sb_publishable_VLkB8FcjDSyAA4taCQZkOw_P-QLOV3Y';
+const SUPABASE_URL=(process.env.NEXT_PUBLIC_SUPABASE_URL||DEFAULT_SUPABASE_URL).replace(/\/$/,'');
+const SUPABASE_ANON_KEY=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||DEFAULT_SUPABASE_PUBLISHABLE_KEY;
 
 export const accountCloudConfigured=Boolean(SUPABASE_URL&&SUPABASE_ANON_KEY);
 
