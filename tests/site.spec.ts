@@ -46,9 +46,12 @@ test('daily study time persists locally',async({page})=>{
 
 test('guided lesson stage completion persists',async({page})=>{
   await page.goto('?lesson=1&view=dashboard');
-  const stage=page.getByRole('button',{name:/Lesson goal দেখুন সম্পন্ন করুন/});
-  await stage.click();
-  await expect(stage).toHaveAttribute('aria-pressed','true');
+  const incomplete=page.getByRole('button',{name:/Lesson goal দেখুন সম্পন্ন করুন/});
+  await incomplete.click();
+  // The accessible name intentionally changes when the state changes, so re-query
+  // the control instead of retaining a locator whose name no longer matches.
+  const completed=page.getByRole('button',{name:/Lesson goal দেখুন অসম্পূর্ণ করুন/});
+  await expect(completed).toHaveAttribute('aria-pressed','true');
   await page.reload();
   await expect(page.getByRole('button',{name:/Lesson goal দেখুন অসম্পূর্ণ করুন/})).toHaveAttribute('aria-pressed','true');
 });
