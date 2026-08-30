@@ -56,8 +56,19 @@ export default function AccountGate({children}:Props){
     }
     if(!accountCloudConfigured)return;
 
-    const frame=requestAnimationFrame(()=>setHeaderTarget(document.querySelector<HTMLElement>('.future-header-tools')));
-    return()=>cancelAnimationFrame(frame);
+    let stopped=false;
+    const syncHeaderTarget=()=>{
+      if(stopped)return;
+      const next=document.querySelector<HTMLElement>('.future-header-tools');
+      setHeaderTarget(current=>current===next?current:next);
+    };
+    syncHeaderTarget();
+    const observer=new MutationObserver(syncHeaderTarget);
+    observer.observe(document.body,{childList:true,subtree:true});
+    return()=>{
+      stopped=true;
+      observer.disconnect();
+    };
   },[]);
 
   useEffect(()=>{
