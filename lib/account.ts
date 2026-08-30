@@ -13,6 +13,15 @@ export type AccountSession={
   user:AccountUser;
 };
 
+export type AccountProfile={
+  user_id:string;
+  email:string;
+  display_name?:string|null;
+  status:'active'|'disabled';
+  joined_at?:string;
+  last_active_at?:string;
+};
+
 type SupabaseUser={
   id:string;
   email?:string;
@@ -163,10 +172,28 @@ export async function upsertAccountProfile(session:AccountSession){
       email:session.user.email,
       display_name:session.user.displayName||null,
       last_active_at:new Date().toISOString(),
-      status:'active',
     }),
   });
   if(!response.ok)throw new Error(`Profile sync failed (${response.status})`);
+}
+
+export async function getAccountProfile(session:AccountSession){
+  assertConfigured();
+  const response=await fetch(`${SUPABASE_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(session.user.id)}&select=user_id,email,display_name,status,joined_at,last_active_at&limit=1`,{
+    headers:authHeaders(session.accessToken),cache:'no-store',
+  });
+  if(!response.ok)throw new Error(`Profile check failed (${response.status})`);
+  const rows=await response.json() as AccountProfile[];
+  return rows[0]||null;
+}
+
+export async function ensureAccountEnabled(session:AccountSession){
+  const profile=await getAccountProfile(session);
+  if(profile?.status==='disabled'){
+    await signOut(session);
+    throw new Error('এই account বর্তমানে disabled। Support-এর সাথে যোগাযোগ করুন।');
+  }
+  return profile;
 }
 
 export function getSupabaseRestBase(){
