@@ -353,7 +353,7 @@ export default function Shell({
                       key={item.lesson}
                       className={item.lesson===lesson?'active':''}
                       onClick={()=>{
-                        onLesson(item.lesson,'dashboard');
+                        onLesson(item.lesson,view);
                         setLessonPicker(false);
                       }}
                       role="option"
@@ -458,7 +458,7 @@ export default function Shell({
                   id="nv-final-drawer-lesson"
                   value={lesson}
                   onChange={e=>{
-                    onLesson(Number(e.target.value),'dashboard');
+                    onLesson(Number(e.target.value),view);
                     setDrawer(false);
                   }}
                 >
