@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState, type ReactNode } from 'react';
-import { BookOpen, KeyRound, Loader2, LockKeyhole, LogIn, Mail, ShieldCheck, UserPlus } from 'lucide-react';
+import { BookOpen, CloudOff, KeyRound, Loader2, LockKeyhole, LogIn, Mail, ShieldCheck, UserPlus } from 'lucide-react';
 import {
   accountCloudConfigured,
   ensureAccountEnabled,
@@ -23,7 +23,7 @@ import {
 import { STUDY_STATE_EVENT } from '@/lib/storage';
 
 type Mode='signin'|'signup'|'reset'|'recovery';
-
+type SyncState='synced'|'syncing'|'error';
 type Props={children:ReactNode};
 
 export default function AccountGate({children}:Props){
@@ -32,6 +32,7 @@ export default function AccountGate({children}:Props){
   const [recoveryToken,setRecoveryToken]=useState('');
   const [loading,setLoading]=useState(accountCloudConfigured);
   const [submitting,setSubmitting]=useState(false);
+  const [syncState,setSyncState]=useState<SyncState>('synced');
   const [email,setEmail]=useState('');
   const [password,setPassword]=useState('');
   const [displayName,setDisplayName]=useState('');
@@ -65,8 +66,10 @@ export default function AccountGate({children}:Props){
     let debounce:number|undefined;
     const sync=async(label='autosync')=>{
       if(busy)return;
-      busy=true;
-      try{await pushProgressToCloud(label)}catch{}finally{busy=false}
+      busy=true;setSyncState('syncing');
+      try{await pushProgressToCloud(label);setSyncState('synced')}
+      catch{setSyncState('error')}
+      finally{busy=false}
     };
     const schedule=()=>{
       if(debounce)window.clearTimeout(debounce);
@@ -81,7 +84,6 @@ export default function AccountGate({children}:Props){
       window.clearInterval(timer);
       window.removeEventListener(STUDY_STATE_EVENT,schedule);
       document.removeEventListener('visibilitychange',onVisibility);
-      void sync('session-cleanup');
     };
   },[session]);
 
@@ -94,6 +96,7 @@ export default function AccountGate({children}:Props){
     setSession(next);
     setPassword('');
     setMessage('');
+    setSyncState('synced');
   };
 
   const submit=async(event:FormEvent)=>{
@@ -125,8 +128,16 @@ export default function AccountGate({children}:Props){
   };
 
   const logout=async()=>{
-    setSubmitting(true);
-    try{await pushProgressToCloud('logout')}catch{}
+    setSubmitting(true);setError('');setSyncState('syncing');
+    try{
+      await pushProgressToCloud('logout');
+      setSyncState('synced');
+    }catch{
+      setSyncState('error');
+      setError('Progress cloud-এ save হয়নি, তাই data রক্ষা করতে Logout থামানো হয়েছে। Internet ঠিক হলে আবার চেষ্টা করুন।');
+      setSubmitting(false);
+      return;
+    }
     await signOut(session);
     clearLocalStudyDataForAccountSwitch();
     setSession(null);
@@ -138,10 +149,11 @@ export default function AccountGate({children}:Props){
 
   if(session){
     return <div className="account-session-shell">
-      <div className="account-session-bar" role="status">
-        <span><ShieldCheck size={16}/><b>{session.user.displayName||session.user.email}</b><small>Personal workspace</small></span>
-        <button type="button" onClick={()=>void logout()} disabled={submitting}>Logout</button>
+      <div className={`account-session-bar sync-${syncState}`} role="status">
+        <span>{syncState==='error'?<CloudOff size={16}/>:<ShieldCheck size={16}/>}<b>{session.user.displayName||session.user.email}</b><small>{syncState==='syncing'?'Saving progress…':syncState==='error'?'Cloud sync pending':'Personal workspace · synced'}</small></span>
+        <button type="button" onClick={()=>void logout()} disabled={submitting}>{submitting?'Saving…':'Logout'}</button>
       </div>
+      {error&&<div className="account-session-warning" role="alert">{error}</div>}
       {children}
     </div>;
   }
