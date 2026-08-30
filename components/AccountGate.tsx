@@ -6,10 +6,12 @@ import {
   accountCloudConfigured,
   ensureAccountEnabled,
   ensureFreshSession,
+  readRecoveryTokenFromUrl,
   requestPasswordReset,
   signIn,
   signOut,
   signUp,
+  updateRecoveredPassword,
   upsertAccountProfile,
   type AccountSession,
 } from '@/lib/account';
@@ -19,13 +21,14 @@ import {
   pushProgressToCloud,
 } from '@/lib/cloudProgress';
 
-type Mode='signin'|'signup'|'reset';
+type Mode='signin'|'signup'|'reset'|'recovery';
 
 type Props={children:ReactNode};
 
 export default function AccountGate({children}:Props){
   const [session,setSession]=useState<AccountSession|null>(null);
   const [mode,setMode]=useState<Mode>('signin');
+  const [recoveryToken,setRecoveryToken]=useState('');
   const [loading,setLoading]=useState(accountCloudConfigured);
   const [submitting,setSubmitting]=useState(false);
   const [email,setEmail]=useState('');
@@ -36,6 +39,9 @@ export default function AccountGate({children}:Props){
 
   useEffect(()=>{
     if(!accountCloudConfigured){setLoading(false);return;}
+    const token=readRecoveryTokenFromUrl();
+    if(token){setRecoveryToken(token);setMode('recovery');setLoading(false);return;}
+
     let dead=false;
     (async()=>{
       const existing=await ensureFreshSession();
@@ -85,6 +91,13 @@ export default function AccountGate({children}:Props){
     event.preventDefault();
     setSubmitting(true);setError('');setMessage('');
     try{
+      if(mode==='recovery'){
+        if(!recoveryToken)throw new Error('Recovery link invalid or expired. নতুন reset link নিন।');
+        await updateRecoveredPassword(recoveryToken,password);
+        setRecoveryToken('');setPassword('');setMode('signin');
+        setMessage('নতুন password সেট হয়েছে। এখন নতুন password দিয়ে Login করুন।');
+        return;
+      }
       if(mode==='reset'){
         await requestPasswordReset(email.trim());
         setMessage('Password reset link আপনার email-এ পাঠানো হয়েছে।');
@@ -124,33 +137,35 @@ export default function AccountGate({children}:Props){
     </div>;
   }
 
+  const recovery=mode==='recovery';
+
   return <main className="account-gate" id="main-content">
     <section className="account-card" aria-labelledby="account-title">
       <div className="account-brand"><span>日</span><div><small>THE NIHONGO VIBES</small><b>JLPT N5 PERSONAL STUDIO</b></div></div>
       <div className="account-copy">
         <span className="account-kicker"><LockKeyhole size={15}/> PRIVATE STUDY ACCOUNT</span>
-        <h1 id="account-title" className="font-bn">আপনার নিজের Japanese learning workspace</h1>
-        <p className="font-bn">আপনার lesson progress, SRS, mistakes, Daily Coach এবং mock history শুধু আপনার account-এর সাথেই থাকবে।</p>
+        <h1 id="account-title" className="font-bn">{recovery?'নতুন password সেট করুন':'আপনার নিজের Japanese learning workspace'}</h1>
+        <p className="font-bn">{recovery?'Recovery link verify হয়েছে। এখন account-এর জন্য নতুন secure password দিন।':'আপনার lesson progress, SRS, mistakes, Daily Coach এবং mock history শুধু আপনার account-এর সাথেই থাকবে।'}</p>
       </div>
 
-      <div className="account-tabs" role="tablist" aria-label="Account action">
+      {!recovery&&<div className="account-tabs" role="tablist" aria-label="Account action">
         <button type="button" className={mode==='signin'?'active':''} onClick={()=>{setMode('signin');setError('');setMessage('')}}><LogIn size={16}/> Login</button>
         <button type="button" className={mode==='signup'?'active':''} onClick={()=>{setMode('signup');setError('');setMessage('')}}><UserPlus size={16}/> New account</button>
-      </div>
+      </div>}
 
       <form onSubmit={submit} className="account-form">
         {mode==='signup'&&<label><span className="font-bn">নাম</span><div><BookOpen size={17}/><input value={displayName} onChange={e=>setDisplayName(e.target.value)} autoComplete="name" required placeholder="আপনার নাম"/></div></label>}
-        <label><span>Email</span><div><Mail size={17}/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" required placeholder="you@example.com"/></div></label>
-        {mode!=='reset'&&<label><span>Password</span><div><KeyRound size={17}/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode==='signup'?'new-password':'current-password'} required minLength={8} placeholder="Minimum 8 characters"/></div></label>}
+        {!recovery&&<label><span>Email</span><div><Mail size={17}/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" required placeholder="you@example.com"/></div></label>}
+        {mode!=='reset'&&<label><span>{recovery?'New password':'Password'}</span><div><KeyRound size={17}/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode==='signin'?'current-password':'new-password'} required minLength={8} placeholder="Minimum 8 characters"/></div></label>}
 
         {error&&<div className="account-message error" role="alert">{error}</div>}
         {message&&<div className="account-message success" role="status">{message}</div>}
 
-        <button className="account-submit" type="submit" disabled={submitting}>{submitting?<Loader2 className="animate-spin"/>:mode==='signup'?<UserPlus/>:mode==='reset'?<Mail/>:<LogIn/>}<span>{mode==='signup'?'Account তৈরি করুন':mode==='reset'?'Reset link পাঠান':'Login করুন'}</span></button>
+        <button className="account-submit" type="submit" disabled={submitting}>{submitting?<Loader2 className="animate-spin"/>:mode==='signup'?<UserPlus/>:mode==='reset'?<Mail/>:<LogIn/>}<span>{recovery?'নতুন password save করুন':mode==='signup'?'Account তৈরি করুন':mode==='reset'?'Reset link পাঠান':'Login করুন'}</span></button>
       </form>
 
       <div className="account-foot">
-        {mode==='reset'?<button type="button" onClick={()=>setMode('signin')}>← Login-এ ফিরে যান</button>:<button type="button" onClick={()=>setMode('reset')}>Password ভুলে গেছেন?</button>}
+        {!recovery&&(mode==='reset'?<button type="button" onClick={()=>setMode('signin')}>← Login-এ ফিরে যান</button>:<button type="button" onClick={()=>setMode('reset')}>Password ভুলে গেছেন?</button>)}
         <small className="font-bn">Password secure authentication service handle করে; admin password দেখতে পাবে না।</small>
       </div>
     </section>
