@@ -79,6 +79,12 @@ for update to authenticated
 using (auth.uid()=user_id)
 with check (auth.uid()=user_id);
 
+drop policy if exists "profile admin status update" on public.user_profiles;
+create policy "profile admin status update" on public.user_profiles
+for update to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
 drop policy if exists "profile own insert" on public.user_profiles;
 create policy "profile own insert" on public.user_profiles
 for insert to authenticated
@@ -111,7 +117,9 @@ using (auth.uid()=user_id or public.is_admin());
 -- Assign the first admin from the SQL editor/service-role environment only:
 -- update public.user_roles set role='admin' where user_id='<ADMIN_UUID>';
 
-create or replace view public.admin_user_directory as
+create or replace view public.admin_user_directory
+with (security_invoker=true)
+as
 select
   p.user_id,
   p.email,
@@ -121,10 +129,12 @@ select
   p.last_active_at,
   r.role,
   g.updated_at as progress_updated_at,
-  (g.backup->>'lesson')::int as current_lesson
+  case when (g.backup->>'lesson') ~ '^[0-9]+$' then (g.backup->>'lesson')::int else null end as current_lesson
 from public.user_profiles p
 left join public.user_roles r on r.user_id=p.user_id
 left join public.user_progress g on g.user_id=p.user_id;
+
+grant select on public.admin_user_directory to authenticated;
 
 comment on view public.admin_user_directory is
 'Admin reporting source for Google Sheets sync. Contains account metadata and progress summary, never passwords.';
