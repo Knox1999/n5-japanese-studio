@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, RefreshCcw, ShieldAlert, ShieldCheck, UserRound, Users } from 'lucide-react';
 import { accountCloudConfigured } from '@/lib/account';
 import { listAdminDirectory, setUserStatus, type AdminDirectoryRow } from '@/lib/admin';
@@ -14,15 +14,15 @@ export default function AdminPanel(){
   const [query,setQuery]=useState('');
   const [busy,setBusy]=useState<string|null>(null);
 
-  const load=async()=>{
+  const load=useCallback(async()=>{
     if(!accountCloudConfigured){setLoading(false);return;}
     setLoading(true);setError('');
     try{setRows(await listAdminDirectory())}
     catch(err){setError(err instanceof Error?err.message:String(err))}
     finally{setLoading(false)}
-  };
+  },[]);
 
-  useEffect(()=>{void load()},[]);
+  useEffect(()=>{void load()},[load]);
 
   const shown=useMemo(()=>{
     const q=query.trim().toLowerCase();
