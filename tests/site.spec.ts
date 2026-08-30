@@ -11,7 +11,10 @@ async function expectNoHorizontalOverflow(page:Page){
 }
 
 test.beforeEach(async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('nv_analytics_consent_v1','declined'));
+  await page.addInitScript(()=>{
+    localStorage.setItem('nv_analytics_consent_v1','declined');
+    localStorage.setItem('n5_e2e_bypass_auth','1');
+  });
 });
 
 for(const view of views){
@@ -48,8 +51,6 @@ test('guided lesson stage completion persists',async({page})=>{
   await page.goto('?lesson=1&view=dashboard');
   const incomplete=page.getByRole('button',{name:/Lesson goal দেখুন সম্পন্ন করুন/});
   await incomplete.click();
-  // The accessible name intentionally changes when the state changes, so re-query
-  // the control instead of retaining a locator whose name no longer matches.
   const completed=page.getByRole('button',{name:/Lesson goal দেখুন অসম্পূর্ণ করুন/});
   await expect(completed).toHaveAttribute('aria-pressed','true');
   await page.reload();
