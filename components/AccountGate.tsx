@@ -20,6 +20,7 @@ import {
   prepareAccountWorkspace,
   pushProgressToCloud,
 } from '@/lib/cloudProgress';
+import { STUDY_STATE_EVENT } from '@/lib/storage';
 
 type Mode='signin'|'signup'|'reset'|'recovery';
 
@@ -61,18 +62,26 @@ export default function AccountGate({children}:Props){
   useEffect(()=>{
     if(!session)return;
     let busy=false;
-    const sync=async()=>{
+    let debounce:number|undefined;
+    const sync=async(label='autosync')=>{
       if(busy)return;
       busy=true;
-      try{await pushProgressToCloud('autosync')}catch{}finally{busy=false}
+      try{await pushProgressToCloud(label)}catch{}finally{busy=false}
     };
-    const timer=window.setInterval(()=>void sync(),60_000);
-    const onVisibility=()=>{if(document.visibilityState==='hidden')void sync()};
-    window.addEventListener('visibilitychange',onVisibility);
+    const schedule=()=>{
+      if(debounce)window.clearTimeout(debounce);
+      debounce=window.setTimeout(()=>void sync('study-change'),1400);
+    };
+    const timer=window.setInterval(()=>void sync('periodic'),60_000);
+    const onVisibility=()=>{if(document.visibilityState==='hidden')void sync('page-hidden')};
+    window.addEventListener(STUDY_STATE_EVENT,schedule);
+    document.addEventListener('visibilitychange',onVisibility);
     return()=>{
+      if(debounce)window.clearTimeout(debounce);
       window.clearInterval(timer);
-      window.removeEventListener('visibilitychange',onVisibility);
-      void sync();
+      window.removeEventListener(STUDY_STATE_EVENT,schedule);
+      document.removeEventListener('visibilitychange',onVisibility);
+      void sync('session-cleanup');
     };
   },[session]);
 
