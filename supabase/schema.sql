@@ -67,6 +67,21 @@ create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
 
+-- Backfill Auth users that existed before this schema/trigger was installed.
+insert into public.user_profiles(user_id,email,display_name,joined_at,last_active_at)
+select
+  id,
+  coalesce(email,''),
+  raw_user_meta_data->>'display_name',
+  coalesce(created_at,now()),
+  coalesce(last_sign_in_at,created_at,now())
+from auth.users
+on conflict(user_id) do nothing;
+
+insert into public.user_roles(user_id,role)
+select id,'student' from auth.users
+on conflict(user_id) do nothing;
+
 -- Students can only read/update their own profile. Admins can support all users.
 drop policy if exists "profile own or admin read" on public.user_profiles;
 create policy "profile own or admin read" on public.user_profiles
