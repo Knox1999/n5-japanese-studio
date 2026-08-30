@@ -210,7 +210,7 @@ export default function AccountGate({children}:Props){
         <button type="button" className="account-header-status" disabled><Loader2 className="animate-spin" size={16}/><span>Account</span></button>
       ):session?(
         <>
-          <button type="button" className={`account-profile-chip sync-${syncState}`} title={syncState==='error'?'Cloud sync pending':'Personal workspace'}>
+          <button type="button" className={`account-profile-chip sync-${syncState}`} title={syncState==='error'?'Cloud sync pending':'Personal workspace'} aria-label="Account profile">
             <span className="account-profile-icons"><UserRound size={16}/>{syncState==='error'?<CloudOff size={12}/>:<ShieldCheck size={12}/>}</span>
             <span>{session.user.displayName||session.user.email}</span>
           </button>
@@ -220,8 +220,8 @@ export default function AccountGate({children}:Props){
         </>
       ):(
         <>
-          <button type="button" className="account-header-login" onClick={()=>openAuth('signin')}><LogIn size={16}/><span>লগইন</span></button>
-          <button type="button" className="account-header-join" onClick={()=>openAuth('signup')}><UserPlus size={16}/><span>জয়েন</span></button>
+          <button type="button" className="account-header-login" onClick={()=>openAuth('signin')} aria-label="লগইন"><LogIn size={16}/><span>লগইন</span></button>
+          <button type="button" className="account-header-join" onClick={()=>openAuth('signup')} aria-label="জয়েন"><UserPlus size={16}/><span>জয়েন</span></button>
         </>
       )}
     </div>,
@@ -234,7 +234,7 @@ export default function AccountGate({children}:Props){
     {session&&error&&<div className="account-session-warning" role="alert">{error}</div>}
 
     {authOpen&&<div className="account-modal-layer" role="dialog" aria-modal="true" aria-labelledby="account-title">
-      <button className="account-modal-backdrop" type="button" onClick={()=>{if(!recovery)setAuthOpen(false)}} aria-label="Account dialog বন্ধ করুন"/>
+      <button className="account-modal-backdrop" type="button" onClick={()=>{if(!recovery)setAuthOpen(false)}} aria-label="Account overlay"/>
       <section className="account-gate">
         <section className="account-card">
           {!recovery&&<button className="account-modal-close" type="button" onClick={()=>setAuthOpen(false)} aria-label="বন্ধ করুন"><X size={20}/></button>}
