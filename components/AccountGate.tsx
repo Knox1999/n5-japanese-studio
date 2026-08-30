@@ -26,11 +26,18 @@ type Mode='signin'|'signup'|'reset'|'recovery';
 type SyncState='synced'|'syncing'|'error';
 type Props={children:ReactNode};
 
+function localE2EAuthBypass(){
+  if(typeof window==='undefined')return false;
+  const localHost=window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1';
+  return localHost&&window.localStorage.getItem('n5_e2e_bypass_auth')==='1';
+}
+
 export default function AccountGate({children}:Props){
   const [session,setSession]=useState<AccountSession|null>(null);
   const [mode,setMode]=useState<Mode>('signin');
   const [recoveryToken,setRecoveryToken]=useState('');
   const [loading,setLoading]=useState(accountCloudConfigured);
+  const [e2eBypass,setE2eBypass]=useState(false);
   const [submitting,setSubmitting]=useState(false);
   const [syncState,setSyncState]=useState<SyncState>('synced');
   const [email,setEmail]=useState('');
@@ -40,6 +47,11 @@ export default function AccountGate({children}:Props){
   const [error,setError]=useState('');
 
   useEffect(()=>{
+    if(localE2EAuthBypass()){
+      setE2eBypass(true);
+      setLoading(false);
+      return;
+    }
     if(!accountCloudConfigured){setLoading(false);return;}
     const token=readRecoveryTokenFromUrl();
     if(token){setRecoveryToken(token);setMode('recovery');setLoading(false);return;}
@@ -87,6 +99,7 @@ export default function AccountGate({children}:Props){
     };
   },[session]);
 
+  if(e2eBypass)return <>{children}</>;
   if(!accountCloudConfigured)return <>{children}</>;
 
   const completeLogin=async(next:AccountSession)=>{
