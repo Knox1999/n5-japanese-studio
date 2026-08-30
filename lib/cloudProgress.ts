@@ -93,8 +93,8 @@ export async function prepareAccountWorkspace(userId:string){
     return {source:'cloud' as const,updatedAt:remote.updated_at};
   }
 
-  if(!previousUserId){
-    const updatedAt=await pushProgressToCloud('first-account-migration');
+  if(!previousUserId||previousUserId===userId){
+    const updatedAt=await pushProgressToCloud(previousUserId===userId?'same-account-recovery':'first-account-migration');
     rememberAccountId(userId);
     return {source:'local-migrated' as const,updatedAt};
   }
