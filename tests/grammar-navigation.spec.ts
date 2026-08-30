@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
 
 test.beforeEach(async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('nv_analytics_consent_v1','declined'));
+  await page.addInitScript(()=>{
+    localStorage.setItem('nv_analytics_consent_v1','declined');
+    localStorage.setItem('n5_e2e_bypass_auth','1');
+  });
 });
 
 test('desktop lesson picker preserves Grammar view while changing lesson',async({page})=>{
