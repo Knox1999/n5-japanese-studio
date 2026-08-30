@@ -45,10 +45,10 @@ export async function listAdminDirectory(){
 
 export async function setUserStatus(userId:string,status:'active'|'disabled'){
   const session=await adminSession();
-  const response=await fetch(`${getSupabaseRestBase()}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`,{
-    method:'PATCH',
+  const response=await fetch(`${getSupabaseRestBase()}/rest/v1/rpc/set_user_status`,{
+    method:'POST',
     headers:headers(session.accessToken,'return=minimal'),
-    body:JSON.stringify({status}),
+    body:JSON.stringify({target_user_id:userId,new_status:status}),
   });
   if(!response.ok)throw new Error(`User status update failed (${response.status})`);
 }
