@@ -187,11 +187,10 @@ export async function signOut(session?:AccountSession|null){
 
 export async function upsertAccountProfile(session:AccountSession){
   assertConfigured();
-  const response=await fetch(`${SUPABASE_URL}/rest/v1/user_profiles?on_conflict=user_id`,{
-    method:'POST',
-    headers:{...authHeaders(session.accessToken),Prefer:'resolution=merge-duplicates,return=minimal'},
+  const response=await fetch(`${SUPABASE_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(session.user.id)}`,{
+    method:'PATCH',
+    headers:{...authHeaders(session.accessToken),Prefer:'return=minimal'},
     body:JSON.stringify({
-      user_id:session.user.id,
       email:session.user.email,
       display_name:session.user.displayName||null,
       last_active_at:new Date().toISOString(),
@@ -212,7 +211,8 @@ export async function getAccountProfile(session:AccountSession){
 
 export async function ensureAccountEnabled(session:AccountSession){
   const profile=await getAccountProfile(session);
-  if(profile?.status==='disabled'){
+  if(!profile)throw new Error('Account profile missing. Admin setup check করুন।');
+  if(profile.status==='disabled'){
     await signOut(session);
     throw new Error('এই account বর্তমানে disabled। Support-এর সাথে যোগাযোগ করুন।');
   }
