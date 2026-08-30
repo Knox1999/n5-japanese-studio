@@ -8,7 +8,10 @@ async function noOverflow(page:import('@playwright/test').Page){
 }
 
 test.beforeEach(async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('nv_analytics_consent_v1','declined'));
+  await page.addInitScript(()=>{
+    localStorage.setItem('nv_analytics_consent_v1','declined');
+    localStorage.setItem('n5_e2e_bypass_auth','1');
+  });
 });
 
 for(const width of widths){
