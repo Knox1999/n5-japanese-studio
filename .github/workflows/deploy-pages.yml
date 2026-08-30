@@ -79,6 +79,8 @@ jobs:
       - name: Build static Next.js site
         env:
           GITHUB_PAGES: 'true'
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: npm run build
 
       - name: Generate offline app shell

@@ -2,6 +2,7 @@ import type { MockAttempt, SrsCardState } from './types';
 import { createLearningState, LEARNING_STATE_VERSION, normalizeDailyMinutes, type LearningState } from './learning';
 
 export const STORAGE_VERSION = 61;
+export const STUDY_STATE_EVENT='nihongo:vibes-study-state-changed';
 export const KEYS = {
   lesson: 'n5_offline_lesson',
   progress: 'n5_offline_progress',
@@ -10,6 +11,11 @@ export const KEYS = {
   spelling: 'n5_offline_spelling_v12',
   learning: 'nihongo_vibes_learning_v1',
 };
+
+function announceStudyStateChange(){
+  if(typeof window==='undefined')return;
+  window.dispatchEvent(new Event(STUDY_STATE_EVENT));
+}
 
 export function readJSON<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -23,7 +29,10 @@ export function readJSON<T>(key: string, fallback: T): T {
 
 export function writeJSON(key: string, value: unknown) {
   if (typeof window === 'undefined') return;
-  try { window.localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+    announceStudyStateChange();
+  } catch {}
 }
 
 export function readLesson(): number {
@@ -34,7 +43,10 @@ export function readLesson(): number {
 
 export function writeLesson(n: number) {
   if (typeof window === 'undefined') return;
-  try { window.localStorage.setItem(KEYS.lesson, String(Math.min(25, Math.max(1, Math.round(n))))); } catch {}
+  try {
+    window.localStorage.setItem(KEYS.lesson, String(Math.min(25, Math.max(1, Math.round(n)))));
+    announceStudyStateChange();
+  } catch {}
 }
 
 export type ProgressMap = Record<string, boolean | number>;
