@@ -38,6 +38,40 @@ test('dashboard exposes one clear coach and guided lesson journey',async({page})
   await expect(page.locator('#daily-coach-title')).toHaveText('এখন কী পড়বেন?');
 });
 
+test('animated home keeps its accessible learning contract and primary path',async({page},testInfo)=>{
+  test.skip(testInfo.project.name!=='desktop-chromium');
+  await page.goto('?lesson=1&view=dashboard');
+
+  const hero=page.locator('section.home-motion-hero[aria-labelledby="home-title"]');
+  await expect(hero).toBeVisible();
+  await expect(hero.locator('#home-title')).toHaveText('জাপানিজ শেখা হোক আনন্দে!');
+  await expect(hero.locator('.sr-only')).toContainText('হিরাগানা, কাতাকানা, কাঞ্জি, কথোপকথন এবং JLPT N5');
+  await expect(hero.locator('[role="progressbar"][aria-label="সামগ্রিক vocabulary mastery"]')).toBeVisible();
+  await expect(hero.getByRole('group',{name:'দ্রুত learning tools'}).getByRole('button')).toHaveCount(5);
+
+  await hero.getByRole('button',{name:/Lesson 01 চালিয়ে যান/}).click();
+  await expect(page).toHaveURL(/[?&]lesson=1(?:&|$)/);
+  await expect(page).toHaveURL(/[?&]view=vocabulary(?:&|$)/);
+  await expect(visibleHeading(page)).toBeVisible();
+});
+
+test('animated home honours reduced-motion preference',async({page},testInfo)=>{
+  test.skip(testInfo.project.name!=='desktop-chromium');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto('?lesson=1&view=dashboard');
+
+  const word=page.locator('.home-motion-word');
+  await expect(word).toBeVisible();
+  const initial=(await word.textContent())??'';
+  await page.waitForTimeout(2600);
+  await expect(word).toHaveText(initial);
+
+  const animationNames=await page
+    .locator('.home-motion-orb-a,.home-motion-orb-b,.home-motion-progress-card,.home-motion-rotate > i')
+    .evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).animationName));
+  expect(animationNames).toEqual(['none','none','none','none']);
+});
+
 test('daily study time persists locally',async({page})=>{
   await page.goto('?lesson=1&view=dashboard');
   const ten=page.getByRole('button',{name:'10m'});
@@ -180,6 +214,8 @@ for(const width of phoneWidths){
     await page.goto('?lesson=1&view=dashboard');
     await expectNoHorizontalOverflow(page);
     await expect(page.getByRole('navigation',{name:'মোবাইল নেভিগেশন'})).toBeVisible();
+    const toolBox=await page.locator('.home-motion-tools button').first().boundingBox();
+    expect(toolBox?.height).toBeGreaterThanOrEqual(44);
   });
 }
 
