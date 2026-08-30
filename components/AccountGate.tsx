@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState, type ReactNode } from 'react';
 import { BookOpen, KeyRound, Loader2, LockKeyhole, LogIn, Mail, ShieldCheck, UserPlus } from 'lucide-react';
 import {
   accountCloudConfigured,
+  ensureAccountEnabled,
   ensureFreshSession,
   requestPasswordReset,
   signIn,
@@ -41,6 +42,7 @@ export default function AccountGate({children}:Props){
       if(!existing||dead){if(!dead)setLoading(false);return;}
       try{
         await upsertAccountProfile(existing);
+        await ensureAccountEnabled(existing);
         await prepareAccountWorkspace(existing.user.id);
         if(!dead)setSession(existing);
       }catch(err){
@@ -72,6 +74,7 @@ export default function AccountGate({children}:Props){
 
   const completeLogin=async(next:AccountSession)=>{
     await upsertAccountProfile(next);
+    await ensureAccountEnabled(next);
     await prepareAccountWorkspace(next.user.id);
     setSession(next);
     setPassword('');
