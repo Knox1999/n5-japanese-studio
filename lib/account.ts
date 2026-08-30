@@ -154,6 +154,29 @@ export async function requestPasswordReset(email:string){
   await parseAuth(response);
 }
 
+export function readRecoveryTokenFromUrl(){
+  if(typeof window==='undefined'||!window.location.hash)return null;
+  const params=new URLSearchParams(window.location.hash.slice(1));
+  if(params.get('type')!=='recovery')return null;
+  return params.get('access_token');
+}
+
+export function clearAuthCallbackHash(){
+  if(typeof window==='undefined'||!window.location.hash)return;
+  window.history.replaceState(window.history.state,'',`${window.location.pathname}${window.location.search}`);
+}
+
+export async function updateRecoveredPassword(accessToken:string,newPassword:string){
+  assertConfigured();
+  if(newPassword.length<8)throw new Error('Password কমপক্ষে 8 characters হতে হবে।');
+  const response=await fetch(`${SUPABASE_URL}/auth/v1/user`,{
+    method:'PUT',headers:authHeaders(accessToken),body:JSON.stringify({password:newPassword}),
+  });
+  const body=await response.json().catch(()=>({})) as AuthResponse;
+  if(!response.ok)throw new Error(body.msg||body.error_description||body.error||`Password update failed (${response.status})`);
+  clearAuthCallbackHash();
+}
+
 export async function signOut(session?:AccountSession|null){
   const current=session||readAccountSession();
   if(accountCloudConfigured&&current?.accessToken){
