@@ -1,5 +1,5 @@
-import StudioApp from '@/components/StudioApp';
+import Experience from '@/components/Experience';
 
-export default function Home() {
-  return <StudioApp />;
+export default function Page() {
+  return <Experience />;
 }

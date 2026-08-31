@@ -1,60 +1,13 @@
-# The Nihongo Vibes
+# The Nihongo Vibes — Clean Rebuild
 
-A futuristic JLPT N5 Japanese learning studio built for structured daily practice.
+Fresh Next.js rebuild based on the user's Japanese-learning product requirements and reference walkthroughs.
 
-## Learning modules
+## Goals
+- Public Japanese-learning landing experience
+- Logged-in app-style workspace
+- Bangla/English UI toggle
+- Kana, vocabulary, grammar, listening, review, mock and progress surfaces
+- Subtle depth and restrained motion
+- Mobile-first responsive navigation
 
-- Vocabulary with Japanese audio and mastery tracking
-- Smart Recall / spaced repetition
-- Spelling and Kana Pad
-- Conversation role-play
-- Reading practice
-- Listening and shadowing
-- Grammar patterns
-- KLC Kanji Matrix with stroke order
-- Lesson Mastery Tests and history
-- Local progress backup / restore
-
-## Technology
-
-- Next.js 15
-- React 19
-- TypeScript
-- SCSS / Tailwind
-- Three.js
-- GSAP
-- Kokoro Japanese neural TTS
-- GitHub Pages
-- Google Analytics 4
-
-## Production
-
-Live site: https://knox1999.github.io/n5-japanese-studio/
-
-Current release: **V50**
-
-Deployment is handled by `.github/workflows/deploy-pages.yml`.
-
-## Repository structure
-
-```text
-.github/workflows/   GitHub Pages deployment
-app/                 Next.js application
-components/          Learning UI and interactions
-lib/                 Data, storage, audio and analytics helpers
-public/              PWA, generated data/audio and public assets
-scripts/             Data/audio/build QA scripts
-source/              Source learning datasets
-styles/              Production styles
-```
-
-## Development
-
-```bash
-npm install
-npm run data:build
-npm run lint:types
-npm run build
-```
-
-The project intentionally keeps learner progress in the browser. Use **Backup & Restore** inside the app to export or restore progress.
+This repository intentionally does not carry forward the previous UI/component architecture.
