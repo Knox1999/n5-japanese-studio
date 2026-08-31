@@ -15,7 +15,13 @@ test('guest visitors see the public learning experience before authentication',a
   await expect(page.locator('#home-title')).toHaveCount(0);
   await expect(page.locator('.account-modal-layer')).toHaveCount(0);
   await expect(page.getByRole('button',{name:/Start learning/i}).first()).toBeVisible();
-  await expect(page.getByRole('button',{name:'Toggle navigation'})).toBeVisible();
+
+  const viewportWidth=page.viewportSize()?.width||0;
+  if(viewportWidth<=768){
+    await expect(page.getByRole('button',{name:'Toggle navigation'})).toBeVisible();
+  }else{
+    await expect(page.getByRole('button',{name:'Login',exact:true}).first()).toBeVisible();
+  }
 });
 
 test('login and join open the account dialog and return to the public landing',async({page})=>{
