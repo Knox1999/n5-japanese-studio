@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { BookOpen, CloudOff, KeyRound, Loader2, LockKeyhole, LogIn, LogOut, Mail, ShieldCheck, UserPlus, UserRound, X } from 'lucide-react';
+import PublicLanding from './PublicLanding';
 import {
   accountCloudConfigured,
   ensureAccountEnabled,
@@ -38,7 +39,7 @@ export default function AccountGate({children}:Props){
   const [mode,setMode]=useState<Mode>('signin');
   const [authOpen,setAuthOpen]=useState(false);
   const [recoveryToken,setRecoveryToken]=useState('');
-  const [restoring,setRestoring]=useState(false);
+  const [restoring,setRestoring]=useState(accountCloudConfigured);
   const [e2eBypass,setE2eBypass]=useState(false);
   const [headerTarget,setHeaderTarget]=useState<HTMLElement|null>(null);
   const [submitting,setSubmitting]=useState(false);
@@ -52,9 +53,13 @@ export default function AccountGate({children}:Props){
   useEffect(()=>{
     if(localE2EAuthBypass()){
       setE2eBypass(true);
+      setRestoring(false);
       return;
     }
-    if(!accountCloudConfigured)return;
+    if(!accountCloudConfigured){
+      setRestoring(false);
+      return;
+    }
 
     let stopped=false;
     const syncHeaderTarget=()=>{
@@ -78,6 +83,7 @@ export default function AccountGate({children}:Props){
       setRecoveryToken(token);
       setMode('recovery');
       setAuthOpen(true);
+      setRestoring(false);
       return;
     }
 
@@ -204,69 +210,76 @@ export default function AccountGate({children}:Props){
   if(e2eBypass||!accountCloudConfigured)return <>{children}</>;
 
   const recovery=mode==='recovery';
-  const headerControls=headerTarget?createPortal(
+  const headerControls=session&&headerTarget?createPortal(
     <div className="account-header-actions" aria-label="Account controls">
-      {restoring?(
-        <button type="button" className="account-header-status" disabled><Loader2 className="animate-spin" size={16}/><span>Account</span></button>
-      ):session?(
-        <>
-          <button type="button" className={`account-profile-chip sync-${syncState}`} title={syncState==='error'?'Cloud sync pending':'Personal workspace'} aria-label="Account profile">
-            <span className="account-profile-icons"><UserRound size={16}/>{syncState==='error'?<CloudOff size={12}/>:<ShieldCheck size={12}/>}</span>
-            <span>{session.user.displayName||session.user.email}</span>
-          </button>
-          <button type="button" className="account-header-logout" onClick={()=>void logout()} disabled={submitting} aria-label="Logout">
-            {submitting?<Loader2 className="animate-spin" size={16}/>:<LogOut size={16}/>}<span>Logout</span>
-          </button>
-        </>
-      ):(
-        <>
-          <button type="button" className="account-header-login" onClick={()=>openAuth('signin')} aria-label="লগইন"><LogIn size={16}/><span>লগইন</span></button>
-          <button type="button" className="account-header-join" onClick={()=>openAuth('signup')} aria-label="জয়েন"><UserPlus size={16}/><span>জয়েন</span></button>
-        </>
-      )}
+      <button type="button" className={`account-profile-chip sync-${syncState}`} title={syncState==='error'?'Cloud sync pending':'Personal workspace'} aria-label="Account profile">
+        <span className="account-profile-icons"><UserRound size={16}/>{syncState==='error'?<CloudOff size={12}/>:<ShieldCheck size={12}/>}</span>
+        <span>{session.user.displayName||session.user.email}</span>
+      </button>
+      <button type="button" className="account-header-logout" onClick={()=>void logout()} disabled={submitting} aria-label="Logout">
+        {submitting?<Loader2 className="animate-spin" size={16}/>:<LogOut size={16}/>}<span>Logout</span>
+      </button>
     </div>,
     headerTarget
   ):null;
 
+  const authModal=authOpen&&<div className="account-modal-layer" role="dialog" aria-modal="true" aria-labelledby="account-title">
+    <button className="account-modal-backdrop" type="button" onClick={()=>{if(!recovery)setAuthOpen(false)}} aria-label="Account overlay"/>
+    <section className="account-gate">
+      <section className="account-card">
+        {!recovery&&<button className="account-modal-close" type="button" onClick={()=>setAuthOpen(false)} aria-label="বন্ধ করুন"><X size={20}/></button>}
+        <div className="account-brand"><span>日</span><div><small>THE NIHONGO VIBES</small><b>JLPT N5 PERSONAL STUDIO</b></div></div>
+        <div className="account-copy">
+          <span className="account-kicker"><LockKeyhole size={15}/> PERSONAL STUDY WORKSPACE</span>
+          <h1 id="account-title" className="font-bn">{recovery?'নতুন password সেট করুন':mode==='signup'?'নিজের learning account তৈরি করুন':'আপনার account-এ login করুন'}</h1>
+          <p className="font-bn">{recovery?'Recovery link verify হয়েছে। এখন account-এর জন্য নতুন secure password দিন।':'Login করার পর Vocabulary, SRS, Listening, Grammar, Kanji, Kana এবং Mock Test সহ পুরো learning studio ব্যবহার করতে পারবেন।'}</p>
+        </div>
+
+        {!recovery&&<div className="account-tabs" role="tablist" aria-label="Account action">
+          <button type="button" className={mode==='signin'?'active':''} onClick={()=>{setMode('signin');setError('');setMessage('')}}><LogIn size={16}/> Login</button>
+          <button type="button" className={mode==='signup'?'active':''} onClick={()=>{setMode('signup');setError('');setMessage('')}}><UserPlus size={16}/> Join</button>
+        </div>}
+
+        <form onSubmit={submit} className="account-form">
+          {mode==='signup'&&<label><span className="font-bn">নাম</span><div><BookOpen size={17}/><input value={displayName} onChange={e=>setDisplayName(e.target.value)} autoComplete="name" required placeholder="আপনার নাম"/></div></label>}
+          {!recovery&&<label><span>Email</span><div><Mail size={17}/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" required placeholder="you@example.com"/></div></label>}
+          {mode!=='reset'&&<label><span>{recovery?'New password':'Password'}</span><div><KeyRound size={17}/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode==='signin'?'current-password':'new-password'} required minLength={8} placeholder="Minimum 8 characters"/></div></label>}
+
+          {error&&<div className="account-message error" role="alert">{error}</div>}
+          {message&&<div className="account-message success" role="status">{message}</div>}
+
+          <button className="account-submit" type="submit" disabled={submitting}>{submitting?<Loader2 className="animate-spin"/>:mode==='signup'?<UserPlus/>:mode==='reset'?<Mail/>:<LogIn/>}<span>{recovery?'নতুন password save করুন':mode==='signup'?'Account তৈরি করুন':mode==='reset'?'Reset link পাঠান':'Login করুন'}</span></button>
+        </form>
+
+        <div className="account-foot">
+          {!recovery&&(mode==='reset'?<button type="button" onClick={()=>setMode('signin')}>← Login-এ ফিরে যান</button>:<button type="button" onClick={()=>setMode('reset')}>Password ভুলে গেছেন?</button>)}
+          <small className="font-bn">আপনার progress, SRS, mistakes এবং mock history account workspace-এর সাথে sync থাকবে। Password admin দেখতে পাবে না।</small>
+        </div>
+      </section>
+    </section>
+  </div>;
+
+  if(restoring){
+    return <main className="boot-screen boot-screen-v2" id="main-content" aria-busy="true">
+      <div className="boot-workspace-card">
+        <div className="boot-brand-row"><div className="boot-seal">日</div><div><span>THE NIHONGO VIBES</span><h1 className="font-bn">আপনার account যাচাই করা হচ্ছে</h1></div></div>
+        <div className="boot-loading-line"><Loader2 className="animate-spin"/><span>Restoring workspace</span></div>
+      </div>
+      {authModal}
+    </main>;
+  }
+
+  if(!session){
+    return <>
+      <PublicLanding onLogin={()=>openAuth('signin')} onJoin={()=>openAuth('signup')}/>
+      {authModal}
+    </>;
+  }
+
   return <>
     {children}
     {headerControls}
-    {session&&error&&<div className="account-session-warning" role="alert">{error}</div>}
-
-    {authOpen&&<div className="account-modal-layer" role="dialog" aria-modal="true" aria-labelledby="account-title">
-      <button className="account-modal-backdrop" type="button" onClick={()=>{if(!recovery)setAuthOpen(false)}} aria-label="Account overlay"/>
-      <section className="account-gate">
-        <section className="account-card">
-          {!recovery&&<button className="account-modal-close" type="button" onClick={()=>setAuthOpen(false)} aria-label="বন্ধ করুন"><X size={20}/></button>}
-          <div className="account-brand"><span>日</span><div><small>THE NIHONGO VIBES</small><b>JLPT N5 PERSONAL STUDIO</b></div></div>
-          <div className="account-copy">
-            <span className="account-kicker"><LockKeyhole size={15}/> OPTIONAL PERSONAL ACCOUNT</span>
-            <h1 id="account-title" className="font-bn">{recovery?'নতুন password সেট করুন':mode==='signup'?'নিজের learning account তৈরি করুন':'আপনার account-এ login করুন'}</h1>
-            <p className="font-bn">{recovery?'Recovery link verify হয়েছে। এখন account-এর জন্য নতুন secure password দিন।':'Login ছাড়াও পুরো Studio ব্যবহার করতে পারবেন। Account করলে progress, SRS, mistakes এবং mock history cloud-এ আপনার সাথে থাকবে।'}</p>
-          </div>
-
-          {!recovery&&<div className="account-tabs" role="tablist" aria-label="Account action">
-            <button type="button" className={mode==='signin'?'active':''} onClick={()=>{setMode('signin');setError('');setMessage('')}}><LogIn size={16}/> Login</button>
-            <button type="button" className={mode==='signup'?'active':''} onClick={()=>{setMode('signup');setError('');setMessage('')}}><UserPlus size={16}/> Join</button>
-          </div>}
-
-          <form onSubmit={submit} className="account-form">
-            {mode==='signup'&&<label><span className="font-bn">নাম</span><div><BookOpen size={17}/><input value={displayName} onChange={e=>setDisplayName(e.target.value)} autoComplete="name" required placeholder="আপনার নাম"/></div></label>}
-            {!recovery&&<label><span>Email</span><div><Mail size={17}/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" required placeholder="you@example.com"/></div></label>}
-            {mode!=='reset'&&<label><span>{recovery?'New password':'Password'}</span><div><KeyRound size={17}/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode==='signin'?'current-password':'new-password'} required minLength={8} placeholder="Minimum 8 characters"/></div></label>}
-
-            {error&&<div className="account-message error" role="alert">{error}</div>}
-            {message&&<div className="account-message success" role="status">{message}</div>}
-
-            <button className="account-submit" type="submit" disabled={submitting}>{submitting?<Loader2 className="animate-spin"/>:mode==='signup'?<UserPlus/>:mode==='reset'?<Mail/>:<LogIn/>}<span>{recovery?'নতুন password save করুন':mode==='signup'?'Account তৈরি করুন':mode==='reset'?'Reset link পাঠান':'Login করুন'}</span></button>
-          </form>
-
-          <div className="account-foot">
-            {!recovery&&(mode==='reset'?<button type="button" onClick={()=>setMode('signin')}>← Login-এ ফিরে যান</button>:<button type="button" onClick={()=>setMode('reset')}>Password ভুলে গেছেন?</button>)}
-            <small className="font-bn">Guest mode-এ progress এই device-এ থাকবে। Account করলে secure cloud sync হবে। Password admin দেখতে পাবে না।</small>
-          </div>
-        </section>
-      </section>
-    </div>}
+    {error&&<div className="account-session-warning" role="alert">{error}</div>}
+    {authModal}
   </>;
 }

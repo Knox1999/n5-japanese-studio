@@ -49,3 +49,7 @@
 @use './components';
 @use './utilities';
 @use './modules/animated-home';
+
+/* Keep the measured reference adaptation last so older historical layers cannot
+   accidentally override the current product geometry and responsive system. */
+@use './foundation/nihonova-adaptation';
