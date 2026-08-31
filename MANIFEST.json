@@ -1,8 +1,0 @@
-{
-  "release": "FINAL_RECOVERY_PATCH",
-  "files": [
-    "scripts/qa_production.py",
-    "scripts/repo_hygiene.py",
-    "INSTALL_BN.txt"
-  ]
-}

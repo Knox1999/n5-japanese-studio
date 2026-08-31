@@ -1,6 +1,5 @@
-import AccountGate from '@/components/AccountGate';
-import StudioApp from '@/components/StudioApp';
+import Experience from '@/components/Experience';
 
-export default function Home() {
-  return <AccountGate><StudioApp /></AccountGate>;
+export default function Page() {
+  return <Experience />;
 }
