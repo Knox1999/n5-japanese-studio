@@ -236,7 +236,7 @@ export default function LandingPage() {
                   <span key={i} className="text-gold text-lg">★</span>
                 ))}
               </div>
-              <p className="text-slate mb-4 italic">"{testimonial.text}"</p>
+              <p className="text-slate mb-4 italic">&ldquo;{testimonial.text}&rdquo;</p>
               <div>
                 <p className="font-semibold text-ink">{testimonial.name}</p>
                 <p className="text-sm text-muted">{testimonial.role}</p>

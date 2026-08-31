@@ -31,7 +31,7 @@ const features = [
   { icon: Brain, label: 'Smart Review', copy: 'SRS review that brings weak items back at the right time.' },
   { icon: Languages, label: 'Grammar', copy: 'Clear explanations with guided practice inside each lesson.' },
   { icon: TreePine, label: 'Kanji', copy: 'Meaning, readings and focused kanji practice in one place.' },
-  { icon: Headphones, label: 'Listening', copy: 'Native-audio practice designed for steady N5 comprehension.' },
+  { icon: Headphones, label: 'Listening', copy: 'Low-latency Japanese voice practice for steady N5 comprehension.' },
   { icon: Target, label: 'Mock Test', copy: 'Timed practice and progress history for exam readiness.' },
 ];
 

@@ -12,25 +12,24 @@ if not manifest.exists():
     errors.append("public/audio/manifest.json missing")
 else:
     data=json.loads(manifest.read_text(encoding="utf-8"))
-    if data.get("extension")!="ogg":
-        errors.append("audio manifest extension must be ogg")
-    if "azure" not in str(data.get("profile","")).lower():
-        errors.append("V7 Azure profile missing")
+    if data.get("extension")!="mp3":
+        errors.append("audio manifest extension must be mp3")
+    if "edge-tts" not in str(data.get("profile","")).lower():
+        errors.append("Static neural edge-tts profile missing")
+    if int(data.get("count") or 0)<3000:
+        errors.append("Static audio manifest is missing too many clips")
 
-if list(audio.glob("*.mp3")):
-    errors.append("MP3 files found in public/audio")
+mp3s=list(audio.glob("*.mp3"))
+if not mp3s:
+    errors.append("No MP3 files generated")
 
-oggs=list(audio.glob("*.ogg"))
-if not oggs:
-    errors.append("No OGG files generated")
-
-for p in oggs:
-    if p.stat().st_size<800:
-        errors.append(f"Too-small OGG: {p.name}")
+for p in mp3s:
+    if p.stat().st_size<1200:
+        errors.append(f"Too-small MP3: {p.name}")
 
 if errors:
     for e in errors:
         print("FAIL",e)
     sys.exit(1)
 
-print("PASS V7 audio QA",len(oggs),"OGG files")
+print("PASS static neural audio QA",len(mp3s),"MP3 files")

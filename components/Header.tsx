@@ -8,7 +8,7 @@ interface HeaderProps {
   sticky?: boolean;
 }
 
-export default function Header({ variant = 'light', sticky = true }: HeaderProps) {
+export default function Header({ sticky = true }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [

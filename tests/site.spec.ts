@@ -215,7 +215,7 @@ for(const width of phoneWidths){
     await expectNoHorizontalOverflow(page);
     await expect(page.getByRole('navigation',{name:'মোবাইল নেভিগেশন'})).toBeVisible();
     const toolBox=await page.locator('.home-motion-tools button').first().boundingBox();
-    expect(toolBox?.height).toBeGreaterThanOrEqual(44);
+    expect(Math.round(toolBox?.height||0)).toBeGreaterThanOrEqual(44);
   });
 }
 

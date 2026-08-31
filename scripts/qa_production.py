@@ -104,6 +104,8 @@ check("SpeechSynthesisUtterance" in audio and "speechSynthesis" in audio,"Browse
 check("voiceschanged" in audio and "getVoices()" in audio,"Japanese device voice discovery")
 check("ja-JP" in audio and "web-speech-api-ja-JP" in audio,"Japanese browser voice selected")
 check("billed_api:false" in audio and "AZURE_SPEECH" not in workflow,"No paid speech API or credentials")
+check("prepareStaticAudio" in audio and "new Audio" in audio and ".mp3" in audio,"Static neural audio primary path")
+check("generate_audio.py" in workflow and "build_audio_manifest.py" in workflow and "edge-tts" in workflow,"Static audio generated during deployment")
 check("splitSpeech" in audio and "speechToDisplay" in audio,"Long Japanese text chunking with display-boundary mapping")
 check("rolePitch" in audio and "pickVoice" in audio,"Distinct dialogue role voices")
 check("playDialogueTrack" in audio,"Full dialogue track helper present")
@@ -150,11 +152,14 @@ if post:
     check((out/".nojekyll").exists(),"Pages .nojekyll exists")
     check((out/"manifest.webmanifest").exists(),"PWA manifest exported")
     check((out/"data/grammar-visual.json").exists(),"Visual grammar data exported")
-    check(not (out/"audio/manifest.json").exists(),"No generated-audio manifest required")
+    audio_manifest=out/"audio/manifest.json"
+    check(audio_manifest.exists(),"Static audio manifest exported")
+    manifest=json.loads(audio_manifest.read_text(encoding="utf-8")) if audio_manifest.exists() else {}
+    check(manifest.get("extension")=="mp3" and int(manifest.get("count") or 0)>=3000,"Static neural audio coverage retained")
     out_sw=(out/"sw.js").read_text(encoding="utf-8") if (out/"sw.js").exists() else ""
     check("const APP_SHELL=" in out_sw,"Generated service worker app shell")
     check("./_next/static/" in out_sw,"Next chunks in service worker")
-    check("AUDIO_CACHE" not in out_sw and "build-" in out_sw,"Build-scoped service-worker caches")
+    check("AUDIO_CACHE" not in out_sw and "build-" in out_sw and "mp3" in out_sw,"Build-scoped service-worker caches")
 
 failed=[msg for ok,msg in checks if not ok]
 if failed:

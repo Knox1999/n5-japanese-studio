@@ -30,5 +30,5 @@ self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);if(url.origin!==location.origin)return;
   if(event.request.mode==='navigate'){event.respondWith(networkFirst(event.request,RUNTIME_CACHE));return}
   if(url.pathname.endsWith('.json')){event.respondWith(networkFirst(event.request,RUNTIME_CACHE));return}
-  if(/\.(?:js|css|svg|png|webp|avif|woff2?)$/i.test(url.pathname))event.respondWith(staleWhileRevalidate(event.request,RUNTIME_CACHE));
+  if(/\.(?:js|css|svg|png|webp|avif|mp3|woff2?)$/i.test(url.pathname))event.respondWith(staleWhileRevalidate(event.request,RUNTIME_CACHE));
 });

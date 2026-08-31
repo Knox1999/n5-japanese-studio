@@ -23,7 +23,7 @@ A futuristic JLPT N5 Japanese learning studio built for structured daily practic
 - SCSS / Tailwind
 - Three.js
 - GSAP
-- Kokoro Japanese neural TTS
+- Build-generated Japanese neural MP3 with fast browser-voice fallback
 - GitHub Pages
 - Google Analytics 4
 
@@ -31,7 +31,7 @@ A futuristic JLPT N5 Japanese learning studio built for structured daily practic
 
 Live site: https://knox1999.github.io/n5-japanese-studio/
 
-Current release: **V50**
+Current release: **V61**
 
 Deployment is handled by `.github/workflows/deploy-pages.yml`.
 

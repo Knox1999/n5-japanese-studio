@@ -115,7 +115,7 @@ self.addEventListener('fetch',event=>{{
     event.respondWith(dataNetworkFirst(event.request));
     return;
   }}
-  if(/\\.(?:js|css|svg|png|webp|avif|woff2?)$/i.test(url.pathname)){{
+  if(/\\.(?:js|css|svg|png|webp|avif|mp3|woff2?)$/i.test(url.pathname)){{
     event.respondWith(staleWhileRevalidate(event.request));
   }}
 }});

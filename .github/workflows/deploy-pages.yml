@@ -23,7 +23,7 @@ jobs:
   verify:
     name: production-verification
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
 
     steps:
       - name: Checkout
@@ -66,6 +66,35 @@ jobs:
 
       - name: Verify zero-cost Japanese voice runtime
         run: grep -q "web-speech-api-ja-JP" lib/audio.ts
+
+      - name: Restore static Japanese neural-audio cache
+        uses: actions/cache@v4
+        with:
+          path: _audio_cache
+          key: n5-v61-edge-ja-${{ hashFiles('source/data/studio.json', 'source/data/grammar-visual.json', 'scripts/generate_audio.py', 'scripts/extract_audio_texts.py') }}
+          restore-keys: |
+            n5-v61-edge-ja-
+            n5-v58-edge-ja-
+            n5-v57-edge-ja-
+          save-always: true
+
+      - name: Install static Japanese neural-TTS toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install "edge-tts>=7.0,<8.0"
+
+      - name: Generate and verify static Japanese audio
+        env:
+          N5_TTS_CONCURRENCY: '4'
+        run: |
+          python scripts/extract_audio_texts.py
+          python scripts/generate_audio.py
+          python scripts/build_audio_manifest.py
+          python scripts/qa_audio_v7.py
 
       - name: Build KanjiVG stroke-order library
         shell: bash

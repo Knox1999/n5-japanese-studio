@@ -130,7 +130,7 @@ async def synth_one(row: dict, voices: dict[str, str], semaphore: asyncio.Semaph
                     raw = Path(td) / "raw.mp3"
                     fixed = Path(td) / "fixed.mp3"
                     communicator = edge_tts.Communicate(
-                        text=str(row["text"]),
+                        text=str(row.get("speech_text") or row["text"]),
                         voice=voice,
                         rate=rate,
                         pitch=pitch,

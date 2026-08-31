@@ -3,24 +3,26 @@
 @tailwind utilities;
 
 :root{
-  --ink:#EAF3FA;
-  --navy:#06172D;
-  --navy-2:#0A2747;
-  --ivory:#F7FAFD;
-  --paper:#0A203A;
-  --sakura:#F0443E;
-  --sakura-soft:rgba(240,68,62,.14);
-  --sage:#4EBAC7;
-  --sage-soft:rgba(78,186,199,.10);
-  --gold:#DDB66A;
-  --gold-soft:rgba(221,182,106,.12);
-  --blue:#123C66;
-  --blue-soft:rgba(18,60,102,.22);
+  --ink:#F5F8FC;
+  --navy:#050812;
+  --navy-2:#0A1424;
+  --ivory:#F8FAFC;
+  --paper:#0C1726;
+  --sakura:#FF5B45;
+  --sakura-soft:rgba(255,91,69,.14);
+  --sage:#70D4D7;
+  --sage-soft:rgba(112,212,215,.10);
+  --gold:#FFB35D;
+  --gold-soft:rgba(255,179,93,.12);
+  --blue:#173D70;
+  --blue-soft:rgba(35,73,139,.22);
   --violet:#786CB6;
   --violet-soft:rgba(120,108,182,.12);
   --mist:rgba(196,218,235,.14);
-  --muted:#8BA6BA;
-  --shadow:0 22px 70px rgba(0,0,0,.28);
+  --muted:#9CAABD;
+  --shadow:0 24px 72px rgba(0,0,0,.34);
+  --font-display:"Hind Siliguri","Noto Sans Bengali","Noto Sans JP",Inter,system-ui,sans-serif;
+  --font-body:Inter,"Hind Siliguri","Noto Sans Bengali","Noto Sans JP",system-ui,sans-serif;
 }
 *{box-sizing:border-box}
 html{
@@ -36,9 +38,15 @@ body{
   margin:0;
   min-width:320px;
   min-height:100%;
-  background:var(--navy);
+  background:
+    radial-gradient(circle at 8% 0%,rgba(141,39,38,.19),transparent 30rem),
+    radial-gradient(circle at 94% 5%,rgba(31,68,133,.18),transparent 34rem),
+    var(--navy);
+  background-attachment:fixed;
   color:var(--ink);
-  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Bengali","Noto Sans JP",sans-serif;
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
   overflow-x:hidden;
   overflow-y:visible!important;
   overscroll-behavior-y:auto;
@@ -85,17 +93,17 @@ body:not(.overlay-open){
 
 button,input,select,textarea{font:inherit}
 button{touch-action:manipulation}
-::selection{background:#F0443E;color:#fff}
-:focus-visible{outline:2px solid #63D4E5;outline-offset:3px}
+::selection{background:#FF5B45;color:#fff}
+:focus-visible{outline:2px solid #FFB35D;outline-offset:3px}
 .font-jp{font-family:"Noto Sans JP","Yu Gothic","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
 .font-bn{font-family:"Hind Siliguri","Noto Sans Bengali","Nirmala UI",system-ui,sans-serif}
 
 /* Premium native scrollbar — mouse wheel remains normal page scrolling */
-*{scrollbar-width:thin;scrollbar-color:#E24B46 #071A31}
+*{scrollbar-width:thin;scrollbar-color:#E45143 #070C16}
 *::-webkit-scrollbar{width:11px;height:9px}
-*::-webkit-scrollbar-track{background:#071A31}
-*::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#F0443E,#A92D31);border:3px solid #071A31;border-radius:999px}
-*::-webkit-scrollbar-thumb:hover{background:#F45B55}
+*::-webkit-scrollbar-track{background:#070C16}
+*::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#FF6A4D,#B83335);border:3px solid #070C16;border-radius:999px}
+*::-webkit-scrollbar-thumb:hover{background:#FF7A58}
 
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
