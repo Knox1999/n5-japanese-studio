@@ -1,12 +1,6 @@
-node_modules/
-.next/
-out/
-_build/
-_audio_cache/
-_kanjivg/
+node_modules
+.next
+out
+.env*
 .DS_Store
-.github/workflows/deploy-ai-voice-pages.yml
-*.yml
-_e2e/
-playwright-report/
-test-results/
+*.log
