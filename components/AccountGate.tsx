@@ -39,7 +39,7 @@ export default function AccountGate({children}:Props){
   const [mode,setMode]=useState<Mode>('signin');
   const [authOpen,setAuthOpen]=useState(false);
   const [recoveryToken,setRecoveryToken]=useState('');
-  const [restoring,setRestoring]=useState(false);
+  const [restoring,setRestoring]=useState(accountCloudConfigured);
   const [e2eBypass,setE2eBypass]=useState(false);
   const [headerTarget,setHeaderTarget]=useState<HTMLElement|null>(null);
   const [submitting,setSubmitting]=useState(false);
@@ -53,9 +53,13 @@ export default function AccountGate({children}:Props){
   useEffect(()=>{
     if(localE2EAuthBypass()){
       setE2eBypass(true);
+      setRestoring(false);
       return;
     }
-    if(!accountCloudConfigured)return;
+    if(!accountCloudConfigured){
+      setRestoring(false);
+      return;
+    }
 
     let stopped=false;
     const syncHeaderTarget=()=>{
@@ -79,6 +83,8 @@ export default function AccountGate({children}:Props){
       setRecoveryToken(token);
       setMode('recovery');
       setAuthOpen(true);
+      setRestoring(false);
+      return;
     }
 
     let dead=false;
