@@ -6,6 +6,10 @@ test('listening playback queues promptly without cancelling an idle voice engine
   await page.addInitScript(()=>{
     localStorage.setItem('nv_analytics_consent_v1','declined');
     localStorage.setItem('n5_e2e_bypass_auth','1');
+    const originalFetch=window.fetch.bind(window);
+    window.fetch=(input,init)=>String(input).includes('/audio/manifest.json')
+      ?Promise.resolve(new Response('',{status:404}))
+      :originalFetch(input,init);
 
     const browserWindow=window as typeof window&{
       __speechStartAt?:number;
