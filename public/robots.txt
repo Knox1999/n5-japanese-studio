@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://knox1999.github.io/n5-japanese-studio/sitemap.xml
