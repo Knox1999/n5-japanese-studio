@@ -2,6 +2,10 @@
    repository for provenance, but the runtime imports only semantic paths below. */
 @use './tokens';
 
+// Premium Design System (NEW)
+@use './typography-premium';
+@use './components-premium';
+
 @use './foundation/premium';
 @use './foundation/app-shell';
 @use './foundation/visual-grammar';
