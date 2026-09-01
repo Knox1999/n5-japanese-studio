@@ -11,6 +11,19 @@ test('listening playback queues promptly without cancelling an idle voice engine
       ?Promise.resolve(new Response('',{status:404}))
       :originalFetch(input,init);
 
+    // Force the deterministic static clip to be unavailable so this test
+    // measures the Web Speech fallback path independently of generated audio.
+    class UnavailableAudio extends EventTarget{
+      preload='';playbackRate=1;volume=1;preservesPitch=true;
+      currentTime=0;duration=0;paused=true;ended=false;
+      constructor(public src=''){super()}
+      play(){return Promise.reject(new Error('static clip unavailable in fallback test'))}
+      pause(){this.paused=true}
+      load(){}
+      removeAttribute(name:string){if(name==='src')this.src=''}
+    }
+    Object.defineProperty(window,'Audio',{configurable:true,value:UnavailableAudio});
+
     const browserWindow=window as typeof window&{
       __speechStartAt?:number;
       __speechSpeakCount?:number;

@@ -54,8 +54,9 @@ test('mock hub clearly separates quick, lesson, mini and full practice',async({p
   await expect(page.locator('.mock-runner')).toBeVisible();
   await expect(page.locator('.mock-q-meta')).toContainText('Q1/6');
   await expect(page.getByRole('button',{name:/আগের প্রশ্ন/})).toBeDisabled();
-  await page.getByRole('button',{name:'সব mode'}).click();
+  await page.getByRole('button',{name:/Save করে বের হন|Save & exit/}).click();
   await expect(hub).toBeVisible();
+  await expect(page.getByRole('region',{name:/সংরক্ষিত মক টেস্ট|Saved mock test/})).toBeVisible();
 });
 
 test('animated home keeps its accessible learning contract and primary path',async({page},testInfo)=>{
