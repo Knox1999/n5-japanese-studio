@@ -2,13 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import {
+  ArrowLeft,
+  ArrowRight,
   BookOpenText,
   Brain,
   ClipboardCheck,
   Clock3,
+  ExternalLink,
+  FileCheck2,
   Headphones,
   Loader2,
   RotateCcw,
+  ShieldCheck,
   Trophy,
   Volume2,
   type LucideIcon,
@@ -21,9 +26,10 @@ import type {
 import { loadLesson } from '@/lib/data';
 import { playText, stopAudio, type AudioVoiceRole } from '@/lib/audio';
 import { track } from '@/lib/analytics';
+import { JLPT_N5_RESOURCES, JLPT_RESOURCE_REVIEWED } from '@/lib/jlptResources';
 
 type SectionId='vocabulary'|'grammar-reading'|'listening';
-type ModeId='quick'|'mini'|'full';
+type ModeId='quick'|'lesson'|'mini'|'full';
 
 type Q={
   id:string;
@@ -76,30 +82,48 @@ const MODES:Record<ModeId,{
   counts:Record<SectionId,number>;
   minutes:Record<SectionId,number>;
   allLessons:boolean;
+  descriptionBn:string;
+  label:string;
 }>={
   quick:{
-    title:'Quick Quiz',
-    titleBn:'কুইক কুইজ',
-    total:10,
-    counts:{vocabulary:4,'grammar-reading':4,listening:2},
-    minutes:{vocabulary:5,'grammar-reading':6,listening:4},
+    title:'Quick Check',
+    titleBn:'কুইক চেক',
+    total:6,
+    counts:{vocabulary:2,'grammar-reading':2,listening:2},
+    minutes:{vocabulary:3,'grammar-reading':4,listening:3},
     allLessons:false,
+    descriptionBn:'বর্তমান lesson থেকে ১০ মিনিটের দ্রুত readiness check।',
+    label:'CURRENT LESSON',
+  },
+  lesson:{
+    title:'Lesson Mock',
+    titleBn:'লেসন মক',
+    total:15,
+    counts:{vocabulary:6,'grammar-reading':6,listening:3},
+    minutes:{vocabulary:7,'grammar-reading':10,listening:5},
+    allLessons:false,
+    descriptionBn:'নির্বাচিত lesson-এর Vocabulary, Grammar/Reading ও Listening একসাথে যাচাই করুন।',
+    label:'LESSON FOCUS',
   },
   mini:{
     title:'Mini Mock',
     titleBn:'মিনি মক',
-    total:25,
-    counts:{vocabulary:10,'grammar-reading':10,listening:5},
+    total:30,
+    counts:{vocabulary:12,'grammar-reading':12,listening:6},
     minutes:{vocabulary:12,'grammar-reading':20,listening:10},
     allLessons:true,
+    descriptionBn:'২৫টি lesson থেকে balanced ৪২-মিনিটের mixed practice।',
+    label:'ALL LESSONS',
   },
   full:{
     title:'Full JLPT N5 Mock',
     titleBn:'ফুল JLPT N5 মক',
-    total:52,
-    counts:{vocabulary:20,'grammar-reading':20,listening:12},
+    total:67,
+    counts:{vocabulary:21,'grammar-reading':22,listening:24},
     minutes:{vocabulary:20,'grammar-reading':40,listening:30},
     allLessons:true,
+    descriptionBn:'Official ২০/৪০/৩০-minute section timing ধরে ৬৭-item exam-style practice।',
+    label:'EXAM SIMULATION',
   },
 };
 
@@ -244,6 +268,21 @@ function buildBanks(lessons:LessonPayload[]){
     prompt:r.jp.slice(0,420),
     correct:r.bn,
     options:opts(r.bn,readings.map(x=>x.bn)),
+  }));
+
+  const notices=[
+    {id:'library',prompt:'【としょかん】月よう日は やすみです。火よう日から 金よう日は 9じから 6じまでです。土よう日は 5じまでです。土よう日は なんじまでですか。',correct:'5じまでです',options:['5じまでです','6じまでです','9じまでです','やすみです']},
+    {id:'class',prompt:'【日本ごクラス】火よう日と 木よう日、7じから 8じ30ぷんまで。きょうは 木よう日です。クラスは なんじからですか。',correct:'7じからです',options:['7じからです','8じ30ぷんからです','火よう日からです','ありません']},
+    {id:'shop',prompt:'【みどりスーパー】あさ 10じから よる 8じまで。日よう日は 7じに しまります。日よう日は なんじに しまりますか。',correct:'7じです',options:['7じです','8じです','10じです','あさです']},
+    {id:'bus',prompt:'【えきまえバス】びょういんへ いくバスは 10じ15ふん、10じ45ふん、11じ15ふんです。10じ30ぷんの つぎは なんじですか。',correct:'10じ45ふんです',options:['10じ15ふんです','10じ30ぷんです','10じ45ふんです','11じ45ふんです']},
+  ];
+  cycle(notices,8).forEach((notice,i)=>grammarQs.push({
+    id:`ri-${i}-${notice.id}`,
+    section:'grammar-reading',
+    itemType:'Information retrieval',
+    prompt:notice.prompt,
+    correct:notice.correct,
+    options:shuffle(notice.options),
   }));
 
   const turns:{
@@ -435,7 +474,7 @@ export default function MockTest({
     const score=Math.round(correct/Math.max(1,total)*100);
     const attempt:MockAttempt={
       lesson:data.lesson,
-      scope:mode==='full'?'n5-full':'lesson',
+      scope:mode==='full'?'n5-full':mode==='mini'?'n5-mini':'lesson',
       label:MODES[mode].title,
       score,
       correct,
@@ -487,6 +526,11 @@ export default function MockTest({
             </div>
           </div>
 
+          <p className="mock-score-note font-bn">
+            এটি raw practice percentage—official JLPT scaled score নয়। Official N5 pass rule হলো মোট 80/180,
+            Language Knowledge/Reading-এ অন্তত 38/120 এবং Listening-এ অন্তত 19/60।
+          </p>
+
           <div className="mock-result-section">
             {ORDER.map(id=>{
               const row=result.breakdown?.[id]||{correct:0,total:0};
@@ -535,9 +579,9 @@ export default function MockTest({
         <section className="study-header tone-mock">
           <div>
             <div className="section-kicker">JLPT N5 · PRACTICE SYSTEM</div>
-            <h1 className="font-bn">সময় অনুযায়ী practice বেছে নিন</h1>
+            <h1 className="font-bn">লক্ষ্য ও সময় অনুযায়ী মক বেছে নিন</h1>
             <p className="font-bn">
-              Quick 10, Mini 25 অথবা Full 52—তিনটি mode-ই একই N5 data থেকে তৈরি হয়।
+              Quick Check, Lesson Mock, Mini Mock অথবা ৯০-মিনিটের Full Mock—প্রতিটি mode original N5 lesson data থেকে তৈরি হয়।
             </p>
           </div>
           <ClipboardCheck className="header-big-icon"/>
@@ -546,17 +590,20 @@ export default function MockTest({
         <div className="jlpt-blueprint nv-final-mock-modes">
           {(Object.keys(MODES) as ModeId[]).map(id=>{
             const m=MODES[id];
-            const Icon=id==='full'?Trophy:id==='mini'?BookOpenText:ClipboardCheck;
+            const Icon=id==='full'?Trophy:id==='mini'?BookOpenText:id==='lesson'?FileCheck2:ClipboardCheck;
             return (
               <article className={`jlpt-section-card ${id}`} key={id}>
-                <span>{id.toUpperCase()}</span>
+                <span>{m.label}</span>
                 <Icon size={22}/>
                 <h3>{m.title}</h3>
                 <small className="font-bn">{m.titleBn}</small>
                 <b><Clock3 size={17}/> {Object.values(m.minutes).reduce((a,b)=>a+b,0)} min target</b>
-                <p className="font-bn">
-                  {m.counts.vocabulary} Vocabulary + {m.counts['grammar-reading']} Grammar/Reading + {m.counts.listening} Listening
-                </p>
+                <p className="font-bn">{m.descriptionBn}</p>
+                <div className="mock-mode-breakdown">
+                  <span>{m.counts.vocabulary}<small>Vocab</small></span>
+                  <span>{m.counts['grammar-reading']}<small>Grammar/Reading</small></span>
+                  <span>{m.counts.listening}<small>Listening</small></span>
+                </div>
                 <strong>{m.total} প্রশ্ন</strong>
                 <button
                   className="premium-btn premium-btn-primary"
@@ -572,12 +619,45 @@ export default function MockTest({
 
         <div className="jlpt-launch">
           <div>
-            <b>Full Mock blueprint · 52 practice items</b>
+            <b>Full Mock practice blueprint · 67 original items</b>
             <p className="font-bn">
-              Vocabulary 20 + Grammar/Reading 20 + Listening 12 · 20/40/30 minute section targets.
+              Vocabulary 21 + Grammar/Reading 22 + Listening 24 · official 20/40/30-minute section timing.
             </p>
           </div>
+          <button className="premium-btn premium-btn-primary" onClick={()=>void start('full')} disabled={loading}>
+            <Trophy size={17}/> Full Mock শুরু করুন
+          </button>
         </div>
+
+        <section className="mock-official-guide" aria-labelledby="mock-official-title">
+          <div>
+            <span><ShieldCheck size={16}/> OFFICIAL N5 REFERENCE</span>
+            <h2 id="mock-official-title" className="font-bn">Official structure ধরে practice, কিন্তু score নিয়ে পরিষ্কার ব্যাখ্যা</h2>
+            <p className="font-bn">N5-এ Vocabulary ২০ মিনিট, Grammar/Reading ৪০ মিনিট এবং Listening ৩০ মিনিট। Official pass mark মোট 80/180; Language Knowledge/Reading-এ 38/120 এবং Listening-এ 19/60 minimum দরকার। এই app raw percentage দেখায়—official scaled score দাবি করে না।</p>
+          </div>
+          <div className="mock-official-stats">
+            <article><strong>20</strong><span>Vocabulary</span></article>
+            <article><strong>40</strong><span>Grammar · Reading</span></article>
+            <article><strong>30</strong><span>Listening</span></article>
+          </div>
+        </section>
+
+        <section className="mock-resource-library" aria-labelledby="mock-resource-title">
+          <header>
+            <div><span>FREE ONLINE DIRECTORY · REVIEWED {JLPT_RESOURCE_REVIEWED}</span><h2 id="mock-resource-title" className="font-bn">আরও free JLPT N5 mock ও practice resource</h2></div>
+            <p className="font-bn">Copyrighted প্রশ্ন কপি করা হয়নি—link খুললে original provider-এর resource ব্যবহার করবেন।</p>
+          </header>
+          <div>
+            {JLPT_N5_RESOURCES.map(resource=><a key={resource.id} href={resource.url} target="_blank" rel="noreferrer noopener">
+              <span>{resource.kind==='official'?'OFFICIAL':resource.kind==='full-mock'?'FULL MOCK':'PRACTICE BANK'}</span>
+              <small>{resource.provider}</small>
+              <h3>{resource.name}</h3>
+              <p className="font-bn">{resource.summaryBn}</p>
+              <b>{resource.detail}</b>
+              <em>{resource.freeAccess}<ExternalLink size={14}/></em>
+            </a>)}
+          </div>
+        </section>
       </div>
     );
   }
@@ -613,6 +693,7 @@ export default function MockTest({
           <span>Q{i+1}/{questions.length}</span>
           <b>{q.itemType}</b>
           <em><SectionIcon size={15}/>{section.titleEn}</em>
+          <small>{Object.keys(answers).length} answered</small>
         </div>
 
         {q.audioText&&(
@@ -652,8 +733,14 @@ export default function MockTest({
         </div>
 
         <div className="mock-next-row">
-          <button className="premium-btn premium-btn-secondary" onClick={next}>
-            {currentAnswer?'পরের প্রশ্ন':'Skip'}
+          <button className="premium-btn premium-btn-secondary" disabled={i===0} onClick={()=>{stopAudio();setI(value=>Math.max(0,value-1))}}>
+            <ArrowLeft size={16}/> আগের প্রশ্ন
+          </button>
+          <button className="mock-exit-button" type="button" onClick={()=>{stopAudio();setQuestions([]);setAnswers({});setMode(null);setI(0)}}>
+            সব mode
+          </button>
+          <button className="premium-btn premium-btn-primary" onClick={next}>
+            {i+1>=questions.length?'ফলাফল দেখুন':currentAnswer?'পরের প্রশ্ন':'Skip করুন'}<ArrowRight size={16}/>
           </button>
         </div>
       </article>

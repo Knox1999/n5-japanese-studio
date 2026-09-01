@@ -38,6 +38,26 @@ test('dashboard exposes one clear coach and guided lesson journey',async({page})
   await expect(page.locator('#daily-coach-title')).toHaveText('এখন কী পড়বেন?');
 });
 
+test('mock hub clearly separates quick, lesson, mini and full practice',async({page})=>{
+  await page.goto('?lesson=6&view=mock',{waitUntil:'networkidle'});
+  const hub=page.locator('.jlpt-mock-home');
+  await expect(hub).toBeVisible();
+  await expect(hub.locator('.jlpt-section-card')).toHaveCount(4);
+  await expect(hub.getByRole('heading',{name:'Quick Check'})).toBeVisible();
+  await expect(hub.getByRole('heading',{name:'Lesson Mock'})).toBeVisible();
+  await expect(hub.getByRole('heading',{name:'Mini Mock'})).toBeVisible();
+  await expect(hub.getByRole('heading',{name:'Full JLPT N5 Mock'})).toBeVisible();
+  await expect(hub).toContainText('67 original items');
+  await expect(hub.locator('.mock-resource-library a[target="_blank"]')).toHaveCount(6);
+
+  await hub.getByRole('button',{name:/কুইক চেক শুরু করুন/}).click();
+  await expect(page.locator('.mock-runner')).toBeVisible();
+  await expect(page.locator('.mock-q-meta')).toContainText('Q1/6');
+  await expect(page.getByRole('button',{name:/আগের প্রশ্ন/})).toBeDisabled();
+  await page.getByRole('button',{name:'সব mode'}).click();
+  await expect(hub).toBeVisible();
+});
+
 test('animated home keeps its accessible learning contract and primary path',async({page},testInfo)=>{
   test.skip(testInfo.project.name!=='desktop-chromium');
   await page.goto('?lesson=1&view=dashboard');

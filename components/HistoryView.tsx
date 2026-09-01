@@ -39,11 +39,11 @@ export default function HistoryView({history}:{history:MockAttempt[]}){
         <header><div><span>ATTEMPT TIMELINE</span><h2 className="font-bn">সাম্প্রতিক ফলাফল</h2></div><small>{history.length} saved attempt{history.length===1?'':'s'}</small></header>
         <div>
           {history.map((x,i)=>{
-            const label=x.label||(x.scope==='n5-full'?'JLPT N5 Full Simulation':`Lesson ${String(x.lesson).padStart(2,'0')}`);
+            const label=x.label||(x.scope==='n5-full'?'JLPT N5 Full Simulation':x.scope==='n5-mini'?'JLPT N5 Mini Mock':`Lesson ${String(x.lesson).padStart(2,'0')}`);
             const date=new Date(x.date);
             return <article className="history-card-v65" key={`${x.date}-${i}`}>
               <div className="history-score-v65"><strong>{x.score}%</strong><span>{x.score>=80?'Strong':x.score>=60?'Developing':'Review'}</span></div>
-              <div className="history-copy-v65"><small>{x.scope==='n5-full'?'FULL N5':'LESSON PRACTICE'}</small><b>{label}</b><p className="font-bn">{x.correct}/{x.total} সঠিক · {date.toLocaleDateString()} · {date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</p></div>
+              <div className="history-copy-v65"><small>{x.scope==='n5-full'?'FULL N5':x.scope==='n5-mini'?'MINI N5':'LESSON PRACTICE'}</small><b>{label}</b><p className="font-bn">{x.correct}/{x.total} সঠিক · {date.toLocaleDateString()} · {date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</p></div>
               <div className="history-progress-v65"><i style={{width:`${Math.max(2,x.score)}%`}}/></div>
             </article>;
           })}

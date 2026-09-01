@@ -92,11 +92,14 @@ body:not(.overlay-open){
 }
 
 button,input,select,textarea{font:inherit}
-button{touch-action:manipulation}
+button,a,[role="button"]{min-width:0;max-width:100%}
+button{touch-action:manipulation;white-space:normal}
+button>span,button>b,button>strong,a>span,a>b,a>strong{min-width:0;overflow-wrap:anywhere}
+main h1,main h2,main h3,main p{max-width:100%;overflow-wrap:anywhere}
 ::selection{background:#FF5B45;color:#fff}
 :focus-visible{outline:2px solid #FFB35D;outline-offset:3px}
 .font-jp{font-family:"Noto Sans JP","Yu Gothic","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
-.font-bn{font-family:"Hind Siliguri","Noto Sans Bengali","Nirmala UI",system-ui,sans-serif}
+.font-bn{font-family:"Hind Siliguri","Noto Sans Bengali","Nirmala UI",system-ui,sans-serif;line-height:1.58;word-break:normal;overflow-wrap:anywhere;text-wrap:pretty}
 
 /* Premium native scrollbar — mouse wheel remains normal page scrolling */
 *{scrollbar-width:thin;scrollbar-color:#E45143 #070C16}

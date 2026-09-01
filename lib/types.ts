@@ -155,7 +155,7 @@ export interface SrsCardState {
 
 export interface MockAttempt {
   lesson: number;
-  scope?: 'lesson' | 'n5-full';
+  scope?: 'lesson' | 'n5-mini' | 'n5-full';
   label?: string;
   score: number;
   correct: number;

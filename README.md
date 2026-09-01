@@ -4,6 +4,7 @@ A futuristic JLPT N5 Japanese learning studio built for structured daily practic
 
 ## Learning modules
 
+- Public Bangla/English starter lab with free lessons, listening and diagnostic quiz
 - Vocabulary with Japanese audio and mastery tracking
 - Smart Recall / spaced repetition
 - Spelling and Kana Pad
@@ -12,7 +13,8 @@ A futuristic JLPT N5 Japanese learning studio built for structured daily practic
 - Listening and shadowing
 - Grammar patterns
 - KLC Kanji Matrix with stroke order
-- Lesson Mastery Tests and history
+- Quick, lesson, mini and 67-item full N5 practice mocks with history
+- Curated directory of verified free JLPT N5 practice resources
 - Local progress backup / restore
 
 ## Technology
@@ -58,3 +60,5 @@ npm run build
 ```
 
 The project intentionally keeps learner progress in the browser. Use **Backup & Restore** inside the app to export or restore progress.
+
+External practice questions are linked to their original providers. They are not copied into this repository; in-app mock questions are generated from the project's own 25-lesson dataset.

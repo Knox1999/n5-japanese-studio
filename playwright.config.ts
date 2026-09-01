@@ -9,6 +9,7 @@ export default defineConfig({
   reporter:[['line'],['html',{open:'never'}]],
   use:{
     baseURL:'http://127.0.0.1:4174/n5-japanese-studio/',
+    serviceWorkers:'block',
     trace:'retain-on-failure',
     screenshot:'only-on-failure',
   },
