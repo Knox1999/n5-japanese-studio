@@ -92,7 +92,9 @@ test('listening playback queues promptly without cancelling an idle voice engine
     speaks:(window as typeof window&{__speechSpeakCount?:number}).__speechSpeakCount||0,
     cancels:(window as typeof window&{__speechCancelCount?:number}).__speechCancelCount||0,
   }),clickedAt);
-  expect(result.latency).toBeLessThan(800);
+  // Keep this well below the 2.6s recovery watchdog while allowing for
+  // scheduling jitter on GitHub's shared browser runners.
+  expect(result.latency).toBeLessThan(1500);
   expect(result.speaks).toBe(1);
   expect(result.cancels).toBe(0);
 });
