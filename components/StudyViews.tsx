@@ -6,6 +6,7 @@ import { BookOpenText, MessageCircle, Volume2, Eye, EyeOff, UserRound, Play, Pau
 import type { LessonPayload } from '@/lib/types';
 import { playText, playDialogueTrack, stopAudio, type AudioVoiceRole } from '@/lib/audio';
 import { track } from '@/lib/analytics';
+import { useLanguage } from '@/lib/language';
 
 const GrammarStudio=dynamic(()=>import('./GrammarStudio'),{
   ssr:false,
@@ -15,6 +16,7 @@ const GrammarStudio=dynamic(()=>import('./GrammarStudio'),{
 const RATES=[.75,.9,1] as const;
 
 export function Conversation({data}:{data:LessonPayload}){
+  const {language,text}=useLanguage();
   const rows=useMemo(()=>data.content.dialogue_extended||data.content.dialogue||[],[data.content.dialogue_extended,data.content.dialogue]);
   const speakers=useMemo(()=>Array.from(new Set(rows.map(r=>r[0]).filter(Boolean))).slice(0,4),[rows]);
   const voiceMap=useMemo(()=>{
@@ -87,7 +89,7 @@ export function Conversation({data}:{data:LessonPayload}){
       <div>
         <div className="section-kicker">FREE JAPANESE DEVICE VOICES · LESSON {String(data.lesson).padStart(2,'0')}</div>
         <h1>Listen like a real conversation</h1>
-        <p className="font-bn">আপনার browser বা Windows-এর Japanese voice দিয়ে A/B role আলাদা স্বরে চলে। কোনো paid API বা key লাগে না।</p>
+        <p className={language==='bn'?'font-bn':''}>{text('আপনার browser বা Windows-এর Japanese voice দিয়ে A/B role আলাদা স্বরে চলে। কোনো paid API বা key লাগে না।','A/B roles use distinct Japanese voices available in your browser or operating system. No paid API or key is required.')}</p>
       </div>
       <MessageCircle className="header-big-icon"/>
     </section>
@@ -145,7 +147,7 @@ export function Conversation({data}:{data:LessonPayload}){
             </header>
             {show
               ?<p className="font-jp" lang="ja">{r[1]}</p>
-              :<button className="conversation-reveal-v57 font-bn" onClick={()=>setRevealed(x=>({...x,[i]:true}))}><Sparkles/> আগে নিজে বলুন · তারপর Reveal</button>}
+              :<button className={`conversation-reveal-v57 ${language==='bn'?'font-bn':''}`} onClick={()=>setRevealed(x=>({...x,[i]:true}))}><Sparkles/> {text('আগে নিজে বলুন · তারপর Reveal','Say it yourself, then reveal')}</button>}
             <span className="font-bn turn-meaning-v57">{r[2]}</span>
             {isPlaying&&<div className="turn-playing-line-v57"><i/><span>VOICE PLAYING · {rate}×</span></div>}
           </div>
@@ -156,6 +158,7 @@ export function Conversation({data}:{data:LessonPayload}){
 }
 
 export function Reading({data}:{data:LessonPayload}){
+  const {language,text:label}=useLanguage();
   const [showBn,setShowBn]=useState(true);
   const text=data.content.reading_extended||data.content.reading||'';
   const bn=data.content.reading_extended_bn||data.content.reading_bn||'';
@@ -170,24 +173,24 @@ export function Reading({data}:{data:LessonPayload}){
       <div>
         <div className="section-kicker">FOCUSED READING · LESSON {String(data.lesson).padStart(2,'0')}</div>
         <h1>Read without visual noise</h1>
-        <p className="font-bn">Japanese passage আগে পড়ুন। দরকার হলে বাংলা অর্থ ও passage vocabulary খুলুন।</p>
+        <p className={language==='bn'?'font-bn':''}>{label('Japanese passage আগে পড়ুন। দরকার হলে বাংলা অর্থ ও passage vocabulary খুলুন।','Read the Japanese passage first. Reveal the Bangla translation and passage vocabulary when needed.')}</p>
       </div>
       <BookOpenText className="header-big-icon"/>
     </section>
     <div className="reading-toolbar-v57">
       <button onClick={()=>playText(text,1,'reading',{}, {lesson_number:data.lesson,reading_mode:'full'})}><Volume2/> Natural full passage</button>
-      <button onClick={()=>setShowBn(x=>!x)}>{showBn?<EyeOff/>:<Eye/>} {showBn?'বাংলা লুকান':'বাংলা দেখান'}</button>
+      <button onClick={()=>setShowBn(x=>!x)}>{showBn?<EyeOff/>:<Eye/>} {showBn?label('বাংলা লুকান','Hide Bangla'):label('বাংলা দেখান','Show Bangla')}</button>
     </div>
     <article className="reading-paper reading-paper-v57">
       <div className="paper-mark">読</div>
       {paras.map((p,i)=><p className="font-jp" lang="ja" key={i}>{p}</p>)}
-      {showBn&&<div className="reading-translation font-bn"><b>বাংলা অর্থ</b><p>{bn}</p></div>}
+      {showBn&&<div className="reading-translation font-bn"><b>{label('বাংলা অর্থ','Bangla translation')}</b><p>{bn}</p></div>}
     </article>
     {words.length>0&&<section className="reading-vocab-panel-v57">
-      <div><span className="section-kicker">PASSAGE VOCABULARY</span><h2>গুরুত্বপূর্ণ শব্দ</h2></div>
+      <div><span className="section-kicker">PASSAGE VOCABULARY</span><h2>{label('গুরুত্বপূর্ণ শব্দ','Key words')}</h2></div>
       <div className="reading-vocab-grid-v57">
         {words.map(v=><button key={v.id} onClick={()=>playText(v.tts_text||v.japanese,1,'reading_word',{}, {lesson_number:data.lesson,word_id:v.id})}>
-          <div><b className="font-jp" lang="ja">{v.kanji||v.japanese}</b><span className="font-bn">{v.bangla_meaning}</span></div><Volume2/>
+          <div><b className="font-jp" lang="ja">{v.kanji||v.japanese}</b><span className={language==='bn'?'font-bn':''}>{language==='bn'?v.bangla_meaning:v.english_meaning}</span></div><Volume2/>
         </button>)}
       </div>
     </section>}

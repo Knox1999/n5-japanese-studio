@@ -6,7 +6,17 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://knox1999.github.io/n5-japanese-studio/en/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://knox1999.github.io/n5-japanese-studio/privacy/</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://knox1999.github.io/n5-japanese-studio/terms/</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>

@@ -12,6 +12,7 @@ import {
   FileCheck2,
   Headphones,
   Loader2,
+  Flag,
   RotateCcw,
   ShieldCheck,
   Trophy,
@@ -22,11 +23,14 @@ import {
 import type {
   LessonPayload,
   MockAttempt,
+  MockQuestionReview,
 } from '@/lib/types';
 import { loadLesson } from '@/lib/data';
 import { playText, stopAudio, type AudioVoiceRole } from '@/lib/audio';
 import { track } from '@/lib/analytics';
 import { JLPT_N5_RESOURCES, JLPT_RESOURCE_REVIEWED } from '@/lib/jlptResources';
+import { KEYS } from '@/lib/storage';
+import { useLanguage } from '@/lib/language';
 
 type SectionId='vocabulary'|'grammar-reading'|'listening';
 type ModeId='quick'|'lesson'|'mini'|'full';
@@ -83,6 +87,7 @@ const MODES:Record<ModeId,{
   minutes:Record<SectionId,number>;
   allLessons:boolean;
   descriptionBn:string;
+  descriptionEn:string;
   label:string;
 }>={
   quick:{
@@ -93,6 +98,7 @@ const MODES:Record<ModeId,{
     minutes:{vocabulary:3,'grammar-reading':4,listening:3},
     allLessons:false,
     descriptionBn:'বর্তমান lesson থেকে ১০ মিনিটের দ্রুত readiness check।',
+    descriptionEn:'A fast 10-minute readiness check using the current lesson.',
     label:'CURRENT LESSON',
   },
   lesson:{
@@ -103,6 +109,7 @@ const MODES:Record<ModeId,{
     minutes:{vocabulary:7,'grammar-reading':10,listening:5},
     allLessons:false,
     descriptionBn:'নির্বাচিত lesson-এর Vocabulary, Grammar/Reading ও Listening একসাথে যাচাই করুন।',
+    descriptionEn:'Check vocabulary, grammar/reading and listening from the selected lesson.',
     label:'LESSON FOCUS',
   },
   mini:{
@@ -113,6 +120,7 @@ const MODES:Record<ModeId,{
     minutes:{vocabulary:12,'grammar-reading':20,listening:10},
     allLessons:true,
     descriptionBn:'২৫টি lesson থেকে balanced ৪২-মিনিটের mixed practice।',
+    descriptionEn:'A balanced 42-minute mixed practice drawn from all 25 lessons.',
     label:'ALL LESSONS',
   },
   full:{
@@ -123,14 +131,32 @@ const MODES:Record<ModeId,{
     minutes:{vocabulary:20,'grammar-reading':40,listening:30},
     allLessons:true,
     descriptionBn:'Official ২০/৪০/৩০-minute section timing ধরে ৬৭-item exam-style practice।',
+    descriptionEn:'A 67-item exam-style practice using the official 20/40/30-minute section timing.',
     label:'EXAM SIMULATION',
   },
 };
 
+type ActiveMockRun={
+  version:1;
+  lesson:number;
+  mode:ModeId;
+  questions:Q[];
+  index:number;
+  answers:Record<string,string>;
+  flagged:Record<string,boolean>;
+  sectionSeconds:Record<SectionId,number>;
+  lockedSections:SectionId[];
+  startedAt:string;
+  seed:number;
+};
+
+let questionRandom=()=>Math.random();
+function seededRandom(seed:number){let value=seed>>>0;return()=>{value+=0x6D2B79F5;let result=value;result=Math.imul(result^(result>>>15),result|1);result^=result+Math.imul(result^(result>>>7),result|61);return((result^(result>>>14))>>>0)/4294967296}}
+
 function shuffle<T>(a:T[]){
   const x=[...a];
   for(let i=x.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
+    const j=Math.floor(questionRandom()*(i+1));
     [x[i],x[j]]=[x[j],x[i]];
   }
   return x;
@@ -359,18 +385,22 @@ function buildBanks(lessons:LessonPayload[]){
   };
 }
 
-function buildQuestions(lessons:LessonPayload[],mode:ModeId){
-  const banks=buildBanks(lessons);
-  const cfg=MODES[mode];
-  return ORDER.flatMap(section=>
-    cycle(banks[section],cfg.counts[section])
-  );
+function buildQuestions(lessons:LessonPayload[],mode:ModeId,seed:number){
+  const previous=questionRandom;questionRandom=seededRandom(seed);
+  try{
+    const banks=buildBanks(lessons);const cfg=MODES[mode];
+    return ORDER.flatMap(section=>cycle(banks[section],cfg.counts[section]));
+  }finally{questionRandom=previous}
 }
 
 function mmss(seconds:number){
   const m=Math.floor(seconds/60);
   const s=seconds%60;
   return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function createAttemptSeed(){
+  return (Date.now()^Math.floor(Math.random()*0x7fffffff))>>>0;
 }
 
 export default function MockTest({
@@ -380,6 +410,7 @@ export default function MockTest({
   onSave:(a:MockAttempt)=>void;
   onReviewMistakes:(ids:number[])=>void;
 }) {
+  const {language,text}=useLanguage();
   const [mode,setMode]=useState<ModeId|null>(null);
   const [questions,setQuestions]=useState<Q[]>([]);
   const [i,setI]=useState(0);
@@ -388,26 +419,42 @@ export default function MockTest({
   const [wrongIds,setWrongIds]=useState<number[]>([]);
   const [sent,setSent]=useState(false);
   const [loading,setLoading]=useState(false);
-  const [secondsLeft,setSecondsLeft]=useState(0);
+  const [sectionSeconds,setSectionSeconds]=useState<Record<SectionId,number>>({vocabulary:0,'grammar-reading':0,listening:0});
+  const [lockedSections,setLockedSections]=useState<SectionId[]>([]);
+  const [flagged,setFlagged]=useState<Record<string,boolean>>({});
+  const [startedAt,setStartedAt]=useState('');
+  const [seed,setSeed]=useState(0);
+  const [savedRun,setSavedRun]=useState<ActiveMockRun|null>(null);
 
   const q=questions[i];
   const cfg=mode?MODES[mode]:null;
   const currentSectionId=q?.section;
+  const secondsLeft=currentSectionId?sectionSeconds[currentSectionId]:0;
   const sectionIndex=q
     ? questions.slice(0,i+1).filter(x=>x.section===q.section).length
     : 0;
   const sectionTotal=q&&cfg?cfg.counts[q.section]:0;
 
   useEffect(()=>{
-    if(!currentSectionId||!cfg)return;
-    setSecondsLeft(cfg.minutes[currentSectionId]*60);
-  },[currentSectionId,cfg]);
+    if(!currentSectionId||result||lockedSections.includes(currentSectionId))return;
+    const id=window.setInterval(()=>setSectionSeconds(old=>({...old,[currentSectionId]:Math.max(0,old[currentSectionId]-1)})),1000);
+    return()=>window.clearInterval(id);
+  },[currentSectionId,lockedSections,result]);
 
   useEffect(()=>{
-    if(!currentSectionId)return;
-    const id=window.setInterval(()=>setSecondsLeft(x=>Math.max(0,x-1)),1000);
-    return()=>window.clearInterval(id);
-  },[currentSectionId]);
+    try{
+      const raw=window.localStorage.getItem(KEYS.activeMock);if(!raw)return;
+      const saved=JSON.parse(raw) as ActiveMockRun;
+      if(saved?.version!==1||saved.lesson!==data.lesson||!saved.questions?.length)return;
+      setSavedRun(saved);setMode(saved.mode);setQuestions(saved.questions);setI(Math.min(saved.index,saved.questions.length-1));setAnswers(saved.answers||{});setFlagged(saved.flagged||{});setSectionSeconds(saved.sectionSeconds);setLockedSections(saved.lockedSections||[]);setStartedAt(saved.startedAt);setSeed(saved.seed);
+    }catch{}
+  },[data.lesson]);
+
+  useEffect(()=>{
+    if(!mode||!questions.length||result)return;
+    const run:ActiveMockRun={version:1,lesson:data.lesson,mode,questions,index:i,answers,flagged,sectionSeconds,lockedSections,startedAt,seed};
+    try{window.localStorage.setItem(KEYS.activeMock,JSON.stringify(run))}catch{}
+  },[answers,data.lesson,flagged,i,lockedSections,mode,questions,result,sectionSeconds,seed,startedAt]);
 
   useEffect(()=>()=>{ stopAudio(); },[]);
 
@@ -418,14 +465,24 @@ export default function MockTest({
     setSent(false);
     setWrongIds([]);
     setAnswers({});
+    setFlagged({});setLockedSections([]);setSavedRun(null);
     setI(0);
     setMode(nextMode);
+    const nextSeed=createAttemptSeed();
+    const nextStartedAt=new Date().toISOString();
+    setSeed(nextSeed);setStartedAt(nextStartedAt);
+    setSectionSeconds({
+      vocabulary:MODES[nextMode].minutes.vocabulary*60,
+      'grammar-reading':MODES[nextMode].minutes['grammar-reading']*60,
+      listening:MODES[nextMode].minutes.listening*60,
+    });
+    try{window.localStorage.removeItem(KEYS.activeMock);window.localStorage.setItem(KEYS.modifiedAt,nextStartedAt)}catch{}
 
     try {
       const source=MODES[nextMode].allLessons
         ? await Promise.all(Array.from({length:25},(_,idx)=>loadLesson(idx+1)))
         : [data];
-      const built=buildQuestions(source,nextMode);
+      const built=buildQuestions(source,nextMode,nextSeed);
       setQuestions(built);
       track('quiz_event',{
         quiz_action:'start',
@@ -433,7 +490,7 @@ export default function MockTest({
         question_count:built.length,
       });
     } catch {
-      const built=buildQuestions([data],nextMode);
+      const built=buildQuestions([data],nextMode,nextSeed);
       setQuestions(built);
     } finally {
       setLoading(false);
@@ -443,6 +500,7 @@ export default function MockTest({
   const choose=(answer:string)=>{
     if(!q)return;
     setAnswers(old=>({...old,[q.id]:answer}));
+    try{window.localStorage.setItem(KEYS.modifiedAt,new Date().toISOString())}catch{}
     track('quiz_event',{
       quiz_action:'answer',
       quiz_type:mode,
@@ -452,7 +510,7 @@ export default function MockTest({
     });
   };
 
-  const finish=()=>{
+  const finish=(reason:'completed'|'time-expired'='completed')=>{
     if(!mode||!questions.length)return;
 
     const breakdown:Record<string,{correct:number;total:number}>={};
@@ -472,19 +530,34 @@ export default function MockTest({
 
     const total=questions.length;
     const score=Math.round(correct/Math.max(1,total)*100);
+    const responses:MockQuestionReview[]=questions.map(question=>({
+      id:question.id,section:question.section,itemType:question.itemType,prompt:question.prompt,
+      options:question.options,userAnswer:answers[question.id],correctAnswer:question.correct,
+      correct:answers[question.id]===question.correct,
+      explanation:`সঠিক উত্তর / Correct answer: ${question.correct}`,
+      wordId:question.wordId,audioText:question.audioText,
+    }));
+    const completedAt=new Date().toISOString();
     const attempt:MockAttempt={
+      id:`mock-${seed}-${Date.now()}`,
       lesson:data.lesson,
       scope:mode==='full'?'n5-full':mode==='mini'?'n5-mini':'lesson',
+      mode,
       label:MODES[mode].title,
       score,
       correct,
       total,
-      date:new Date().toISOString(),
+      date:completedAt,
+      durationSeconds:Math.max(0,Math.round((Date.parse(completedAt)-Date.parse(startedAt||completedAt))/1000)),
+      seed,
       breakdown,
+      responses,
     };
     setResult(attempt);
     setWrongIds(Array.from(new Set(wrongWords)));
     setQuestions([]);
+    setSavedRun(null);
+    try{window.localStorage.removeItem(KEYS.activeMock);window.localStorage.setItem(KEYS.modifiedAt,completedAt)}catch{}
     onSave(attempt);
     track('quiz_event',{
       quiz_action:'complete',
@@ -492,14 +565,40 @@ export default function MockTest({
       score_percent:score,
       correct_count:correct,
       wrong_count:total-correct,
+      completion_reason:reason,
     });
   };
 
   const next=()=>{
     stopAudio();
     if(i+1>=questions.length)finish();
-    else setI(x=>x+1);
+    else{
+      const nextQuestion=questions[i+1];
+      if(nextQuestion.section!==q.section)setLockedSections(old=>Array.from(new Set([...old,q.section])));
+      setI(x=>x+1);
+    }
   };
+
+  const saveAndExit=()=>{
+    if(!mode||!questions.length)return;
+    const run:ActiveMockRun={version:1,lesson:data.lesson,mode,questions,index:i,answers,flagged,sectionSeconds,lockedSections,startedAt,seed};
+    try{window.localStorage.setItem(KEYS.activeMock,JSON.stringify(run))}catch{}
+    setSavedRun(run);stopAudio();setQuestions([]);setMode(null);setI(0);
+  };
+
+  const resumeSaved=()=>{
+    if(!savedRun)return;
+    setMode(savedRun.mode);setQuestions(savedRun.questions);setI(savedRun.index);setAnswers(savedRun.answers);setFlagged(savedRun.flagged);setSectionSeconds(savedRun.sectionSeconds);setLockedSections(savedRun.lockedSections);setStartedAt(savedRun.startedAt);setSeed(savedRun.seed);
+  };
+
+  useEffect(()=>{
+    if(!q||secondsLeft>0||lockedSections.includes(q.section)||!questions.length)return;
+    stopAudio();setLockedSections(old=>Array.from(new Set([...old,q.section])));
+    const nextSectionIndex=questions.findIndex((question,index)=>index>i&&question.section!==q.section&&!lockedSections.includes(question.section));
+    if(nextSectionIndex>=0)setI(nextSectionIndex);else finish('time-expired');
+    // Only run when the active section reaches zero.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[secondsLeft]);
 
   if(result&&mode){
     return (
@@ -508,7 +607,7 @@ export default function MockTest({
           <div>
             <div className="section-kicker">{MODES[mode].title}</div>
             <h1>{result.score}%</h1>
-            <p className="font-bn">{result.correct}/{result.total} সঠিক উত্তর</p>
+            <p className={language==='bn'?'font-bn':''}>{result.correct}/{result.total} {text('সঠিক উত্তর','correct answers')}</p>
           </div>
           <Trophy className="header-big-icon"/>
         </section>
@@ -517,18 +616,17 @@ export default function MockTest({
           <div className="result-hero">
             <div className="score-orb">{result.score}%</div>
             <div>
-              <h2 className="font-bn">
-                {result.score>=90?'দারুণ ফলাফল':result.score>=70?'ভালো অগ্রগতি':'আরও রিভিউ দরকার'}
+              <h2 className={language==='bn'?'font-bn':''}>
+                {result.score>=90?text('দারুণ ফলাফল','Excellent result'):result.score>=70?text('ভালো অগ্রগতি','Good progress'):text('আরও রিভিউ দরকার','More review needed')}
               </h2>
-              <p className="font-bn">
-                Section breakdown দেখে দুর্বল অংশে ফিরে practice করুন।
+              <p className={language==='bn'?'font-bn':''}>
+                {text('Section breakdown দেখে দুর্বল অংশে ফিরে practice করুন।','Use the section breakdown to revisit weaker areas.')}
               </p>
             </div>
           </div>
 
-          <p className="mock-score-note font-bn">
-            এটি raw practice percentage—official JLPT scaled score নয়। Official N5 pass rule হলো মোট 80/180,
-            Language Knowledge/Reading-এ অন্তত 38/120 এবং Listening-এ অন্তত 19/60।
+          <p className={`mock-score-note ${language==='bn'?'font-bn':''}`}>
+            {text('এটি raw practice percentage—official JLPT scaled score নয়। Official N5 pass rule হলো মোট 80/180, Language Knowledge/Reading-এ অন্তত 38/120 এবং Listening-এ অন্তত 19/60।','This is a raw practice percentage, not an official JLPT scaled score. The official N5 pass rules are 80/180 overall, at least 38/120 in Language Knowledge/Reading, and at least 19/60 in Listening.')}
           </p>
 
           <div className="mock-result-section">
@@ -536,7 +634,7 @@ export default function MockTest({
               const row=result.breakdown?.[id]||{correct:0,total:0};
               return (
                 <div key={id}>
-                  <span className="font-bn">{SECTIONS[id].titleBn}</span>
+                  <span className={language==='bn'?'font-bn':''}>{language==='bn'?SECTIONS[id].titleBn:SECTIONS[id].titleEn}</span>
                   <b>{Math.round(row.correct/Math.max(1,row.total)*100)}%</b>
                   <small>{row.correct}/{row.total}</small>
                 </div>
@@ -544,9 +642,20 @@ export default function MockTest({
             })}
           </div>
 
+          <details className="mock-answer-review" open={result.score<80}>
+            <summary>{text('প্রতিটি উত্তর ও ব্যাখ্যা দেখুন','Review every answer and explanation')}</summary>
+            <div>{result.responses?.map((response,index)=><article key={response.id} className={response.correct?'correct':'wrong'}>
+              <header><span>Q{index+1}</span><b>{response.itemType}</b><em>{response.correct?text('সঠিক','Correct'):text('ভুল','Incorrect')}</em></header>
+              {response.audioText&&<button type="button" onClick={()=>void playText(response.audioText!,1,'mock_review')}><Volume2/>{text('Audio আবার শুনুন','Replay audio')}</button>}
+              <p className={/[ぁ-んァ-ヶ一-龯]/.test(response.prompt)?'font-jp':'font-bn'}>{response.prompt}</p>
+              <dl><div><dt>{text('আপনার উত্তর','Your answer')}</dt><dd>{response.userAnswer||text('উত্তর দেওয়া হয়নি','Not answered')}</dd></div><div><dt>{text('সঠিক উত্তর','Correct answer')}</dt><dd>{response.correctAnswer}</dd></div></dl>
+              <small>{response.explanation}</small>
+            </article>)}</div>
+          </details>
+
           <div className="mock-result-actions">
             <button className="premium-btn premium-btn-primary" onClick={()=>start(mode)}>
-              <RotateCcw size={16}/> আবার দিন
+              <RotateCcw size={16}/> {text('আবার দিন','Try again')}
             </button>
             {wrongIds.length>0&&(
               <button
@@ -558,14 +667,14 @@ export default function MockTest({
                 }}
               >
                 <Brain size={16}/>
-                {sent?'Recall-এ যোগ হয়েছে':`${wrongIds.length}টি Vocabulary mistake → Recall`}
+                {sent?text('Recall-এ যোগ হয়েছে','Added to Recall'):text(`${wrongIds.length}টি Vocabulary mistake → Recall`,`${wrongIds.length} vocabulary mistakes → Recall`)}
               </button>
             )}
             <button
               className="premium-btn premium-btn-secondary"
               onClick={()=>{setResult(null);setMode(null)}}
             >
-              সব mode দেখুন
+              {text('সব mode দেখুন','View all modes')}
             </button>
           </div>
         </article>
@@ -579,13 +688,19 @@ export default function MockTest({
         <section className="study-header tone-mock">
           <div>
             <div className="section-kicker">JLPT N5 · PRACTICE SYSTEM</div>
-            <h1 className="font-bn">লক্ষ্য ও সময় অনুযায়ী মক বেছে নিন</h1>
-            <p className="font-bn">
-              Quick Check, Lesson Mock, Mini Mock অথবা ৯০-মিনিটের Full Mock—প্রতিটি mode original N5 lesson data থেকে তৈরি হয়।
+            <h1 className={language==='bn'?'font-bn':''}>{text('লক্ষ্য ও সময় অনুযায়ী মক বেছে নিন','Choose a mock for your goal and available time')}</h1>
+            <p className={language==='bn'?'font-bn':''}>
+              {text('Quick Check, Lesson Mock, Mini Mock অথবা ৯০-মিনিটের Full Mock—প্রতিটি mode original N5 lesson data থেকে তৈরি হয়।','Choose a Quick Check, Lesson Mock, Mini Mock or 90-minute Full Mock. Every mode is built from the original N5 lesson data.')}
             </p>
           </div>
           <ClipboardCheck className="header-big-icon"/>
         </section>
+
+        {savedRun&&<section className="mock-resume-card" aria-label={text('সংরক্ষিত মক টেস্ট','Saved mock test')}>
+          <Clock3/><div><small>{text('চলমান attempt','IN-PROGRESS ATTEMPT')}</small><b>{MODES[savedRun.mode].title}</b><span>{text(`${savedRun.index+1}/${savedRun.questions.length} প্রশ্ন পর্যন্ত`,`Resume from question ${savedRun.index+1} of ${savedRun.questions.length}`)}</span></div>
+          <button className="premium-btn premium-btn-primary" type="button" onClick={resumeSaved}>{text('আবার শুরু করুন','Resume test')}<ArrowRight/></button>
+          <button type="button" onClick={()=>{try{window.localStorage.removeItem(KEYS.activeMock)}catch{}setSavedRun(null)}}>{text('মুছুন','Discard')}</button>
+        </section>}
 
         <div className="jlpt-blueprint nv-final-mock-modes">
           {(Object.keys(MODES) as ModeId[]).map(id=>{
@@ -596,21 +711,21 @@ export default function MockTest({
                 <span>{m.label}</span>
                 <Icon size={22}/>
                 <h3>{m.title}</h3>
-                <small className="font-bn">{m.titleBn}</small>
+                <small className={language==='bn'?'font-bn':''}>{language==='bn'?m.titleBn:m.label}</small>
                 <b><Clock3 size={17}/> {Object.values(m.minutes).reduce((a,b)=>a+b,0)} min target</b>
-                <p className="font-bn">{m.descriptionBn}</p>
+                <p className={language==='bn'?'font-bn':''}>{language==='bn'?m.descriptionBn:m.descriptionEn}</p>
                 <div className="mock-mode-breakdown">
                   <span>{m.counts.vocabulary}<small>Vocab</small></span>
                   <span>{m.counts['grammar-reading']}<small>Grammar/Reading</small></span>
                   <span>{m.counts.listening}<small>Listening</small></span>
                 </div>
-                <strong>{m.total} প্রশ্ন</strong>
+                <strong>{m.total} {text('প্রশ্ন','questions')}</strong>
                 <button
                   className="premium-btn premium-btn-primary"
                   onClick={()=>void start(id)}
                   disabled={loading}
                 >
-                  {loading?<><Loader2 className="animate-spin"/> Loading…</>:`${m.titleBn} শুরু করুন`}
+                  {loading?<><Loader2 className="animate-spin"/> Loading…</>:text(`${m.titleBn} শুরু করুন`,`Start ${m.title}`)}
                 </button>
               </article>
             );
@@ -625,15 +740,15 @@ export default function MockTest({
             </p>
           </div>
           <button className="premium-btn premium-btn-primary" onClick={()=>void start('full')} disabled={loading}>
-            <Trophy size={17}/> Full Mock শুরু করুন
+            <Trophy size={17}/> {text('Full Mock শুরু করুন','Start Full Mock')}
           </button>
         </div>
 
         <section className="mock-official-guide" aria-labelledby="mock-official-title">
           <div>
             <span><ShieldCheck size={16}/> OFFICIAL N5 REFERENCE</span>
-            <h2 id="mock-official-title" className="font-bn">Official structure ধরে practice, কিন্তু score নিয়ে পরিষ্কার ব্যাখ্যা</h2>
-            <p className="font-bn">N5-এ Vocabulary ২০ মিনিট, Grammar/Reading ৪০ মিনিট এবং Listening ৩০ মিনিট। Official pass mark মোট 80/180; Language Knowledge/Reading-এ 38/120 এবং Listening-এ 19/60 minimum দরকার। এই app raw percentage দেখায়—official scaled score দাবি করে না।</p>
+            <h2 id="mock-official-title" className={language==='bn'?'font-bn':''}>{text('Official structure ধরে practice, কিন্তু score নিয়ে পরিষ্কার ব্যাখ্যা','Practice the official structure with honest scoring')}</h2>
+            <p className={language==='bn'?'font-bn':''}>{text('N5-এ Vocabulary ২০ মিনিট, Grammar/Reading ৪০ মিনিট এবং Listening ৩০ মিনিট। Official pass mark মোট 80/180; Language Knowledge/Reading-এ 38/120 এবং Listening-এ 19/60 minimum দরকার। এই app raw percentage দেখায়—official scaled score দাবি করে না।','N5 uses 20 minutes for Vocabulary, 40 for Grammar/Reading and 30 for Listening. The official pass mark is 80/180 overall, with minimums of 38/120 for Language Knowledge/Reading and 19/60 for Listening. This app reports a raw practice percentage, not an official scaled score.')}</p>
           </div>
           <div className="mock-official-stats">
             <article><strong>20</strong><span>Vocabulary</span></article>
@@ -644,15 +759,15 @@ export default function MockTest({
 
         <section className="mock-resource-library" aria-labelledby="mock-resource-title">
           <header>
-            <div><span>FREE ONLINE DIRECTORY · REVIEWED {JLPT_RESOURCE_REVIEWED}</span><h2 id="mock-resource-title" className="font-bn">আরও free JLPT N5 mock ও practice resource</h2></div>
-            <p className="font-bn">Copyrighted প্রশ্ন কপি করা হয়নি—link খুললে original provider-এর resource ব্যবহার করবেন।</p>
+            <div><span>FREE ONLINE DIRECTORY · REVIEWED {JLPT_RESOURCE_REVIEWED}</span><h2 id="mock-resource-title" className={language==='bn'?'font-bn':''}>{text('আরও free JLPT N5 mock ও practice resource','More free JLPT N5 mocks and practice resources')}</h2></div>
+            <p className={language==='bn'?'font-bn':''}>{text('Copyrighted প্রশ্ন কপি করা হয়নি—link খুললে original provider-এর resource ব্যবহার করবেন।','Copyrighted questions are not copied here; each link opens the original provider’s resource.')}</p>
           </header>
           <div>
             {JLPT_N5_RESOURCES.map(resource=><a key={resource.id} href={resource.url} target="_blank" rel="noreferrer noopener">
               <span>{resource.kind==='official'?'OFFICIAL':resource.kind==='full-mock'?'FULL MOCK':'PRACTICE BANK'}</span>
               <small>{resource.provider}</small>
               <h3>{resource.name}</h3>
-              <p className="font-bn">{resource.summaryBn}</p>
+              <p className={language==='bn'?'font-bn':''}>{language==='bn'?resource.summaryBn:resource.summaryEn}</p>
               <b>{resource.detail}</b>
               <em>{resource.freeAccess}<ExternalLink size={14}/></em>
             </a>)}
@@ -671,7 +786,7 @@ export default function MockTest({
       <header className="mock-sticky-head nv-final-mock-head">
         <div>
           <span>{cfg?.title}</span>
-          <b>{section.titleBn}</b>
+          <b className={language==='bn'?'font-bn':''}>{language==='bn'?section.titleBn:section.titleEn}</b>
           <small className="font-jp">{section.jp}</small>
         </div>
         <div>
@@ -693,7 +808,12 @@ export default function MockTest({
           <span>Q{i+1}/{questions.length}</span>
           <b>{q.itemType}</b>
           <em><SectionIcon size={15}/>{section.titleEn}</em>
-          <small>{Object.keys(answers).length} answered</small>
+          <small>{Object.keys(answers).length} {text('টির উত্তর দেওয়া','answered')}</small>
+        </div>
+
+        <div className="mock-question-tools">
+          <button type="button" className={flagged[q.id]?'flagged':''} aria-pressed={!!flagged[q.id]} onClick={()=>setFlagged(old=>({...old,[q.id]:!old[q.id]}))}><Flag/>{flagged[q.id]?text('Flag সরান','Remove flag'):text('Review-এর জন্য flag করুন','Flag for review')}</button>
+          <span>{Object.values(flagged).filter(Boolean).length} {text('টি flagged','flagged')}</span>
         </div>
 
         {q.audioText&&(
@@ -709,7 +829,7 @@ export default function MockTest({
             )}
           >
             <Volume2/>
-            <span className="font-bn">Audio শুনুন</span>
+            <span className={language==='bn'?'font-bn':''}>{text('Audio শুনুন','Play audio')}</span>
           </button>
         )}
 
@@ -732,15 +852,19 @@ export default function MockTest({
           ))}
         </div>
 
+        <nav className="mock-question-navigator" aria-label={text('প্রশ্ন নেভিগেটর','Question navigator')}>
+          {questions.map((question,index)=><button key={question.id} type="button" disabled={lockedSections.includes(question.section)&&index!==i} className={`${index===i?'current':''} ${answers[question.id]?'answered':''} ${flagged[question.id]?'flagged':''}`} onClick={()=>{stopAudio();setI(index)}} aria-label={text(`প্রশ্ন ${index+1}${answers[question.id]?' উত্তর দেওয়া':''}${flagged[question.id]?' flagged':''}`,`Question ${index+1}${answers[question.id]?' answered':''}${flagged[question.id]?' flagged':''}`)}>{index+1}</button>)}
+        </nav>
+
         <div className="mock-next-row">
-          <button className="premium-btn premium-btn-secondary" disabled={i===0} onClick={()=>{stopAudio();setI(value=>Math.max(0,value-1))}}>
-            <ArrowLeft size={16}/> আগের প্রশ্ন
+          <button className="premium-btn premium-btn-secondary" disabled={i===0||lockedSections.includes(questions[i-1]?.section)} onClick={()=>{stopAudio();setI(value=>Math.max(0,value-1))}}>
+            <ArrowLeft size={16}/> {text('আগের প্রশ্ন','Previous')}
           </button>
-          <button className="mock-exit-button" type="button" onClick={()=>{stopAudio();setQuestions([]);setAnswers({});setMode(null);setI(0)}}>
-            সব mode
+          <button className="mock-exit-button" type="button" onClick={saveAndExit}>
+            {text('Save করে বের হন','Save & exit')}
           </button>
           <button className="premium-btn premium-btn-primary" onClick={next}>
-            {i+1>=questions.length?'ফলাফল দেখুন':currentAnswer?'পরের প্রশ্ন':'Skip করুন'}<ArrowRight size={16}/>
+            {i+1>=questions.length?text('ফলাফল দেখুন','See result'):currentAnswer?text('পরের প্রশ্ন','Next question'):text('Skip করুন','Skip')}<ArrowRight size={16}/>
           </button>
         </div>
       </article>

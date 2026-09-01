@@ -5,8 +5,10 @@ import { createPortal } from 'react-dom';
 import { CheckCircle2, DatabaseBackup, Download, Upload, X } from 'lucide-react';
 import { createBackup, importBackup } from '@/lib/storage';
 import { track } from '@/lib/analytics';
+import { useLanguage } from '@/lib/language';
 
 export default function DataVault(){
+  const {language,text}=useLanguage();
   const [open,setOpen]=useState(false);
   const [mounted,setMounted]=useState(false);
   const [status,setStatus]=useState('');
@@ -98,14 +100,14 @@ export default function DataVault(){
         <div><span>LOCAL DATA VAULT</span><h2 id="vault-title">Backup & Restore Progress</h2></div>
         <button ref={closeRef} onClick={()=>setOpen(false)} aria-label="Close"><X/></button>
       </div>
-      <p className="font-bn">আপনার mastery, SRS, lesson এবং mock history এই browser-এ থাকে। JSON backup রাখলে browser data মুছে গেলেও progress ফেরত আনা যাবে।</p>
+      <p className={language==='bn'?'font-bn':''}>{text('আপনার mastery, SRS, lesson এবং mock history browser-এ দ্রুত কাজ করে এবং login থাকলে account cloud backup-এর সাথে sync হয়। আলাদা JSON backup রাখলে যেকোনো সময় নিজে restore করতে পারবেন।','Your mastery, SRS, lesson and mock history work locally for speed and sync to your account backup when you are logged in. Keep a separate JSON copy whenever you want.')}</p>
       <div className="vault-actions">
         <button onClick={download}><Download/><div><b>Export backup</b><span>Save progress as JSON</span></div></button>
         <button onClick={()=>fileRef.current?.click()}><Upload/><div><b>Import backup</b><span>Restore a saved JSON file</span></div></button>
       </div>
       <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={e=>restore(e.target.files?.[0])}/>
       {status&&<div className="vault-status"><CheckCircle2/>{status}</div>}
-      <div className="vault-note"><DatabaseBackup/><span>No account required. Your study state stays in your browser unless you export it.</span></div>
+      <div className="vault-note"><DatabaseBackup/><span>Local-first for speed · account sync for continuity · JSON export for your own copy.</span></div>
     </section>
   </div>;
 

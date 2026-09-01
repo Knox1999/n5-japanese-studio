@@ -3,6 +3,8 @@
 @tailwind utilities;
 
 :root{
+  --font-bn-loaded:'Noto Sans Bengali Variable';
+  --font-jp-loaded:'Noto Sans JP Variable';
   --ink:#F5F8FC;
   --navy:#050812;
   --navy-2:#0A1424;
@@ -21,8 +23,8 @@
   --mist:rgba(196,218,235,.14);
   --muted:#9CAABD;
   --shadow:0 24px 72px rgba(0,0,0,.34);
-  --font-display:"Hind Siliguri","Noto Sans Bengali","Noto Sans JP",Inter,system-ui,sans-serif;
-  --font-body:Inter,"Hind Siliguri","Noto Sans Bengali","Noto Sans JP",system-ui,sans-serif;
+  --font-display:var(--font-bn-loaded),var(--font-jp-loaded),system-ui,sans-serif;
+  --font-body:var(--font-bn-loaded),var(--font-jp-loaded),system-ui,sans-serif;
 }
 *{box-sizing:border-box}
 html{
@@ -98,8 +100,8 @@ button>span,button>b,button>strong,a>span,a>b,a>strong{min-width:0;overflow-wrap
 main h1,main h2,main h3,main p{max-width:100%;overflow-wrap:anywhere}
 ::selection{background:#FF5B45;color:#fff}
 :focus-visible{outline:2px solid #FFB35D;outline-offset:3px}
-.font-jp{font-family:"Noto Sans JP","Yu Gothic","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
-.font-bn{font-family:"Hind Siliguri","Noto Sans Bengali","Nirmala UI",system-ui,sans-serif;line-height:1.58;word-break:normal;overflow-wrap:anywhere;text-wrap:pretty}
+.font-jp{font-family:var(--font-jp-loaded),"Yu Gothic","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+.font-bn{font-family:var(--font-bn-loaded),"Nirmala UI",system-ui,sans-serif;line-height:1.58;word-break:normal;overflow-wrap:anywhere;text-wrap:pretty}
 
 /* Premium native scrollbar — mouse wheel remains normal page scrolling */
 *{scrollbar-width:thin;scrollbar-color:#E45143 #070C16}

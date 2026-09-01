@@ -126,9 +126,8 @@ function japaneseVoices(synth:SpeechSynthesis){
   return synth.getVoices().filter(voice=>/^ja(?:-|_)/i.test(voice.lang));
 }
 
-/** Starts the only useful preload step for Web Speech: voice discovery. */
+/** Discovers local fallback voices. Static clips are requested directly on demand. */
 export async function prepareAudio(){
-  void prepareStaticAudio();
   const synth=speechController();
   if(!synth)return[];
   const ready=japaneseVoices(synth);
@@ -266,10 +265,13 @@ async function tryStaticAudio(
   generation:number
 ):Promise<PlaybackResult>{
   const hashes=staticAudioHashes;
-  if(typeof window==='undefined'||typeof Audio==='undefined'||!hashes?.size)return'unavailable';
+  if(typeof window==='undefined'||typeof Audio==='undefined')return'unavailable';
   const hash=await sha1(hashInput(prepared.display,voiceRole));
   if(generation!==playbackGeneration)return'cancelled';
-  if(!hashes.has(hash))return'unavailable';
+  // If the optional manifest is already cached it prevents a known 404. On the
+  // first interaction, try the deterministic clip URL directly so visitors do
+  // not download the complete index before hearing one sentence.
+  if(hashes&&hashes.size&&!hashes.has(hash))return'unavailable';
 
   const url=`${BASE}/audio/${hash}.mp3`;
   const audio=new Audio(url);
@@ -500,5 +502,3 @@ export async function playDialogueTrack(lines:DialogueSpeechLine[],rate=1,cb:Aud
   }
   cb.onProgress?.(1);cb.onEnd?.();return'ended';
 }
-
-if(typeof window!=='undefined')queueMicrotask(()=>{void prepareAudio()});

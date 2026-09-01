@@ -42,19 +42,20 @@ const listening=[
 ];
 
 const quiz=[
-  {id:'q1',prompt:'「みず」 মানে কী?',promptEn:'What does 「みず」 mean?',options:['পানি / Water','বই / Book','স্টেশন / Station','বন্ধু / Friend'],correct:'পানি / Water'},
-  {id:'q2',prompt:'「わたし___がくせいです」—সঠিক particle কোনটি?',promptEn:'Choose the correct particle: 「わたし___がくせいです」',options:['は','を','に','で'],correct:'は'},
-  {id:'q3',prompt:'「やま」-এর সঠিক kanji কোনটি?',promptEn:'Which kanji means 「やま」?',options:['川','山','日','本'],correct:'山'},
-  {id:'q4',prompt:'「ありがとう」 কখন বলা হয়?',promptEn:'When do you say 「ありがとう」?',options:['ধন্যবাদ দিতে / To thank','বিদায় বলতে / To say goodbye','সময় জানতে / To ask the time','দুঃখ প্রকাশে / To apologise'],correct:'ধন্যবাদ দিতে / To thank'},
-  {id:'q5',prompt:'「きょう」 মানে কী?',promptEn:'What does 「きょう」 mean?',options:['আজ / Today','কাল / Tomorrow','গতকাল / Yesterday','সকাল / Morning'],correct:'আজ / Today'},
+  {id:'q1',prompt:'「みず」 মানে কী?',promptEn:'What does 「みず」 mean?',bn:['পানি','বই','স্টেশন','বন্ধু'],en:['Water','Book','Station','Friend'],correct:0,exBn:'みず (mizu) অর্থ পানি।',exEn:'みず (mizu) means water.'},
+  {id:'q2',prompt:'「わたし___がくせいです」—সঠিক particle কোনটি?',promptEn:'Choose the correct particle: 「わたし___がくせいです」',bn:['は','を','に','で'],en:['は','を','に','で'],correct:0,exBn:'は বাক্যের topic “わたし” চিহ্নিত করে।',exEn:'は marks わたし as the topic of the sentence.'},
+  {id:'q3',prompt:'「やま」-এর সঠিক kanji কোনটি?',promptEn:'Which kanji means 「やま」?',bn:['川','山','日','本'],en:['川','山','日','本'],correct:1,exBn:'山-এর reading やま এবং অর্থ পাহাড়।',exEn:'山 is read やま and means mountain.'},
+  {id:'q4',prompt:'「ありがとう」 কখন বলা হয়?',promptEn:'When do you say 「ありがとう」?',bn:['ধন্যবাদ দিতে','বিদায় বলতে','সময় জানতে','দুঃখ প্রকাশে'],en:['To thank someone','To say goodbye','To ask the time','To apologise'],correct:0,exBn:'ありがとう কৃতজ্ঞতা বা ধন্যবাদ প্রকাশ করে।',exEn:'ありがとう expresses thanks or gratitude.'},
+  {id:'q5',prompt:'「きょう」 মানে কী?',promptEn:'What does 「きょう」 mean?',bn:['আজ','আগামীকাল','গতকাল','সকাল'],en:['Today','Tomorrow','Yesterday','Morning'],correct:0,exBn:'きょう (今日) অর্থ আজ।',exEn:'きょう (今日) means today.'},
 ];
 
 const label=(language:PublicLanguage,bn:string,en:string)=>language==='bn'?bn:en;
 
 export default function PublicFreeLab({language,onJoin}:{language:PublicLanguage;onJoin:()=>void}){
   const [tab,setTab]=useState<TabId>('starter');
-  const [answers,setAnswers]=useState<Record<string,string>>({});
+  const [answers,setAnswers]=useState<Record<string,number>>({});
   const [submitted,setSubmitted]=useState(false);
+  const [revealedListening,setRevealedListening]=useState<Record<number,boolean>>({});
   const score=useMemo(()=>quiz.filter(q=>answers[q.id]===q.correct).length,[answers]);
 
   useEffect(()=>()=>{stopAudio()},[]);
@@ -91,7 +92,7 @@ export default function PublicFreeLab({language,onJoin}:{language:PublicLanguage
           <h3>{label(language,'আজই ব্যবহার করা যায় এমন ৬টি Japanese expression','Six Japanese expressions you can use today')}</h3>
           <div className={styles.wordGrid}>
             {words.map(word=><article key={word.jp}>
-              <button type="button" aria-label={`${word.jp} শুনুন`} onClick={()=>void playText(word.jp,.92,'public_free_phrase')}><Play size={15}/></button>
+              <button type="button" aria-label={label(language,`${word.jp} শুনুন`,`Play ${word.jp}`)} onClick={()=>void playText(word.jp,.92,'public_free_phrase')}><Play size={15}/></button>
               <strong className="font-jp" lang="ja">{word.jp}</strong>
               <small>{word.reading}</small>
               <p className={language==='bn'?'font-bn':''}>{language==='bn'?word.bn:word.en}</p>
@@ -115,8 +116,8 @@ export default function PublicFreeLab({language,onJoin}:{language:PublicLanguage
         <p>{label(language,'প্রতিটি বাক্য natural Japanese neural voice-এ শোনা যাবে।','Each sentence uses the same low-latency Japanese voice system as the studio.')}</p>
         <div className={styles.listeningGrid}>
           {listening.map((row,index)=><article key={row.jp}>
-            <button type="button" onClick={()=>void playText(row.jp,.9,'public_free_listening')} aria-label={`${index+1} নম্বর Japanese বাক্য শুনুন`}><Headphones size={20}/><span>{label(language,'শুনুন','Play')}</span></button>
-            <div><small>TRACK {String(index+1).padStart(2,'0')}</small><strong className="font-jp" lang="ja">{row.jp}</strong><p className={language==='bn'?'font-bn':''}>{language==='bn'?row.bn:row.en}</p></div>
+            <button type="button" onClick={async()=>{const result=await playText(row.jp,.9,'public_free_listening');if(result==='ended')setRevealedListening(old=>({...old,[index]:true}))}} aria-label={label(language,`${index+1} নম্বর Japanese বাক্য শুনুন`,`Play Japanese sentence ${index+1}`)}><Headphones size={20}/><span>{label(language,'শুনুন','Play')}</span></button>
+            <div><small>TRACK {String(index+1).padStart(2,'0')}</small><strong className="font-jp" lang="ja">{row.jp}</strong>{revealedListening[index]?<p className={language==='bn'?'font-bn':''}>{language==='bn'?row.bn:row.en}</p>:<button type="button" className={styles.revealMeaning} onClick={()=>setRevealedListening(old=>({...old,[index]:true}))}>{label(language,'অর্থ দেখুন','Reveal meaning')}</button>}</div>
           </article>)}
         </div>
       </div>}
@@ -130,7 +131,8 @@ export default function PublicFreeLab({language,onJoin}:{language:PublicLanguage
         <div className={styles.quizQuestions}>
           {quiz.map((question,index)=><fieldset key={question.id}>
             <legend><span>{String(index+1).padStart(2,'0')}</span>{language==='bn'?question.prompt:question.promptEn}</legend>
-            <div>{question.options.map(option=><button type="button" key={option} className={answers[question.id]===option?styles.quizOptionSelected:''} aria-pressed={answers[question.id]===option} onClick={()=>{setSubmitted(false);setAnswers(old=>({...old,[question.id]:option}))}}>{option}</button>)}</div>
+            <div>{(language==='bn'?question.bn:question.en).map((option,optionIndex)=><button type="button" key={`${question.id}-${optionIndex}`} className={answers[question.id]===optionIndex?styles.quizOptionSelected:''} aria-pressed={answers[question.id]===optionIndex} onClick={()=>{setSubmitted(false);setAnswers(old=>({...old,[question.id]:optionIndex}))}}>{option}</button>)}</div>
+            {submitted&&<p className={answers[question.id]===question.correct?styles.quizExplanationCorrect:styles.quizExplanationWrong}>{answers[question.id]===question.correct?label(language,'সঠিক।','Correct.'):label(language,`সঠিক উত্তর: ${(question.bn)[question.correct]}।`,`Correct answer: ${(question.en)[question.correct]}.`)} {language==='bn'?question.exBn:question.exEn}</p>}
           </fieldset>)}
         </div>
         <div className={styles.quizResult}>

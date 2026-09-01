@@ -16,6 +16,8 @@
     "repo:hygiene": "python scripts/repo_hygiene.py"
   },
   "dependencies": {
+    "@fontsource-variable/noto-sans-bengali": "^5.3.0",
+    "@fontsource-variable/noto-sans-jp": "^5.3.0",
     "@gsap/react": "^2.1.2",
     "framer-motion": "^12.23.12",
     "gsap": "^3.13.0",

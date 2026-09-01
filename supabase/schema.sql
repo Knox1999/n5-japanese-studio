@@ -93,24 +93,20 @@ on conflict(user_id) do nothing;
 drop policy if exists "profile own or admin read" on public.user_profiles;
 create policy "profile own or admin read" on public.user_profiles
 for select to authenticated
-using (auth.uid()=user_id or private.is_admin());
+using ((select auth.uid())=user_id or (select private.is_admin()));
 
 drop policy if exists "profile own update" on public.user_profiles;
-create policy "profile own update" on public.user_profiles
+drop policy if exists "profile admin update" on public.user_profiles;
+drop policy if exists "profile own or admin update" on public.user_profiles;
+create policy "profile own or admin update" on public.user_profiles
 for update to authenticated
-using (auth.uid()=user_id)
-with check (auth.uid()=user_id);
+using ((select auth.uid())=user_id or (select private.is_admin()))
+with check ((select auth.uid())=user_id or (select private.is_admin()));
 
 drop policy if exists "profile own insert" on public.user_profiles;
 create policy "profile own insert" on public.user_profiles
 for insert to authenticated
-with check (auth.uid()=user_id);
-
-drop policy if exists "profile admin update" on public.user_profiles;
-create policy "profile admin update" on public.user_profiles
-for update to authenticated
-using (private.is_admin())
-with check (private.is_admin());
+with check ((select auth.uid())=user_id);
 
 revoke update on public.user_profiles from authenticated;
 grant select,insert on public.user_profiles to authenticated;
@@ -120,18 +116,18 @@ grant update(email,display_name,last_active_at,status) on public.user_profiles t
 drop policy if exists "progress own or admin read" on public.user_progress;
 create policy "progress own or admin read" on public.user_progress
 for select to authenticated
-using (auth.uid()=user_id or private.is_admin());
+using ((select auth.uid())=user_id or (select private.is_admin()));
 
 drop policy if exists "progress own insert" on public.user_progress;
 create policy "progress own insert" on public.user_progress
 for insert to authenticated
-with check (auth.uid()=user_id);
+with check ((select auth.uid())=user_id);
 
 drop policy if exists "progress own update" on public.user_progress;
 create policy "progress own update" on public.user_progress
 for update to authenticated
-using (auth.uid()=user_id)
-with check (auth.uid()=user_id);
+using ((select auth.uid())=user_id)
+with check ((select auth.uid())=user_id);
 
 grant select,insert,update on public.user_progress to authenticated;
 
@@ -139,7 +135,7 @@ grant select,insert,update on public.user_progress to authenticated;
 drop policy if exists "role own or admin read" on public.user_roles;
 create policy "role own or admin read" on public.user_roles
 for select to authenticated
-using (auth.uid()=user_id or private.is_admin());
+using ((select auth.uid())=user_id or (select private.is_admin()));
 
 grant select on public.user_roles to authenticated;
 revoke insert,update,delete on public.user_roles from authenticated;

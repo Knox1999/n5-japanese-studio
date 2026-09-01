@@ -52,5 +52,5 @@
   --nv-motion-line:rgba(211,228,242,.13);
   --nv-motion-ease:cubic-bezier(.2,.8,.2,1);
   --nv-font-display:"Hind Siliguri","Noto Sans Bengali","Noto Sans JP",Inter,system-ui,sans-serif;
-  --nv-font-body:Inter,"Hind Siliguri","Noto Sans Bengali","Noto Sans JP",system-ui,sans-serif;
+  --nv-font-body:var(--font-bn-loaded),var(--font-jp-loaded),system-ui,sans-serif;
 }

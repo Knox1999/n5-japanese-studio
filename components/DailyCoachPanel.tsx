@@ -2,6 +2,7 @@
 
 import { ArrowRight, Brain, Clock3, Play, RotateCcw, Sparkles, Target } from 'lucide-react';
 import type { DailyRecommendation, StudyPlan, ViewName } from '@/lib/types';
+import { useLanguage } from '@/lib/language';
 
 type Props = {
   plan: StudyPlan;
@@ -30,6 +31,7 @@ function iconNode(kind: DailyRecommendation['kind'], size: number) {
 }
 
 export default function DailyCoachPanel({ plan, recommendations, unresolvedMistakes, onMinutes, onNavigate }: Props) {
+  const {language,text}=useLanguage();
   const primary = recommendations[0];
   const secondary = recommendations.slice(1, 4);
 
@@ -38,11 +40,11 @@ export default function DailyCoachPanel({ plan, recommendations, unresolvedMista
       <div className="daily-coach__grid">
         <div className="daily-coach__intro">
           <div className="daily-coach__eyebrow"><Sparkles size={14}/> Daily Study Coach</div>
-          <h2 id="daily-coach-title" className="font-bn">এখন কী পড়বেন?</h2>
-          <p id="daily-coach-description" className="font-bn">সময় বাছুন। Coach আপনার due review, lesson progress এবং mistake history থেকে পরের কাজ সাজিয়ে দেবে।</p>
+          <h2 id="daily-coach-title" className={language==='bn'?'font-bn':''}>{text('এখন কী পড়বেন?','What should you study now?')}</h2>
+          <p id="daily-coach-description" className={language==='bn'?'font-bn':''}>{text('সময় বাছুন। Coach আপনার due review, lesson progress এবং mistake history থেকে পরের কাজ সাজিয়ে দেবে।','Choose your available time. The coach prioritizes your due reviews, lesson progress and mistake history.')}</p>
 
-          <div className="daily-coach__time-picker" aria-label="আজকের পড়ার সময়">
-            <span><Clock3 size={14}/> আজ সময়</span>
+          <div className="daily-coach__time-picker" aria-label={text('আজকের পড়ার সময়','Study time today')}>
+            <span><Clock3 size={14}/> {text('আজ সময়','Time today')}</span>
             {TIMES.map(minutes => {
               const selected=Number(plan.dailyMinutes)===minutes;
               return <button
@@ -57,7 +59,7 @@ export default function DailyCoachPanel({ plan, recommendations, unresolvedMista
 
           {unresolvedMistakes > 0 && (
             <button type="button" onClick={()=>onNavigate('srs')} className="daily-coach__mistakes">
-              <span><Brain size={16}/><b className="font-bn">Fix My Mistakes</b></span>
+              <span><Brain size={16}/><b>{text('আমার ভুলগুলো ঠিক করুন','Fix My Mistakes')}</b></span>
               <span><strong>{unresolvedMistakes}</strong><ArrowRight size={15}/></span>
             </button>
           )}
@@ -69,9 +71,9 @@ export default function DailyCoachPanel({ plan, recommendations, unresolvedMista
               <span className="daily-coach__primary-icon">{iconNode(primary.kind,20)}</span>
               <span className="daily-coach__primary-copy">
                 <small><span>Next best action</span><i/> <span>{primary.minutes} min</span></small>
-                <b className="font-bn">{primary.title}</b>
-                <em className="font-bn">{primary.reason}</em>
-                <span className="daily-coach__start font-bn"><Play size={14} fill="currentColor"/> শুরু করুন</span>
+                <b className={language==='bn'?'font-bn':''}>{language==='bn'?primary.title:primary.titleEn||primary.title}</b>
+                <em className={language==='bn'?'font-bn':''}>{language==='bn'?primary.reason:primary.reasonEn||primary.reason}</em>
+                <span className={`daily-coach__start ${language==='bn'?'font-bn':''}`}><Play size={14} fill="currentColor"/> {text('শুরু করুন','Start')}</span>
               </span>
               <span className="daily-coach__arrow"><ArrowRight size={17}/></span>
             </button>
@@ -82,7 +84,7 @@ export default function DailyCoachPanel({ plan, recommendations, unresolvedMista
               {secondary.map((item, index) => (
                 <button type="button" key={item.id} onClick={() => onNavigate(targetFor(item.kind))}>
                   <span className="daily-coach__secondary-icon">{iconNode(item.kind,15)}</span>
-                  <span><b className="font-bn">{item.title}</b><small>0{index + 2} · {item.minutes} min</small></span>
+                  <span><b className={language==='bn'?'font-bn':''}>{language==='bn'?item.title:item.titleEn||item.title}</b><small>0{index + 2} · {item.minutes} min</small></span>
                   <ArrowRight size={14}/>
                 </button>
               ))}

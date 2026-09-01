@@ -8,6 +8,7 @@ import type { ProgressMap, SrsMap } from '@/lib/storage';
 import { loadLesson } from '@/lib/data';
 import { playText } from '@/lib/audio';
 import { track, trackError } from '@/lib/analytics';
+import { useLanguage } from '@/lib/language';
 
 const DAY=86400000;
 type ReviewRating='again'|'hard'|'good'|'easy';
@@ -21,6 +22,7 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
   onSrsChange:(v:SrsMap)=>void;onProgressChange:(v:ProgressMap)=>void;
   onReviewResult?:(result:ReviewResult)=>void
 }){
+  const {language,text}=useLanguage();
   const [session,setSession]=useState<VocabItem[]>([]);
   const [idx,setIdx]=useState(0);
   const [reveal,setReveal]=useState(false);
@@ -56,7 +58,7 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
   };
 
   const startGlobal=async()=>{
-    if(!globalDueIds.size){setGlobalError('Global due queue এখন খালি।');return}
+    if(!globalDueIds.size){setGlobalError(text('Global due queue এখন খালি।','The global due queue is empty.'));return}
     setGlobalLoading(true);setGlobalError('');
     try{
       const targetLessons=meta.lessons.filter(L=>(L.ids||[]).some(id=>globalDueIds.has(Number(id))));
@@ -98,7 +100,7 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
         <div>
           <div className="section-kicker">{scope==='global'?'Global SRS Queue':'Lesson SRS Queue'}</div>
           <h1>Learn → Recall → Use → Review</h1>
-          <p className="font-bn">{scope==='global'?'সব ২৫ lesson-এর due word এক queue-তে review হচ্ছে।':`Lesson ${data.lesson}-এর adaptive review session।`}</p>
+          <p className={language==='bn'?'font-bn':''}>{scope==='global'?text('সব ২৫ lesson-এর due word এক queue-তে review হচ্ছে।','Due words from all 25 lessons are being reviewed in one queue.'):text(`Lesson ${data.lesson}-এর adaptive review session।`,`Adaptive review session for Lesson ${data.lesson}.`)}</p>
         </div>
         <button className="premium-btn premium-btn-secondary" onClick={()=>setSession([])}>End session</button>
       </section>
@@ -119,8 +121,8 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
           <button className="audio-action" disabled={!ex} onClick={()=>ex&&playText(ex,1,'sentence',{}, {word_id:card.id,lesson_number:card.lesson||data.lesson})}><Headphones/> Sentence audio</button>
         </div>
         {!reveal?<button className="reveal-button" onClick={()=>setReveal(true)}>Reveal answer</button>:<motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} className="revealed-answer">
-          <b className="font-bn">{card.bangla_meaning}</b><span>{card.english_meaning}</span>
-          <small className="font-bn">উচ্চারণ: {card.pronunciation_bn}</small>{card.example?.bn&&<p className="font-bn">{card.example.bn}</p>}
+          {language==='bn'?<><b className="font-bn">{card.bangla_meaning}</b><span>{card.english_meaning}</span></>:<><b>{card.english_meaning}</b><span className="font-bn">{card.bangla_meaning}</span></>}
+          <small className="font-bn">{text('উচ্চারণ','Bangla pronunciation')}: {card.pronunciation_bn}</small>{card.example?.bn&&<p className="font-bn">{card.example.bn}</p>}
         </motion.div>}
         {reveal&&<div className="rating-grid">
           <button onClick={()=>rate('again')} className="rating again">Again<small>10m</small></button>
@@ -137,7 +139,7 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
       <div>
         <div className="section-kicker">Adaptive spaced repetition</div>
         <h1>Memory Review</h1>
-        <p className="font-bn">Current lesson review এবং পুরো course-এর Global Due Queue—দুইভাবেই review করতে পারবেন।</p>
+        <p className={language==='bn'?'font-bn':''}>{text('Current lesson review এবং পুরো course-এর Global Due Queue—দুইভাবেই review করতে পারবেন।','Review the current lesson or use one Global Due Queue for the entire course.')}</p>
       </div><Brain className="header-big-icon"/>
     </section>
 
@@ -150,7 +152,7 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
     </section>
 
     {dueByLesson.length>0&&<section className="nv58-due-map">
-      <header><div><span>GLOBAL DUE MAP</span><b>কোন lesson-এ কত review বাকি</b></div><strong>{globalDueIds.size}</strong></header>
+      <header><div><span>GLOBAL DUE MAP</span><b>{text('কোন lesson-এ কত review বাকি','Reviews remaining by lesson')}</b></div><strong>{globalDueIds.size}</strong></header>
       <div>{dueByLesson.map(x=><span key={x.lesson}><b>L{String(x.lesson).padStart(2,'0')}</b><em>{x.due}</em></span>)}</div>
     </section>}
 

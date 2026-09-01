@@ -11,6 +11,7 @@ import type { ProgressMap } from '@/lib/storage';
 import { playText } from '@/lib/audio';
 import { track } from '@/lib/analytics';
 import { learningMeta, verbForms, type VerbGroupId } from '@/lib/linguistics';
+import { useLanguage } from '@/lib/language';
 
 const PRIMARY_FILTERS=[
   ['all','সব'],
@@ -26,6 +27,7 @@ const VERB_FILTERS:Array<[VerbFilter,string]>=[
 ];
 
 export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;progress:ProgressMap;onToggle:(id:number)=>void}){
+  const {language,text}=useLanguage();
   const [query,setQuery]=useState('');
   const [limit,setLimit]=useState(30);
   const [hideMeaning,setHideMeaning]=useState(false);
@@ -76,28 +78,28 @@ export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;
       <div>
         <div className="section-kicker">Vocabulary · Lesson {String(data.lesson).padStart(2,'0')}</div>
         <h1>{data.title}</h1>
-        <p className="font-bn">প্রথমে শব্দ, অর্থ, উচ্চারণ ও example—cleanভাবে শিখুন। Verb-এর চারটি core form দরকার হলে Verb mode থেকে Forms Lab খুলুন।</p>
+        <p className={language==='bn'?'font-bn':''}>{text('প্রথমে শব্দ, অর্থ, উচ্চারণ ও example—cleanভাবে শিখুন। Verb-এর চারটি core form দরকার হলে Verb mode থেকে Forms Lab খুলুন।','Learn each word with its meaning, pronunciation and example. Open Forms Lab from Verb mode for the four core conjugations.')}</p>
       </div>
       <div className="header-progress"><b>{done}/{data.vocabulary.length}</b><span>Mastered</span><div><i style={{width:`${pct}%`}}/></div></div>
     </section>
 
     <section className="word-class-guide word-class-guide-v54" aria-label="Vocabulary categories">
       <button className={`word-guide-card verb ${filter==='verb'?'active':''}`} onClick={()=>setPrimary('verb')}>
-        <span className="guide-icon"><Layers3/></span><div><b>動詞</b><strong>Verb</strong><small>চারটি core form দেখুন</small></div><em>{counts.verb||0}</em>
+        <span className="guide-icon"><Layers3/></span><div><b>動詞</b><strong>Verb</strong><small>{text('চারটি core form দেখুন','View four core forms')}</small></div><em>{counts.verb||0}</em>
       </button>
       <button className={`word-guide-card i-adj ${filter==='i-adjective'?'active':''}`} onClick={()=>setPrimary('i-adjective')}>
-        <span className="guide-icon">い</span><div><b>い形容詞</b><strong>い-adjective</strong><small>শুধু এই lesson-এর い-adjective</small></div><em>{counts['i-adjective']||0}</em>
+        <span className="guide-icon">い</span><div><b>い形容詞</b><strong>い-adjective</strong><small>{text('শুধু এই lesson-এর い-adjective','Only this lesson’s い-adjectives')}</small></div><em>{counts['i-adjective']||0}</em>
       </button>
       <button className={`word-guide-card na-adj ${filter==='na-adjective'?'active':''}`} onClick={()=>setPrimary('na-adjective')}>
-        <span className="guide-icon">な</span><div><b>な形容詞</b><strong>な-adjective</strong><small>শুধু এই lesson-এর な-adjective</small></div><em>{counts['na-adjective']||0}</em>
+        <span className="guide-icon">な</span><div><b>な形容詞</b><strong>な-adjective</strong><small>{text('শুধু এই lesson-এর な-adjective','Only this lesson’s な-adjectives')}</small></div><em>{counts['na-adjective']||0}</em>
       </button>
     </section>
 
     {filter==='verb'&&<section className="verb-mode-bar">
-      <div className="verb-mode-copy"><span>VERB MODE</span><b>Group বেছে নিন → প্রয়োজনীয় Verb-এর ます・た・ない・Dictionary form খুলুন</b></div>
+      <div className="verb-mode-copy"><span>VERB MODE</span><b>{text('Group বেছে নিন → প্রয়োজনীয় Verb-এর ます・た・ない・Dictionary form খুলুন','Choose a group, then open the ます・た・ない・Dictionary forms for any verb.')}</b></div>
       <div className="verb-mode-tabs">
         {VERB_FILTERS.map(([id,label])=><button key={id} className={verbFilter===id?'active':''} onClick={()=>setVerbMode(id)}>
-          {label}<small>{id==='all-verbs'?(counts.verb||0):(counts[id]||0)}</small>
+          {id==='all-verbs'?text('সব Verb','All verbs'):id==='exceptions'?text('ব্যতিক্রম','Exceptions'):label}<small>{id==='all-verbs'?(counts.verb||0):(counts[id]||0)}</small>
         </button>)}
       </div>
     </section>}
@@ -107,7 +109,7 @@ export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;
       <button className={`premium-btn ${hideMeaning?'premium-btn-primary':'premium-btn-secondary'}`} onClick={()=>setHideMeaning(x=>!x)}>{hideMeaning?'Reveal meanings':'Hide meanings'}</button>
       <div className="word-filter-row">
         {PRIMARY_FILTERS.map(([id,label])=><button key={id} className={filter===id?'active':''} onClick={()=>setPrimary(id)}>
-          {label}{id!=='all'&&<small>{counts[id]||0}</small>}
+          {id==='all'?text('সব','All'):label}{id!=='all'&&<small>{counts[id]||0}</small>}
         </button>)}
       </div>
     </div>
@@ -120,13 +122,14 @@ export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;
     </div>
 
     {limit<filtered.length&&<button className="premium-btn premium-btn-secondary mx-auto flex" onClick={()=>setLimit(x=>x+30)}>Show {Math.min(30,filtered.length-limit)} more</button>}
-    {!filtered.length&&<div className="empty-state vocab-empty-v54"><Sparkles/><b>এই Lesson-এ এই category নেই</b><p className="font-bn">বর্তমান lesson-এর source vocabulary-তে এই type নেই। অন্য category বা lesson বেছে নিন।</p><button className="premium-btn premium-btn-primary" onClick={()=>setPrimary('all')}>সব শব্দ দেখুন</button></div>}
+    {!filtered.length&&<div className="empty-state vocab-empty-v54"><Sparkles/><b>{text('এই Lesson-এ এই category নেই','This category is empty in this lesson')}</b><p className={language==='bn'?'font-bn':''}>{text('বর্তমান lesson-এর source vocabulary-তে এই type নেই। অন্য category বা lesson বেছে নিন।','The source vocabulary for this lesson has no items of this type. Choose another category or lesson.')}</p><button className="premium-btn premium-btn-primary" onClick={()=>setPrimary('all')}>{text('সব শব্দ দেখুন','Show all words')}</button></div>}
 
     {formsWord&&<VerbFormsLab v={formsWord} onClose={()=>setFormsWord(null)}/>}
   </div>
 }
 
 function VocabCard({v,mastered,hideMeaning,onToggle,index,verbMode,onOpenForms}:{v:VocabItem;mastered:boolean;hideMeaning:boolean;onToggle:(id:number)=>void;index:number;verbMode:boolean;onOpenForms:(v:VocabItem)=>void}){
+  const {language,text}=useLanguage();
   const jp=v.kanji||v.japanese;
   const ex=v.example?.jp||v.example?.japanese||'';
   const meta=learningMeta(v);
@@ -145,10 +148,10 @@ function VocabCard({v,mastered,hideMeaning,onToggle,index,verbMode,onOpenForms}:
     </div>
 
     <div className={`meaning-stack ${hideMeaning?'meaning-hidden':''}`}>
-      <b className="font-bn">{v.bangla_meaning}</b><span>{v.english_meaning}</span><small className="font-bn">উচ্চারণ: {v.pronunciation_bn}</small>
+      {language==='bn'?<><b className="font-bn">{v.bangla_meaning}</b><span>{v.english_meaning}</span></>:<><b>{v.english_meaning}</b><span className="font-bn">{v.bangla_meaning}</span></>}<small className="font-bn">{text('উচ্চারণ','Bangla pronunciation')}: {v.pronunciation_bn}</small>
     </div>
 
-    {ex&&<div className="example-block"><div className="flex items-start justify-between gap-3"><p className="font-jp" lang="ja">{ex}</p><button className="mini-audio" aria-label={`${v.kanji||v.japanese} শব্দের উদাহরণ শুনুন`} title="উদাহরণের জাপানি অডিও শুনুন" onClick={()=>playText(ex,1,'sentence',{}, {lesson_number:v.lesson,word_id:v.id})}><Headphones size={18}/></button></div><span className={`font-bn ${hideMeaning?'blur-sm select-none':''}`}>{v.example?.bn}</span></div>}
+    {ex&&<div className="example-block"><div className="flex items-start justify-between gap-3"><p className="font-jp" lang="ja">{ex}</p><button className="mini-audio" aria-label={text(`${v.kanji||v.japanese} শব্দের উদাহরণ শুনুন`,`Play the example for ${v.kanji||v.japanese}`)} title={text('উদাহরণের জাপানি অডিও শুনুন','Play the Japanese example audio')} onClick={()=>playText(ex,1,'sentence',{}, {lesson_number:v.lesson,word_id:v.id})}><Headphones size={18}/></button></div><span className={`font-bn ${hideMeaning?'blur-sm select-none':''}`}>{v.example?.bn}</span></div>}
 
     <div className={`vocab-card-footer ${verbMode&&meta.kind==='verb'?'has-forms':''}`}>
       <button className={`mastery-button ${mastered?'done':''}`} onClick={()=>{onToggle(v.id);track('vocabulary_mastered',{lesson_number:v.lesson,word_id:v.id,mastered:!mastered})}}><Check size={18}/>{mastered?'Mastered':'Mark mastered'}</button>
@@ -158,6 +161,7 @@ function VocabCard({v,mastered,hideMeaning,onToggle,index,verbMode,onOpenForms}:
 }
 
 function VerbFormsLab({v,onClose}:{v:VocabItem;onClose:()=>void}){
+  const {language,text}=useLanguage();
   const meta=learningMeta(v);
   const forms=verbForms(v);
   if(!forms)return null;
@@ -175,7 +179,7 @@ function VerbFormsLab({v,onClose}:{v:VocabItem;onClose:()=>void}){
     <button className="future-layer-backdrop" onClick={onClose} aria-label="Close Verb Forms Lab"/>
     <section className="verb-lab-dialog">
       <header className="verb-lab-head">
-        <div><span>VERB FORMS LAB · {meta.groupJa}</span><h2 id="verb-lab-title" className="font-jp">{v.kanji||v.japanese}</h2><p className="font-bn">{v.bangla_meaning}</p></div>
+        <div><span>VERB FORMS LAB · {meta.groupJa}</span><h2 id="verb-lab-title" className="font-jp">{v.kanji||v.japanese}</h2><p className={language==='bn'?'font-bn':''}>{language==='bn'?v.bangla_meaning:v.english_meaning}</p></div>
         <button onClick={onClose} aria-label="Close"><X/></button>
       </header>
 
@@ -191,10 +195,10 @@ function VerbFormsLab({v,onClose}:{v:VocabItem;onClose:()=>void}){
       </div>
 
       {meta.irregular&&<section className="verb-exception-panel">
-        <AlertTriangle/><div><span>কেন ব্যতিক্রম?</span><b className="font-bn">{meta.irregularTitle}</b><p className="font-bn">{meta.irregularNote}</p></div>
+        <AlertTriangle/><div><span>{text('কেন ব্যতিক্রম?','Why is it irregular?')}</span><b className="font-bn">{meta.irregularTitle}</b><p className="font-bn">{meta.irregularNote}</p></div>
       </section>}
 
-      <footer className="verb-lab-footer font-bn">Core conjugation: ます・た・ない・Dictionary — শুধু এই চারটি form রাখা হয়েছে।</footer>
+      <footer className={`verb-lab-footer ${language==='bn'?'font-bn':''}`}>{text('Core conjugation: ます・た・ない・Dictionary — শুধু এই চারটি form রাখা হয়েছে।','Core conjugation: ます・た・ない・Dictionary — this lab focuses on these four forms.')}</footer>
     </section>
   </div>
 }

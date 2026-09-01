@@ -41,13 +41,13 @@ test('login and join open the account dialog and return to the public landing',a
   }
   const dialog=page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('heading',{name:/account-এ login/})).toBeVisible();
+  await expect(dialog.getByRole('heading',{name:/Log in to your account/})).toBeVisible();
 
-  await dialog.getByRole('button',{name:'Join',exact:true}).click();
-  await expect(dialog.getByRole('heading',{name:/learning account তৈরি/})).toBeVisible();
-  await expect(dialog.getByPlaceholder('আপনার নাম')).toBeVisible();
+  await dialog.getByRole('tab',{name:'Join',exact:true}).click();
+  await expect(dialog.getByRole('heading',{name:/Create your learning account/})).toBeVisible();
+  await expect(dialog.getByPlaceholder('Your name')).toBeVisible();
 
-  await dialog.getByRole('button',{name:'বন্ধ করুন'}).click();
+  await dialog.getByRole('button',{name:'Close'}).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('heading',{name:/Start learning JLPT N5/i,level:1})).toBeVisible();
   await expect(page.locator('#home-title')).toHaveCount(0);
@@ -61,7 +61,7 @@ test('free learning lab is useful without login and exposes verified mock resour
   await page.getByRole('tab',{name:'ফ্রি কুইজ'}).click();
   const quiz=page.locator('[role="tabpanel"]');
   await expect(quiz.getByText('5 QUESTIONS')).toBeVisible();
-  for(const answer of ['পানি / Water','は','山','ধন্যবাদ দিতে / To thank','আজ / Today']){
+  for(const answer of ['পানি','は','山','ধন্যবাদ দিতে','আজ']){
     await quiz.getByRole('button',{name:answer,exact:true}).click();
   }
   await quiz.getByRole('button',{name:'ফলাফল দেখুন'}).click();

@@ -1,6 +1,5 @@
-import AccountGate from '@/components/AccountGate';
-import StudioApp from '@/components/StudioApp';
+import AppEntry from '@/components/AppEntry';
 
 export default function Home() {
-  return <AccountGate><StudioApp /></AccountGate>;
+  return <AppEntry initialLanguage="bn"/>;
 }

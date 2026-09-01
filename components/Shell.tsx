@@ -36,12 +36,14 @@ import { track } from '@/lib/analytics';
 import { stopAudio } from '@/lib/audio';
 import { loadSearchIndex } from '@/lib/data';
 import type { StudioMeta, ViewName } from '@/lib/types';
+import { useLanguage } from '@/lib/language';
 
 type NavItem = {
   view: ViewName;
   labelBn: string;
   labelEn: string;
   shortBn: string;
+  shortEn: string;
   icon: LucideIcon;
 };
 
@@ -65,17 +67,17 @@ type ShellProps = {
 };
 
 const NAV: NavItem[] = [
-  { view:'dashboard', labelBn:'হোম', labelEn:'Home', shortBn:'হোম', icon:LayoutDashboard },
-  { view:'vocabulary', labelBn:'শব্দভান্ডার', labelEn:'Vocabulary', shortBn:'শব্দ', icon:BookOpen },
-  { view:'srs', labelBn:'স্মার্ট রিভিউ', labelEn:'Smart Recall', shortBn:'রিভিউ', icon:Brain },
-  { view:'spelling', labelBn:'অ্যাকটিভ আউটপুট', labelEn:'Spelling', shortBn:'লিখুন', icon:PenLine },
-  { view:'conversation', labelBn:'কথোপকথন', labelEn:'Conversation', shortBn:'কথা', icon:MessageCircle },
-  { view:'reading', labelBn:'রিডিং', labelEn:'Reading', shortBn:'পড়ুন', icon:BookOpenText },
-  { view:'listening', labelBn:'শোনা', labelEn:'Listening', shortBn:'শোনা', icon:Headphones },
-  { view:'grammar', labelBn:'গ্রামার', labelEn:'Grammar', shortBn:'গ্রামার', icon:Languages },
-  { view:'kanji', labelBn:'কাঞ্জি', labelEn:'Kanji', shortBn:'কাঞ্জি', icon:TreePine },
-  { view:'mock', labelBn:'মক টেস্ট', labelEn:'JLPT Mock', shortBn:'মক', icon:ClipboardCheck },
-  { view:'history', labelBn:'অগ্রগতি', labelEn:'History', shortBn:'অগ্রগতি', icon:History },
+  { view:'dashboard', labelBn:'হোম', labelEn:'Home', shortBn:'হোম', shortEn:'Home', icon:LayoutDashboard },
+  { view:'vocabulary', labelBn:'শব্দভান্ডার', labelEn:'Vocabulary', shortBn:'শব্দ', shortEn:'Words', icon:BookOpen },
+  { view:'srs', labelBn:'স্মার্ট রিভিউ', labelEn:'Smart Recall', shortBn:'রিভিউ', shortEn:'Recall', icon:Brain },
+  { view:'spelling', labelBn:'অ্যাকটিভ আউটপুট', labelEn:'Spelling', shortBn:'লিখুন', shortEn:'Write', icon:PenLine },
+  { view:'conversation', labelBn:'কথোপকথন', labelEn:'Conversation', shortBn:'কথা', shortEn:'Talk', icon:MessageCircle },
+  { view:'reading', labelBn:'রিডিং', labelEn:'Reading', shortBn:'পড়ুন', shortEn:'Read', icon:BookOpenText },
+  { view:'listening', labelBn:'শোনা', labelEn:'Listening', shortBn:'শোনা', shortEn:'Listen', icon:Headphones },
+  { view:'grammar', labelBn:'গ্রামার', labelEn:'Grammar', shortBn:'গ্রামার', shortEn:'Grammar', icon:Languages },
+  { view:'kanji', labelBn:'কাঞ্জি', labelEn:'Kanji', shortBn:'কাঞ্জি', shortEn:'Kanji', icon:TreePine },
+  { view:'mock', labelBn:'মক টেস্ট', labelEn:'JLPT Mock', shortBn:'মক', shortEn:'Mock', icon:ClipboardCheck },
+  { view:'history', labelBn:'অগ্রগতি', labelEn:'History', shortBn:'অগ্রগতি', shortEn:'History', icon:History },
 ];
 
 const DESKTOP_PRIMARY: ViewName[] = [
@@ -93,15 +95,15 @@ const MOBILE_PRIMARY: ViewName[] = [
 
 const DRAWER_GROUPS = [
   {
-    label:'শিখুন',
+    labelBn:'শিখুন',labelEn:'Learn',
     items:['dashboard','vocabulary','reading','grammar','kanji'] as ViewName[],
   },
   {
-    label:'অনুশীলন',
+    labelBn:'অনুশীলন',labelEn:'Practice',
     items:['srs','spelling','conversation','listening','mock'] as ViewName[],
   },
   {
-    label:'অগ্রগতি',
+    labelBn:'অগ্রগতি',labelEn:'Progress',
     items:['history'] as ViewName[],
   },
 ];
@@ -135,6 +137,7 @@ function Brand({onClick}:{onClick:()=>void}) {
 export default function Shell({
   meta, lesson, view, onLesson, onView, children
 }:ShellProps) {
+  const {language,text}=useLanguage();
   const [drawer,setDrawer]=useState(false);
   const [search,setSearch]=useState(false);
   const [lessonPicker,setLessonPicker]=useState(false);
@@ -271,7 +274,7 @@ export default function Shell({
 
         <nav
           className="future-primary-nav nv60-primary-nav nv-final-primary-nav"
-          aria-label="প্রধান নেভিগেশন"
+          aria-label={text('প্রধান নেভিগেশন','Primary navigation')}
         >
           {DESKTOP_PRIMARY.map(v=>{
             const item=itemFor(v);
@@ -285,17 +288,17 @@ export default function Shell({
                 title={item.labelEn}
               >
                 <Icon size={16}/>
-                <span className="font-bn">{item.labelBn}</span>
+                <span className={language==='bn'?'font-bn':''}>{language==='bn'?item.labelBn:item.labelEn}</span>
               </button>
             );
           })}
           <button
             className={DESKTOP_PRIMARY.includes(view)?'':'active'}
             onClick={()=>setDrawer(true)}
-            aria-label="সব বিভাগ খুলুন"
+            aria-label={text('সব বিভাগ খুলুন','Open all sections')}
           >
             <Menu size={16}/>
-            <span className="font-bn">আরও</span>
+            <span className={language==='bn'?'font-bn':''}>{text('আরও','More')}</span>
           </button>
         </nav>
 
@@ -303,10 +306,10 @@ export default function Shell({
           <button
             className="future-search-trigger nv60-search-trigger"
             onClick={()=>void openSearch()}
-            aria-label="কোর্সে খুঁজুন"
+            aria-label={text('কোর্সে খুঁজুন','Search the course')}
           >
             <Search size={18}/>
-            <span className="font-bn">খুঁজুন</span>
+            <span className={language==='bn'?'font-bn':''}>{text('খুঁজুন','Search')}</span>
             <kbd>⌘K</kbd>
           </button>
 
@@ -329,20 +332,20 @@ export default function Shell({
               <div
                 className="lesson-picker-popover nv60-lesson-popover"
                 role="listbox"
-                aria-label="Lesson নির্বাচন"
+                aria-label={text('Lesson নির্বাচন','Choose a lesson')}
               >
                 <div className="lesson-picker-title">
                   <div>
                     <span>LESSON MAP</span>
-                    <b className="font-bn">২৫টি lesson-এর পথ</b>
+                    <b className={language==='bn'?'font-bn':''}>{text('২৫টি lesson-এর পথ','Your 25-lesson path')}</b>
                   </div>
-                  <button onClick={()=>setLessonPicker(false)} aria-label="বন্ধ করুন">
+                  <button onClick={()=>setLessonPicker(false)} aria-label={text('বন্ধ করুন','Close')}>
                     <X size={18}/>
                   </button>
                 </div>
 
                 <div className="lesson-picker-current">
-                  <small>এখন পড়ছেন</small>
+                  <small>{text('এখন পড়ছেন','CURRENT LESSON')}</small>
                   <b>Lesson {String(lesson).padStart(2,'0')}</b>
                   <span>{currentLesson?.title}</span>
                 </div>
@@ -375,7 +378,7 @@ export default function Shell({
           <button
             className="future-menu-trigger nv60-menu-trigger"
             onClick={()=>setDrawer(true)}
-            aria-label="মেনু খুলুন"
+            aria-label={text('মেনু খুলুন','Open menu')}
           >
             <Menu size={21}/>
           </button>
@@ -388,13 +391,14 @@ export default function Shell({
 
       <footer className="site-footer">
         <span>© {new Date().getFullYear()} The Nihongo Vibes</span>
-        <a href={`${basePath}/privacy/`}>গোপনীয়তা ও Analytics</a>
-        <span>Progress আপনার device-এই থাকে</span>
+        <a href={`${basePath}/privacy/`}>{text('গোপনীয়তা ও Analytics','Privacy & Analytics')}</a>
+        <a href={`${basePath}/terms/`}>{text('ব্যবহারের শর্ত','Terms')}</a>
+        <span>{text('Progress account-এ sync হয়; export ও deletion আপনার নিয়ন্ত্রণে।','Progress syncs to your account; export and deletion stay in your control.')}</span>
       </footer>
 
       <nav
         className="future-mobile-dock nv60-mobile-dock nv-final-mobile-dock"
-        aria-label="মোবাইল নেভিগেশন"
+        aria-label={text('মোবাইল নেভিগেশন','Mobile navigation')}
       >
         {MOBILE_PRIMARY.map(v=>{
           const item=itemFor(v);
@@ -407,13 +411,13 @@ export default function Shell({
               aria-current={view===v?'page':undefined}
             >
               <Icon size={22}/>
-              <span className="font-bn">{item.shortBn}</span>
+              <span className={language==='bn'?'font-bn':''}>{language==='bn'?item.shortBn:item.shortEn}</span>
             </button>
           );
         })}
-        <button onClick={()=>setDrawer(true)} aria-label="আরও বিভাগ খুলুন">
+        <button onClick={()=>setDrawer(true)} aria-label={text('আরও বিভাগ খুলুন','Open more sections')}>
           <Menu size={22}/>
-          <span className="font-bn">আরও</span>
+          <span className={language==='bn'?'font-bn':''}>{text('আরও','More')}</span>
         </button>
       </nav>
 
@@ -422,20 +426,20 @@ export default function Shell({
           <button
             className="future-layer-backdrop"
             onClick={()=>setDrawer(false)}
-            aria-label="মেনু বন্ধ করুন"
+            aria-label={text('মেনু বন্ধ করুন','Close menu')}
           />
           <aside className="future-drawer nv60-drawer nv-final-drawer">
-            <h2 id="course-menu-title" className="sr-only">কোর্স মেনু</h2>
+            <h2 id="course-menu-title" className="sr-only">{text('কোর্স মেনু','Course menu')}</h2>
             <div className="future-drawer-head">
               <Brand onClick={()=>go('dashboard')}/>
-              <button onClick={()=>setDrawer(false)} aria-label="বন্ধ করুন">
+              <button onClick={()=>setDrawer(false)} aria-label={text('বন্ধ করুন','Close')}>
                 <X size={21}/>
               </button>
             </div>
 
             <section className="nv60-drawer-course">
               <div>
-                <span>আপনার কোর্স</span>
+                <span>{text('আপনার কোর্স','YOUR COURSE')}</span>
                 <b>JLPT N5</b>
               </div>
               <strong>L{String(lesson).padStart(2,'0')}</strong>
@@ -448,11 +452,11 @@ export default function Shell({
               data-overlay-autofocus
             >
               <Search size={18}/>
-              <span className="font-bn">পুরো কোর্সে খুঁজুন</span>
+              <span className={language==='bn'?'font-bn':''}>{text('পুরো কোর্সে খুঁজুন','Search the full course')}</span>
             </button>
 
             <div className="future-drawer-lesson">
-              <label htmlFor="nv-final-drawer-lesson">LESSON পরিবর্তন</label>
+              <label htmlFor="nv-final-drawer-lesson">{text('LESSON পরিবর্তন','CHANGE LESSON')}</label>
               <div>
                 <select
                   id="nv-final-drawer-lesson"
@@ -474,8 +478,8 @@ export default function Shell({
 
             <nav className="nv60-drawer-nav">
               {DRAWER_GROUPS.map(group=>(
-                <section key={group.label}>
-                  <small className="font-bn">{group.label}</small>
+                <section key={group.labelEn}>
+                  <small className={language==='bn'?'font-bn':''}>{language==='bn'?group.labelBn:group.labelEn}</small>
                   {group.items.map(v=>{
                     const item=itemFor(v);
                     const Icon=item.icon;
@@ -487,8 +491,8 @@ export default function Shell({
                         aria-current={view===v?'page':undefined}
                       >
                         <Icon size={19}/>
-                        <span className="font-bn">{item.labelBn}</span>
-                        <em>{item.labelEn}</em>
+                        <span className={language==='bn'?'font-bn':''}>{language==='bn'?item.labelBn:item.labelEn}</span>
+                        <em>{language==='bn'?item.labelEn:item.labelBn}</em>
                       </button>
                     );
                   })}
@@ -503,7 +507,7 @@ export default function Shell({
               </button>
               <button onClick={()=>void copyCurrentLink()}>
                 <Share2 size={18}/>
-                <span className="font-bn">বর্তমান লিংক কপি করুন</span>
+                <span className={language==='bn'?'font-bn':''}>{text('বর্তমান লিংক কপি করুন','Copy current link')}</span>
               </button>
             </div>
 
@@ -520,10 +524,10 @@ export default function Shell({
           <button
             className="future-layer-backdrop"
             onClick={()=>setSearch(false)}
-            aria-label="Search বন্ধ করুন"
+            aria-label={text('Search বন্ধ করুন','Close search')}
           />
           <section className="future-search-dialog nv60-search-dialog nv-final-search-dialog">
-            <h2 id="course-search-title" className="sr-only">পুরো কোর্সে খুঁজুন</h2>
+            <h2 id="course-search-title" className="sr-only">{text('পুরো কোর্সে খুঁজুন','Search the full course')}</h2>
             <div className="future-search-head">
               <Search size={20}/>
               <input
@@ -531,23 +535,23 @@ export default function Shell({
                 value={query}
                 onChange={e=>setQuery(e.target.value)}
                 placeholder="Japanese / Kanji / বাংলা / English…"
-                aria-label="খুঁজুন"
+                aria-label={text('খুঁজুন','Search')}
                 data-overlay-autofocus
               />
-              <button onClick={()=>setSearch(false)} aria-label="বন্ধ করুন">
+              <button onClick={()=>setSearch(false)} aria-label={text('বন্ধ করুন','Close')}>
                 <X size={21}/>
               </button>
             </div>
 
             <div className="nv60-search-hint">
-              <span className="font-bn">পুরো কোর্সে খুঁজুন</span>
+              <span className={language==='bn'?'font-bn':''}>{text('পুরো কোর্সে খুঁজুন','Search the full course')}</span>
               <kbd>ESC</kbd>
             </div>
 
             <div className="future-search-results">
               {loading?(
                 <div className="nv58-search-state">
-                  <Search/><b className="font-bn">Search data প্রস্তুত হচ্ছে…</b>
+                  <Search/><b className={language==='bn'?'font-bn':''}>{text('Search data প্রস্তুত হচ্ছে…','Preparing search data…')}</b>
                 </div>
               ):searchError?(
                 <div className="nv58-search-state error">
@@ -567,7 +571,7 @@ export default function Shell({
                   >
                     <span className="font-jp">{row.k||row.j}</span>
                     <div>
-                      <b className="font-bn">{row.bn}</b>
+                      <b className={language==='bn'?'font-bn':''}>{language==='bn'?row.bn:row.en||row.bn}</b>
                       <small>Lesson {row.lesson} · {row.p}</small>
                     </div>
                   </button>
@@ -575,8 +579,8 @@ export default function Shell({
               ):(
                 <div className="nv58-search-state">
                   <Search/>
-                  <b className="font-bn">কিছু পাওয়া যায়নি</b>
-                  <span>Japanese, Kanji, বাংলা বা English দিয়ে চেষ্টা করুন।</span>
+                  <b className={language==='bn'?'font-bn':''}>{text('কিছু পাওয়া যায়নি','No results found')}</b>
+                  <span>{text('Japanese, Kanji, বাংলা বা English দিয়ে চেষ্টা করুন।','Try Japanese, Kanji, Bangla or English.')}</span>
                 </div>
               )}
             </div>

@@ -9,6 +9,7 @@ const nextConfig = {
   basePath,
   assetPrefix: basePath || undefined,
   images: { unoptimized: true },
+  turbopack: { root: process.cwd() },
   reactStrictMode: true,
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,

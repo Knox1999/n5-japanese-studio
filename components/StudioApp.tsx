@@ -15,8 +15,10 @@ import DailyCoachPanel from './DailyCoachPanel';
 import LessonJourneyPanel from './LessonJourneyPanel';
 import KanaPad from './KanaPad';
 import DataVault from './DataVault';
+import { useLanguage } from '@/lib/language';
+import '@/styles/studio.scss';
 
-const LoadingView=()=> <div className="nv58-view-loading" role="status" aria-live="polite"><Loader2 className="animate-spin"/><b>Loading study module…</b></div>;
+const LoadingView=()=>{const {text}=useLanguage();return <div className="nv58-view-loading" role="status" aria-live="polite"><Loader2 className="animate-spin"/><b>{text('স্টাডি মডিউল খোলা হচ্ছে…','Loading study module…')}</b></div>};
 
 const Vocabulary=dynamic(()=>import('./Vocabulary'),{ssr:false,loading:LoadingView});
 const SRS=dynamic(()=>import('./SRS'),{ssr:false,loading:LoadingView});
@@ -58,17 +60,19 @@ type LearningAttempt={itemId:string;userAnswer:string;correctAnswer:string;corre
 type SrsReviewResult={itemId:number;lesson:number;rating:'again'|'hard'|'good'|'easy';correctAnswer:string};
 
 function WorkspaceBoot({online}:{online:boolean}){
+  const {language,text}=useLanguage();
   return <main className="boot-screen boot-screen-v2" id="main-content" aria-busy="true" aria-labelledby="boot-title">
     <div className="boot-workspace-card">
-      <div className="boot-brand-row"><div className="boot-seal">日</div><div><span>THE NIHONGO VIBES</span><h1 id="boot-title" className="font-bn">আপনার study workspace প্রস্তুত হচ্ছে</h1></div></div>
-      <p className="font-bn">{online?'Lesson progress ও আজকের next step প্রস্তুত করছি…':'Cached lesson ও progress খোলা হচ্ছে…'}</p>
+      <div className="boot-brand-row"><div className="boot-seal">日</div><div><span>THE NIHONGO VIBES</span><h1 id="boot-title" className={language==='bn'?'font-bn':''}>{text('আপনার study workspace প্রস্তুত হচ্ছে','Preparing your study workspace')}</h1></div></div>
+      <p className={language==='bn'?'font-bn':''}>{online?text('Lesson progress ও আজকের next step প্রস্তুত করছি…','Preparing lesson progress and your next step for today…'):text('সংরক্ষিত lesson ও progress খোলা হচ্ছে…','Opening cached lessons and progress…')}</p>
       <div className="boot-skeleton-grid" aria-hidden="true"><i/><i/><i/></div>
-      <div className="boot-loading-line"><Loader2 className="animate-spin"/><span>{online?'Loading lesson data':'Offline mode'}</span></div>
+      <div className="boot-loading-line"><Loader2 className="animate-spin"/><span>{online?text('Lesson data খোলা হচ্ছে','Loading lesson data'):text('অফলাইন মোড','Offline mode')}</span></div>
     </div>
   </main>;
 }
 
 export default function StudioApp(){
+ const {text}=useLanguage();
  const [meta,setMeta]=useState<StudioMeta|null>(null);
  const [lesson,setLessonState]=useState(1);
  const [data,setData]=useState<LessonPayload|null>(null);
@@ -235,12 +239,12 @@ export default function StudioApp(){
    return <main className="nv58-fatal" id="main-content">
      <div className="nv58-fatal-card" role="alert">
        {online?<AlertTriangle/>:<WifiOff/>}
-       <span>{online?'RESOURCE ERROR':'YOU ARE OFFLINE'}</span>
-       <h1>{fatal.scope==='meta'?'Studio data could not load':'Lesson could not load'}</h1>
+       <span>{online?text('রিসোর্স ত্রুটি','RESOURCE ERROR'):text('আপনি অফলাইনে আছেন','YOU ARE OFFLINE')}</span>
+       <h1>{fatal.scope==='meta'?text('Studio data খোলা যায়নি','Studio data could not load'):text('Lesson খোলা যায়নি','Lesson could not load')}</h1>
        <p>{fatal.message}</p>
        <div>
-         <button onClick={()=>fatal.scope==='meta'?setMetaNonce(x=>x+1):setLessonNonce(x=>x+1)}><RefreshCcw/> Retry</button>
-         <button onClick={()=>{setFatal(null);changeLesson(1,'dashboard')}}><BookOpen/> Go Home</button>
+         <button onClick={()=>fatal.scope==='meta'?setMetaNonce(x=>x+1):setLessonNonce(x=>x+1)}><RefreshCcw/> {text('আবার চেষ্টা করুন','Retry')}</button>
+         <button onClick={()=>{setFatal(null);changeLesson(1,'dashboard')}}><BookOpen/> {text('হোমে যান','Go Home')}</button>
        </div>
      </div>
    </main>;
@@ -272,7 +276,7 @@ export default function StudioApp(){
      case'kana':return <KanaAcademy onAttempt={attempt=>recordLearningAttempt({...attempt,skill:'kana'},'kana')}/>;
      case'arcade':return <PracticeArcade data={data} onAttempt={attempt=>recordLearningAttempt(attempt,'arcade')}/>;
      case'mock':return <MockTest data={data} onSave={addHistory} onReviewMistakes={queueMockMistakes}/>;
-     case'history':return <HistoryView history={historyRows}/>;
+     case'history':return <HistoryView history={historyRows} onReviewMistakes={queueMockMistakes} onStartMock={()=>changeView('mock')}/>;
      default:return null
    }
  })();
@@ -282,11 +286,11 @@ export default function StudioApp(){
      <div className="studio-view-content" key={`${view}-${lesson}`}>{content}</div>
    </Shell>
    <KanaPad/><DataVault/>
-   {!online&&<div className="nv58-offline-pill" role="status"><WifiOff/> Offline · cached content only</div>}
+   {!online&&<div className="nv58-offline-pill" role="status"><WifiOff/> {text('অফলাইন · শুধু সংরক্ষিত কনটেন্ট','Offline · cached content only')}</div>}
    {resourceNotice&&<div className="nv58-resource-toast" role="status">
-     <AlertTriangle/><div><b>{resourceNotice.kind==='audio'?'Audio unavailable':'Resource could not load'}</b><span>{resourceNotice.path||resourceNotice.message}</span></div>
-     <button onClick={()=>location.reload()}><RefreshCcw/> Retry</button>
-     <button onClick={()=>setResourceNotice(null)} aria-label="Dismiss"><X/></button>
+     <AlertTriangle/><div><b>{resourceNotice.kind==='audio'?text('Audio পাওয়া যাচ্ছে না','Audio unavailable'):text('Resource খোলা যায়নি','Resource could not load')}</b><span>{resourceNotice.path||resourceNotice.message}</span></div>
+     <button onClick={()=>location.reload()}><RefreshCcw/> {text('আবার চেষ্টা করুন','Retry')}</button>
+     <button onClick={()=>setResourceNotice(null)} aria-label={text('বন্ধ করুন','Dismiss')}><X/></button>
    </div>}
  </>;
 }

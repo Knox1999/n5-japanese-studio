@@ -204,13 +204,14 @@
 .finalCta{max-width:calc(var(--public-max) - 48px);margin:0 auto 80px;padding:42px 46px;display:flex;align-items:center;justify-content:space-between;gap:30px;border:1px solid rgba(255,177,92,.19);border-radius:28px;background:radial-gradient(circle at 90% 50%,rgba(46,91,175,.22),transparent 36%),linear-gradient(135deg,rgba(255,91,69,.13),rgba(255,255,255,.025));box-shadow:0 26px 70px rgba(0,0,0,.2)}
 .finalCta h2{margin-bottom:8px;font-size:34px}
 .finalCta button{flex:0 0 auto}
-.footer{max-width:var(--public-max);margin:0 auto;padding:32px var(--public-pad) 42px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:26px;border-top:1px solid var(--public-line)}
+.footer{max-width:var(--public-max);margin:0 auto;padding:32px var(--public-pad) 42px;display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:26px;border-top:1px solid var(--public-line)}
 .footerBrand{display:flex;align-items:center;gap:10px}
 .footerBrand div{display:flex;flex-direction:column}
 .footerBrand strong{color:#f4f7fb;font-size:11px;letter-spacing:.07em}
 .footerBrand small{margin-top:4px;color:#748499;font-size:8px;letter-spacing:.12em}
 .footer p{margin:0;color:#7f8da0;font-size:11px}
 .footer button{display:flex;align-items:center;gap:6px;border:0;background:transparent;color:#ffb56b;font-size:11px;font-weight:850}
+.footer nav{display:flex;gap:12px;flex-wrap:wrap}.footer nav a{color:#a9bac8;font-size:11px;text-decoration:none}.footer nav a:hover{text-decoration:underline;color:#f4f7fb}
 
 @keyframes riseIn{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
 @keyframes visualIn{from{opacity:0;transform:translateY(28px) rotate(2.5deg) scale(.97)}to{opacity:1;transform:rotate(1deg)}}
@@ -293,6 +294,9 @@
   .finalCta button{width:100%;justify-content:center}
   .footer{padding-bottom:30px}
 }
+
+.revealMeaning{display:inline-flex!important;width:auto!important;min-height:34px!important;margin-top:8px!important;padding:0 12px!important;border:1px solid rgba(27,97,112,.22)!important;border-radius:999px!important;background:#eef8f7!important;color:#176777!important;font-size:.78rem!important;font-weight:800!important}
+.quizExplanationCorrect,.quizExplanationWrong{margin:10px 0 0;padding:10px 12px;border-radius:10px;font-size:.84rem;line-height:1.5}.quizExplanationCorrect{background:#e9f8f3;color:#176652}.quizExplanationWrong{background:#fff0f1;color:#9d3042}
 
 @media(prefers-reduced-motion:reduce){
   .page *{animation:none!important;scroll-behavior:auto!important;transition-duration:.001ms!important}

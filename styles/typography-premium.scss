@@ -153,19 +153,19 @@ blockquote {
 
 // Japanese Text Specific
 .text-jp {
-  font-family: var(--font-noto-jp), 'Yu Gothic', 'Hiragino Sans', sans-serif;
+  font-family: var(--font-jp-loaded), 'Yu Gothic', 'Hiragino Sans', sans-serif;
   word-break: break-word;
   font-size: 1.1em;
 }
 
 .text-jp-small {
-  font-family: var(--font-noto-jp), 'Yu Gothic', sans-serif;
+  font-family: var(--font-jp-loaded), 'Yu Gothic', sans-serif;
   font-size: 0.95em;
 }
 
 // Bengali Text
 .text-bn {
-  font-family: var(--font-bn), 'Noto Sans Bengali', sans-serif;
+  font-family: var(--font-bn-loaded), 'Nirmala UI', sans-serif;
   font-size: 1.05em;
   line-height: 1.8;
 }

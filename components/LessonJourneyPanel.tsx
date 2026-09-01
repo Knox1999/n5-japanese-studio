@@ -2,6 +2,7 @@
 
 import { Check, ChevronRight, Circle, Map, Play } from 'lucide-react';
 import type { LessonJourney, ViewName } from '@/lib/types';
+import { useLanguage } from '@/lib/language';
 
 type Props = {
   journey: LessonJourney;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export default function LessonJourneyPanel({ journey, completed, onOpen, onToggleComplete }: Props) {
+  const {language,text}=useLanguage();
   const required = journey.stages.filter(x => !x.optional);
   const requiredDone = required.filter(x => completed.includes(x.id)).length;
   const percent = Math.round(requiredDone / Math.max(1, required.length) * 100);
@@ -22,8 +24,8 @@ export default function LessonJourneyPanel({ journey, completed, onOpen, onToggl
       <div className="lesson-journey__grid">
         <div className="lesson-journey__summary">
           <div className="lesson-journey__eyebrow"><Map size={14}/> Guided Lesson Journey</div>
-          <h2 id="lesson-journey-title" className="font-bn">Lesson {String(journey.lessonId).padStart(2,'0')} · এক ধাপ করে এগোন</h2>
-          <p className="font-bn">{journey.objective}</p>
+          <h2 id="lesson-journey-title" className={language==='bn'?'font-bn':''}>{text(`Lesson ${String(journey.lessonId).padStart(2,'0')} · এক ধাপ করে এগোন`,`Lesson ${String(journey.lessonId).padStart(2,'0')} · progress one step at a time`)}</h2>
+          <p className={language==='bn'?'font-bn':''}>{language==='bn'?journey.objective:journey.objectiveEn||journey.objective}</p>
 
           <div className="lesson-journey__progress">
             <div><span>Lesson progress</span><b>{percent}%</b></div>
@@ -35,8 +37,8 @@ export default function LessonJourneyPanel({ journey, completed, onOpen, onToggl
             <div className="lesson-journey__next">
               <span>Up next</span>
               <div>
-                <div><b className="font-bn">{current.title}</b><small>≈ {current.estimatedMinutes || 0} min</small></div>
-                {current.targetView && <button type="button" onClick={()=>onOpen(current.targetView!,current.id)} className="lesson-journey__start"><Play size={14} fill="currentColor"/><span className="font-bn">শুরু করুন</span></button>}
+                <div><b className={language==='bn'?'font-bn':''}>{language==='bn'?current.title:current.titleEn||current.title}</b><small>≈ {current.estimatedMinutes || 0} min</small></div>
+                {current.targetView && <button type="button" onClick={()=>onOpen(current.targetView!,current.id)} className="lesson-journey__start"><Play size={14} fill="currentColor"/><span className={language==='bn'?'font-bn':''}>{text('শুরু করুন','Start')}</span></button>}
               </div>
             </div>
           )}
@@ -48,13 +50,13 @@ export default function LessonJourneyPanel({ journey, completed, onOpen, onToggl
             const active = current?.id === stage.id;
             return (
               <article key={stage.id} className={`lesson-journey__stage ${active?'is-active':''} ${done?'is-done':''}`}>
-                <button type="button" onClick={() => onToggleComplete(stage.id)} className="lesson-journey__done" aria-pressed={done} aria-label={`${stage.title} ${done?'অসম্পূর্ণ করুন':'সম্পন্ন করুন'}`}>{done?<Check size={13}/>:<Circle size={12}/>}<span className="font-bn">{done?'Done':'শেষ?'}</span></button>
+                <button type="button" onClick={() => onToggleComplete(stage.id)} className="lesson-journey__done" aria-pressed={done} aria-label={`${language==='bn'?stage.title:stage.titleEn||stage.title} ${done?text('অসম্পূর্ণ করুন','mark incomplete'):text('সম্পন্ন করুন','mark complete')}`}>{done?<Check size={13}/>:<Circle size={12}/>}<span className={language==='bn'?'font-bn':''}>{done?'Done':text('শেষ?','Done?')}</span></button>
                 <div className="lesson-journey__stage-copy">
                   <div><span>{String(index+1).padStart(2,'0')}</span>{active&&<mark>next</mark>}{stage.optional&&<mark className="optional">optional</mark>}</div>
-                  <b className="font-bn">{stage.title}</b>
+                  <b className={language==='bn'?'font-bn':''}>{language==='bn'?stage.title:stage.titleEn||stage.title}</b>
                   <small>≈ {stage.estimatedMinutes || 0} min</small>
                 </div>
-                {stage.targetView&&<button type="button" onClick={()=>onOpen(stage.targetView!,stage.id)} className="lesson-journey__open" aria-label={`${stage.title} খুলুন`}>{active?<Play size={13}/>:<ChevronRight size={13}/>}<span className="font-bn">খুলুন</span></button>}
+                {stage.targetView&&<button type="button" onClick={()=>onOpen(stage.targetView!,stage.id)} className="lesson-journey__open" aria-label={`${language==='bn'?stage.title:stage.titleEn||stage.title} ${text('খুলুন','open')}`}>{active?<Play size={13}/>:<ChevronRight size={13}/>}<span className={language==='bn'?'font-bn':''}>{text('খুলুন','Open')}</span></button>}
               </article>
             );
           })}

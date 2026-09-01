@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next';
+import '@fontsource-variable/noto-sans-bengali';
+import '@fontsource-variable/noto-sans-jp';
 import AnalyticsConsent from '@/components/AnalyticsConsent';
 
 import './globals.css';
-import '@/styles/index.scss';
+import '@/styles/public.scss';
 
 const SITE = 'https://knox1999.github.io/n5-japanese-studio/';
 
@@ -13,7 +15,7 @@ export const metadata: Metadata = {
     template: '%s · The Nihongo Vibes',
   },
   description:
-    'A focused Japanese-learning studio for JLPT N5 vocabulary, smart recall, listening, shadowing, reading, conversation, grammar, Kanji and mock practice.',
+    'বাংলাভাষীদের জন্য free JLPT N5 vocabulary, listening, grammar, smart recall এবং timed mock practice—Bangla ও English দুই ভাষায়।',
   applicationName: 'The Nihongo Vibes',
   category: 'education',
   keywords: [
@@ -25,12 +27,13 @@ export const metadata: Metadata = {
     'Kanji',
     'Bangla Japanese learning',
   ],
-  alternates: { canonical: SITE },
-  manifest: './manifest.webmanifest',
+  alternates: { canonical: SITE, languages:{'bn-BD':SITE,'en':`${SITE}en/`,'x-default':SITE} },
+  referrer:'strict-origin-when-cross-origin',
+  manifest: `${SITE}manifest.webmanifest`,
   robots: { index: true, follow: true },
   icons: {
-    icon: './assets/nihongo-vibes-logo-192.png',
-    apple: './assets/nihongo-vibes-logo-192.png',
+    icon: `${SITE}assets/nihongo-vibes-logo-192.png`,
+    apple: `${SITE}assets/nihongo-vibes-logo-192.png`,
   },
   openGraph: {
     type: 'website',
@@ -40,17 +43,17 @@ export const metadata: Metadata = {
     description:
       'Vocabulary, listening, shadowing, reading, conversation, grammar, Kanji and smart recall in one connected Japanese learning system.',
     images: [{
-      url: './assets/nihongo-vibes-logo-512.png',
-      width: 512,
-      height: 512,
-      alt: 'The Nihongo Vibes',
+      url: `${SITE}opengraph-image.png`,
+      width: 1200,
+      height: 630,
+      alt: 'The Nihongo Vibes — Bangla-first JLPT N5 Learning Studio',
     }],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'The Nihongo Vibes — N5 Japanese Learning Studio',
     description: 'A connected premium Japanese N5 learning workspace.',
-    images: ['./assets/nihongo-vibes-logo-512.png'],
+    images: [`${SITE}opengraph-image.png`],
   },
   appleWebApp: {
     capable: true,
@@ -83,9 +86,22 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       'A Japanese N5 learning application for vocabulary, recall, listening, shadowing, reading, conversation, grammar, Kanji and mock practice.',
   };
   const schemaJson = JSON.stringify(schema).replace(/</g, '\\u003c');
+  const csp=[
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV==='development'?" 'unsafe-eval'":''} https://www.googletagmanager.com`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://www.google-analytics.com",
+    "font-src 'self' data:",
+    "media-src 'self' blob:",
+    "connect-src 'self' https://rfrflfaqvzlhuibickvk.supabase.co https://www.google-analytics.com https://region1.google-analytics.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ');
 
   return (
     <html lang="bn">
+      <head><meta httpEquiv="Content-Security-Policy" content={csp}/></head>
       <body>
         <a className="skip-link" href="#main-content">মূল কনটেন্টে যান</a>
         {children}

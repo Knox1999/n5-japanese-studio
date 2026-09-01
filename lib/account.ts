@@ -47,6 +47,13 @@ const SUPABASE_ANON_KEY=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||DEFAULT_SUPAB
 
 export const accountCloudConfigured=Boolean(SUPABASE_URL&&SUPABASE_ANON_KEY);
 
+export function validateNewPassword(password:string){
+  if(password.length<10)throw new Error('Password কমপক্ষে 10 characters হতে হবে।');
+  if(!/[a-z]/.test(password)||!/[A-Z]/.test(password)||!/[0-9]/.test(password)||!/[!@#$%^&*()_+\-=\[\]{};':"|,.<>/?`~]/.test(password)){
+    throw new Error('Password-এ uppercase, lowercase, number এবং symbol—সবগুলো থাকতে হবে।');
+  }
+}
+
 function authHeaders(token?:string){
   const headers:Record<string,string>={
     apikey:SUPABASE_ANON_KEY,
@@ -81,10 +88,12 @@ async function parseAuth(response:Response){
 export function readAccountSession():AccountSession|null{
   if(typeof window==='undefined')return null;
   try{
-    const raw=window.localStorage.getItem(SESSION_KEY);
+    const raw=window.sessionStorage.getItem(SESSION_KEY)||window.localStorage.getItem(SESSION_KEY);
     if(!raw)return null;
     const parsed=JSON.parse(raw) as AccountSession;
     if(!parsed?.accessToken||!parsed?.refreshToken||!parsed?.user?.id)return null;
+    window.sessionStorage.setItem(SESSION_KEY,raw);
+    window.localStorage.removeItem(SESSION_KEY);
     return parsed;
   }catch{return null;}
 }
@@ -92,8 +101,10 @@ export function readAccountSession():AccountSession|null{
 export function saveAccountSession(session:AccountSession|null){
   if(typeof window==='undefined')return;
   try{
-    if(session)window.localStorage.setItem(SESSION_KEY,JSON.stringify(session));
-    else window.localStorage.removeItem(SESSION_KEY);
+    window.localStorage.removeItem(SESSION_KEY);
+    if(session)window.sessionStorage.setItem(SESSION_KEY,JSON.stringify(session));
+    else window.sessionStorage.removeItem(SESSION_KEY);
+    window.dispatchEvent(new Event('nihongo:account-session'));
   }catch{}
 }
 
@@ -109,6 +120,7 @@ function sessionFrom(body:AuthResponse):AccountSession{
 
 export async function signUp(email:string,password:string,displayName:string){
   assertConfigured();
+  validateNewPassword(password);
   const response=await fetch(`${SUPABASE_URL}/auth/v1/signup`,{
     method:'POST',headers:authHeaders(),
     body:JSON.stringify({email,password,data:{display_name:displayName.trim()}}),
@@ -170,7 +182,7 @@ export function clearAuthCallbackHash(){
 
 export async function updateRecoveredPassword(accessToken:string,newPassword:string){
   assertConfigured();
-  if(newPassword.length<8)throw new Error('Password কমপক্ষে 8 characters হতে হবে।');
+  validateNewPassword(newPassword);
   const response=await fetch(`${SUPABASE_URL}/auth/v1/user`,{
     method:'PUT',headers:authHeaders(accessToken),body:JSON.stringify({password:newPassword}),
   });
@@ -184,6 +196,18 @@ export async function signOut(session?:AccountSession|null){
   if(accountCloudConfigured&&current?.accessToken){
     await fetch(`${SUPABASE_URL}/auth/v1/logout`,{method:'POST',headers:authHeaders(current.accessToken)}).catch(()=>undefined);
   }
+  saveAccountSession(null);
+}
+
+export async function deleteCurrentAccount(session:AccountSession){
+  assertConfigured();
+  const response=await fetch(`${SUPABASE_URL}/functions/v1/delete-account`,{
+    method:'POST',
+    headers:authHeaders(session.accessToken),
+    body:JSON.stringify({confirmation:'DELETE MY ACCOUNT'}),
+  });
+  const body=await response.json().catch(()=>({})) as {error?:string;message?:string};
+  if(!response.ok)throw new Error(body.error||body.message||`Account deletion failed (${response.status})`);
   saveAccountSession(null);
 }
 

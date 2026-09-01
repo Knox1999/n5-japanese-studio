@@ -10,6 +10,7 @@ import type { LessonPayload } from '@/lib/types';
 import { BASE } from '@/lib/data';
 import { playText } from '@/lib/audio';
 import { track, trackError } from '@/lib/analytics';
+import { useLanguage } from '@/lib/language';
 
 type Example={jp:string;bn:string};
 type Rule={
@@ -63,6 +64,7 @@ function MatrixBoard({matrix}:{matrix:Matrix}){
 }
 
 export default function GrammarStudio({data}:{data:LessonPayload}){
+  const {language,text}=useLanguage();
   const [payload,setPayload]=useState<GrammarVisualPayload|null>(null);
   const [error,setError]=useState('');
   const [hideBn,setHideBn]=useState(false);
@@ -79,6 +81,10 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
 
   const lesson=payload?.lessons?.[String(data.lesson)];
   const noteSource=lesson?.origin==='note';
+  const learnerSummary=lesson?.summaryBn
+    .replace(/আপনার scan-এ[^।]*।?/gi,'')
+    .replace(/location grammar verified expansion হিসেবে যোগ করা।?/gi,'স্থান ও অবস্থান বোঝানোর প্রয়োজনীয় grammar এই lesson-এ অনুশীলন করুন।')
+    .trim();
 
   const ruleStats=useMemo(()=>({
     rules:lesson?.rules.length||0,
@@ -98,13 +104,13 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
       <div>
         <div className="section-kicker">VISUAL GRAMMAR NOTEBOOK · LESSON {String(data.lesson).padStart(2,'0')}</div>
         <h1>{lesson.title}</h1>
-        <p className="font-bn">{lesson.summaryBn}</p>
+        <p className={language==='bn'?'font-bn':''}>{language==='bn'?(learnerSummary||'Pattern বুঝুন, example শুনুন এবং নিজে sentence তৈরি করে practice করুন।'):'Understand each pattern, listen to examples and practise building your own sentences.'}</p>
         <div className="grammar-source-row">
           <span className={noteSource?'source-note':'source-verified'}>
             {noteSource?<FileText/>:<CheckCircle2/>}
-            {noteSource?'MY HANDWRITTEN NOTE':'VERIFIED EXPANSION'}
+            {noteSource?text('লেসন নোট থেকে','LESSON GUIDE'):text('সম্পূরক N5 অনুশীলন','EXPANDED N5 PRACTICE')}
           </span>
-          {lesson.notePages.length>0&&<small>PDF page {lesson.notePages.join(', ')}</small>}
+          <small>{text('শেখার জন্য সংক্ষিপ্ত ও যাচাইকৃত ব্যাখ্যা','Learner-focused, reviewed explanation')}</small>
         </div>
       </div>
       <Languages className="header-big-icon"/>
@@ -115,7 +121,7 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
       <div className="grammar-command-stat"><BookOpenCheck/><span>EXAMPLES</span><b>{ruleStats.examples}</b></div>
       <div className="grammar-command-actions">
         <button className={hideBn?'active':''} onClick={()=>{setHideBn(x=>!x);track('grammar_display_toggle',{lesson_number:data.lesson,toggle:'bangla',hidden:!hideBn})}}>
-          {hideBn?<Eye/>:<EyeOff/>}{hideBn?'বাংলা দেখান':'বাংলা লুকান'}
+          {hideBn?<Eye/>:<EyeOff/>}{hideBn?text('বাংলা দেখান','Show Bangla'):text('বাংলা লুকান','Hide Bangla')}
         </button>
         <button className={practice?'active':''} onClick={()=>{setPractice(x=>!x);track('grammar_practice_mode',{lesson_number:data.lesson,enabled:!practice})}}>
           <Lightbulb/>{practice?'Practice ON':'Practice'}
@@ -136,7 +142,7 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
         <div className="grammar-note-topline">
           <span className="grammar-rule-number">{String(i+1).padStart(2,'0')}</span>
           <div><small>RULE {String(i+1).padStart(2,'0')}</small><h2>{r.title}</h2></div>
-          <span className={`grammar-origin ${r.origin==='note'?'note':'verified'}`}>{r.origin==='note'?'NOTE':'VERIFIED'}</span>
+          <span className={`grammar-origin ${r.origin==='note'?'note':'verified'}`}>{r.origin==='note'?text('লেসন রুল','LESSON RULE'):text('সম্পূরক রুল','EXTRA PRACTICE')}</span>
         </div>
 
         <div className="grammar-pattern-title font-jp" lang="ja">{r.pattern}</div>
@@ -144,16 +150,16 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
 
         <div className="grammar-explain-grid">
           <div className="grammar-meaning-panel">
-            <span>কী বোঝায়</span>
+            <span>{text('কী বোঝায়','Meaning')}</span>
             <p className={`font-bn ${practice?'practice-conceal':''}`}>{r.meaningBn}</p>
           </div>
           {r.noteBn&&<div className="grammar-note-panel"><span>NOTE</span><p className={`font-bn ${practice?'practice-conceal':''}`}>{r.noteBn}</p></div>}
         </div>
 
-        {r.warningBn&&<div className="grammar-warning"><AlertTriangle/><div><b>ব্যতিক্রম / সাবধান</b><p className={`font-bn ${practice?'practice-conceal':''}`}>{r.warningBn}</p></div></div>}
+        {r.warningBn&&<div className="grammar-warning"><AlertTriangle/><div><b>{text('ব্যতিক্রম / সাবধান','Exception / caution')}</b><p className={`font-bn ${practice?'practice-conceal':''}`}>{r.warningBn}</p></div></div>}
 
         <section className="grammar-examples">
-          <div className="grammar-examples-head"><div><span>PRACTICE SENTENCES</span><h3>৫টি Example Sentence</h3></div><small>Tap 🔊 for Japanese audio</small></div>
+          <div className="grammar-examples-head"><div><span>PRACTICE SENTENCES</span><h3>{text('৫টি Example Sentence','5 example sentences')}</h3></div><small>Tap 🔊 for Japanese audio</small></div>
           <div className="grammar-example-grid">
             {r.examples.map((e,j)=><article key={j} className="grammar-example-card">
               <span className="grammar-example-no">{j+1}</span>
@@ -173,7 +179,7 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
 
     <section className="grammar-footer-lab">
       <PlayCircle/>
-      <div><b>Visual → Pattern → 5 Examples → Audio → Recall</b><p className="font-bn">ছবির বদলে সব diagram, arrow, table এবং formula HTML/CSS/React দিয়ে live render হচ্ছে।</p></div>
+      <div><b>Visual → Pattern → 5 Examples → Audio → Recall</b><p className={language==='bn'?'font-bn':''}>{text('ছবির বদলে সব diagram, arrow, table এবং formula HTML/CSS/React দিয়ে live render হচ্ছে।','Every diagram, arrow, table and formula is rendered as accessible live interface content.')}</p></div>
       <Headphones/>
     </section>
   </div>

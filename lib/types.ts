@@ -45,7 +45,9 @@ export interface DailyRecommendation {
   id: string;
   kind: 'srs' | 'repair' | 'lesson' | 'listening' | 'grammar' | 'kana' | 'kanji' | 'mock' | 'scenario';
   title: string;
+  titleEn?: string;
   reason: string;
+  reasonEn?: string;
   minutes: number;
   priority: number;
 }
@@ -58,6 +60,7 @@ export interface LessonStage {
   id: string;
   kind: LessonStageKind;
   title: string;
+  titleEn?: string;
   estimatedMinutes?: number;
   optional?: boolean;
   targetView?: ViewName;
@@ -67,6 +70,7 @@ export interface LessonJourney {
   lessonId: string;
   level: LearningLevel;
   objective: string;
+  objectiveEn?: string;
   stages: LessonStage[];
 }
 
@@ -154,12 +158,31 @@ export interface SrsCardState {
 }
 
 export interface MockAttempt {
+  id?: string;
   lesson: number;
   scope?: 'lesson' | 'n5-mini' | 'n5-full';
+  mode?: 'quick' | 'lesson' | 'mini' | 'full';
   label?: string;
   score: number;
   correct: number;
   total: number;
   date: string;
+  durationSeconds?: number;
+  seed?: number;
   breakdown?: Record<string, { correct: number; total: number }>;
+  responses?: MockQuestionReview[];
+}
+
+export interface MockQuestionReview {
+  id:string;
+  section:'vocabulary'|'grammar-reading'|'listening';
+  itemType:string;
+  prompt:string;
+  options:string[];
+  userAnswer?:string;
+  correctAnswer:string;
+  correct:boolean;
+  explanation:string;
+  wordId?:number;
+  audioText?:string;
 }

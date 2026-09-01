@@ -12,6 +12,7 @@ import {
 import type { MockAttempt, SrsCardState, StudioMeta, ViewName } from '@/lib/types';
 import type { ProgressMap, SrsMap } from '@/lib/storage';
 import { latestActivity, readStudyActivity, type StudyActivityState } from '@/lib/studyActivity';
+import { useLanguage } from '@/lib/language';
 
 type DashboardProps = {
   meta: StudioMeta;
@@ -40,26 +41,26 @@ const MODULES:Module[]=[
 const VIEW_LABEL:Partial<Record<ViewName,string>>={vocabulary:'Vocabulary',srs:'Smart Recall',listening:'Listening',conversation:'Conversation',spelling:'Active Output',reading:'Reading',grammar:'Grammar',kanji:'Kanji',kana:'Kana',arcade:'Arcade',mock:'Mock Test'};
 const basePath=process.env.NEXT_PUBLIC_BASE_PATH||'';
 const ROTATING_SKILLS=[
-  {bn:'হিরাগানা',jp:'ひらがな'},
-  {bn:'কাতাকানা',jp:'カタカナ'},
-  {bn:'কাঞ্জি',jp:'漢字'},
-  {bn:'কথোপকথন',jp:'会話'},
-  {bn:'JLPT N5',jp:'日本語'},
+  {bn:'হিরাগানা',en:'Hiragana',jp:'ひらがな'},
+  {bn:'কাতাকানা',en:'Katakana',jp:'カタカナ'},
+  {bn:'কাঞ্জি',en:'Kanji',jp:'漢字'},
+  {bn:'কথোপকথন',en:'Conversation',jp:'会話'},
+  {bn:'JLPT N5',en:'JLPT N5',jp:'日本語'},
 ] as const;
-const HERO_TOOLS:[ViewName,string,string][]=[
-  ['vocabulary','ভোকাবুলারি','語彙'],
-  ['grammar','গ্রামার','文法'],
-  ['kanji','কাঞ্জি','漢字'],
-  ['listening','লিসেনিং','聴解'],
-  ['conversation','স্পিকিং','会話'],
+const HERO_TOOLS:[ViewName,string,string,string][]=[
+  ['vocabulary','ভোকাবুলারি','Vocabulary','語彙'],
+  ['grammar','গ্রামার','Grammar','文法'],
+  ['kanji','কাঞ্জি','Kanji','漢字'],
+  ['listening','লিসেনিং','Listening','聴解'],
+  ['conversation','স্পিকিং','Speaking','会話'],
 ];
 
 function mastered(progress:ProgressMap,ids:number[]){return ids.reduce((n,id)=>n+(progress[String(id)]?1:0),0)}
 function getSrsHealth(srs:SrsMap){const now=Date.now();let due=0;Object.values(srs).forEach((state:SrsCardState)=>{if(state.due_at&&new Date(state.due_at).getTime()<=now)due+=1});return{due}}
-function relativeTime(value:string){const ms=Date.now()-new Date(value).getTime();if(!Number.isFinite(ms)||ms<60000)return'এখনই';const mins=Math.floor(ms/60000);if(mins<60)return`${mins}m আগে`;const hours=Math.floor(mins/60);if(hours<24)return`${hours}h আগে`;return`${Math.floor(hours/24)}d আগে`}
+function relativeTime(value:string,language:'bn'|'en'){const ms=Date.now()-new Date(value).getTime();if(!Number.isFinite(ms)||ms<60000)return language==='bn'?'এখনই':'just now';const mins=Math.floor(ms/60000);if(mins<60)return language==='bn'?`${mins}m আগে`:`${mins}m ago`;const hours=Math.floor(mins/60);if(hours<24)return language==='bn'?`${hours}h আগে`:`${hours}h ago`;const days=Math.floor(hours/24);return language==='bn'?`${days}d আগে`:`${days}d ago`}
 function clampPct(value:number){return Math.max(0,Math.min(100,value))}
 
-function RotatingSkill(){
+function RotatingSkill({language}:{language:'bn'|'en'}){
   const [skillIndex,setSkillIndex]=useState(0);
   const [inView,setInView]=useState(true);
   const [pageVisible,setPageVisible]=useState(true);
@@ -87,7 +88,7 @@ function RotatingSkill(){
 
   const activeSkill=ROTATING_SKILLS[skillIndex];
   return <div ref={root} className="home-motion-rotate" aria-hidden="true">
-    <span className="font-bn">শিখুন</span>
+    <span className={language==='bn'?'font-bn':''}>{language==='bn'?'শিখুন':'Learn'}</span>
     <span className="home-motion-word-frame">
       <AnimatePresence mode="wait" initial={false}>
         <motion.strong
@@ -98,7 +99,7 @@ function RotatingSkill(){
           exit={reduceMotion?undefined:{opacity:0,y:-14}}
           transition={{duration:.34,ease:'easeOut'}}
         >
-          {activeSkill.bn}<small className="font-jp" lang="ja">{activeSkill.jp}</small>
+          {language==='bn'?activeSkill.bn:activeSkill.en}<small className="font-jp" lang="ja">{activeSkill.jp}</small>
         </motion.strong>
       </AnimatePresence>
     </span>
@@ -107,6 +108,7 @@ function RotatingSkill(){
 }
 
 export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,onLesson,coach,journey}:DashboardProps){
+  const {language,text}=useLanguage();
   const [activity,setActivity]=useState<StudyActivityState>(()=>({version:1,entries:{}}));
   const heroRef=useRef<HTMLElement>(null);
   const reduceMotion=useReducedMotion();
@@ -146,49 +148,48 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
       <div className="home-motion-copy">
         <div className="home-motion-trust">
           <Sparkles size={14}/>
-          <span className="font-bn">ফ্রি · {meta.lesson_count||25}টি GUIDED LESSON · JLPT N5</span>
+          <span className={language==='bn'?'font-bn':''}>{text(`ফ্রি · ${meta.lesson_count||25}টি GUIDED LESSON · JLPT N5`,`FREE · ${meta.lesson_count||25} GUIDED LESSONS · JLPT N5`)}</span>
         </div>
 
-        <h1 id="home-title" className="font-bn">
-          জাপানিজ শেখা হোক <span>আনন্দে!</span>
+        <h1 id="home-title" className={language==='bn'?'font-bn':''}>
+          {text('জাপানিজ শেখা হোক ','Build Japanese skills ')}<span>{text('আনন্দে!','with confidence.')}</span>
         </h1>
 
-        <RotatingSkill/>
-        <span className="sr-only">শিখুন হিরাগানা, কাতাকানা, কাঞ্জি, কথোপকথন এবং JLPT N5</span>
+        <RotatingSkill language={language}/>
+        <span className="sr-only">{text('শিখুন হিরাগানা, কাতাকানা, কাঞ্জি, কথোপকথন এবং JLPT N5','Learn Hiragana, Katakana, Kanji, conversation and JLPT N5')}</span>
 
-        <p className="home-motion-lead font-bn">
-          বাংলায় বুঝুন, Japanese-এ ব্যবহার করুন—Vocabulary থেকে Mock Test পর্যন্ত
-          একই connected learning studio-তে নিজের গতিতে এগিয়ে যান।
+        <p className={`home-motion-lead ${language==='bn'?'font-bn':''}`}>
+          {text('বাংলায় বুঝুন, Japanese-এ ব্যবহার করুন—Vocabulary থেকে Mock Test পর্যন্ত একই connected learning studio-তে নিজের গতিতে এগিয়ে যান।','Learn, practise and review Japanese—from vocabulary to full mock tests—in one connected studio.')}
         </p>
 
-        <div className="home-motion-tools" role="group" aria-label="দ্রুত learning tools">
-          {HERO_TOOLS.map(([view,label,jp],index)=><motion.button
+        <div className="home-motion-tools" role="group" aria-label={text('দ্রুত learning tools','Quick learning tools')}>
+          {HERO_TOOLS.map(([view,labelBn,labelEn,jp],index)=><motion.button
             key={view}
             type="button"
             onClick={()=>onNavigate(view)}
             initial={reduceMotion?false:{opacity:0,y:10}}
             animate={{opacity:1,y:0}}
             transition={{delay:.22+index*.07,duration:.36}}
-          ><span className="font-bn">{label}</span><small className="font-jp" lang="ja">{jp}</small></motion.button>)}
+          ><span className={language==='bn'?'font-bn':''}>{language==='bn'?labelBn:labelEn}</span><small className="font-jp" lang="ja">{jp}</small></motion.button>)}
         </div>
 
         <div className="home-motion-actions">
           <button type="button" className="home-motion-primary" onClick={()=>onLesson(lesson,'vocabulary')}>
-            <BookOpen/><span className="font-bn">Lesson {String(lesson).padStart(2,'0')} চালিয়ে যান</span><ArrowRight/>
+            <BookOpen/><span className={language==='bn'?'font-bn':''}>{text(`Lesson ${String(lesson).padStart(2,'0')} চালিয়ে যান`,`Continue Lesson ${String(lesson).padStart(2,'0')}`)}</span><ArrowRight/>
           </button>
           <button type="button" className="home-motion-secondary" onClick={scrollToCoach}>
-            <Target/><span className="font-bn">আজ কী পড়ব?</span>
+            <Target/><span className={language==='bn'?'font-bn':''}>{text('আজ কী পড়ব?','What should I study today?')}</span>
           </button>
         </div>
 
         <div className="home-motion-facts">
-          <span><CheckCircle2/> Guest হিসেবেই শুরু</span>
-          <span><AudioLines/> Free device voice</span>
-          <span><Sparkles/> Progress এই device-এ</span>
+          <span><CheckCircle2/> {text('ব্যক্তিগত account workspace','Personal account workspace')}</span>
+          <span><AudioLines/> {text('দ্রুত static audio + device fallback','Fast audio + device fallback')}</span>
+          <span><Sparkles/> {text('Cloud sync, export ও deletion control','Cloud sync, export & deletion controls')}</span>
         </div>
       </div>
 
-      <aside className="home-motion-progress-card" aria-label="আপনার JLPT N5 অগ্রগতি">
+      <aside className="home-motion-progress-card" aria-label={text('আপনার JLPT N5 অগ্রগতি','Your JLPT N5 progress')}>
         <header>
           <Image src={`${basePath}/assets/nihongo-vibes-logo-96.png`} alt="" width={96} height={96}/>
           <div><small>THE NIHONGO VIBES</small><b>YOUR N5 JOURNEY</b></div>
@@ -196,27 +197,27 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
         </header>
 
         <div className="home-motion-dial-wrap">
-          <div className="home-motion-dial" style={dialStyle} role="progressbar" aria-label="সামগ্রিক vocabulary mastery" aria-valuemin={0} aria-valuemax={100} aria-valuenow={overall}>
+          <div className="home-motion-dial" style={dialStyle} role="progressbar" aria-label={text('সামগ্রিক vocabulary mastery','Overall vocabulary mastery')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={overall}>
             <div><small>OVERALL</small><strong>{overall}%</strong><span>mastery</span></div>
           </div>
           <div className="home-motion-current">
-            <small>বর্তমান LESSON</small>
+            <small>{text('বর্তমান LESSON','CURRENT LESSON')}</small>
             <h2>{String(lesson).padStart(2,'0')} · {current?.title}</h2>
-            <p className="font-bn">{current?.scenario||'আজকের lesson-এর vocabulary, listening ও recall একসাথে শেষ করুন।'}</p>
+            <p className={language==='bn'?'font-bn':''}>{language==='bn'?(current?.scenario||'আজকের lesson-এর vocabulary, listening ও recall একসাথে শেষ করুন।'):'Complete this lesson’s vocabulary, listening and recall in one focused path.'}</p>
           </div>
         </div>
 
         <div className="home-current-progress home-motion-current-progress">
-          <div><span>এই lesson-এর vocabulary</span><b>{currentPct}%</b></div>
-          <i role="progressbar" aria-label="এই lesson-এর vocabulary mastery" aria-valuemin={0} aria-valuemax={100} aria-valuenow={currentPct}><em style={{width:`${Math.max(0,currentPct)}%`}}/></i>
+          <div><span>{text('এই lesson-এর vocabulary','This lesson’s vocabulary')}</span><b>{currentPct}%</b></div>
+          <i role="progressbar" aria-label={text('এই lesson-এর vocabulary mastery','This lesson’s vocabulary mastery')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={currentPct}><em style={{width:`${Math.max(0,currentPct)}%`}}/></i>
         </div>
 
         <div className="home-motion-card-stats">
-          <div><span>শব্দ</span><b>{meta.vocabulary_count.toLocaleString()}</b></div>
+          <div><span>{text('শব্দ','Words')}</span><b>{meta.vocabulary_count.toLocaleString()}</b></div>
           <div><span>Due</span><b>{health.due}</b></div>
           <div><span>Best mock</span><b>{best}%</b></div>
         </div>
-        {recent&&<small className="home-last-activity">শেষ activity: {VIEW_LABEL[recent.view]||recent.view} · {relativeTime(recent.lastAt)}</small>}
+        {recent&&<small className="home-last-activity">{text('শেষ activity','Last activity')}: {VIEW_LABEL[recent.view]||recent.view} · {relativeTime(recent.lastAt,language)}</small>}
       </aside>
     </motion.section>
 
@@ -255,14 +256,14 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
       viewport={{once:true,amount:.18}}
       transition={{duration:.48,ease:[.2,.8,.2,1]}}
     >
-      <summary><div><b className="font-bn">আরও explore করুন</b><span>সব skill ও ২৫টি lesson</span></div><ChevronDown/></summary>
+      <summary><div><b className={language==='bn'?'font-bn':''}>{text('আরও explore করুন','Explore more')}</b><span>{text('সব skill ও ২৫টি lesson','All skills and 25 lessons')}</span></div><ChevronDown/></summary>
       <div className="home-explore-body">
         <section>
           <h2 className="font-bn">Learning tools</h2>
-          <div className="home-tool-grid">{MODULES.map(({view,title,bangla,icon:Icon})=><button key={view} onClick={()=>onNavigate(view)}><Icon/><span><b className="font-bn">{bangla}</b><small>{title}</small></span><ArrowRight/></button>)}</div>
+          <div className="home-tool-grid">{MODULES.map(({view,title,bangla,icon:Icon})=><button key={view} onClick={()=>onNavigate(view)}><Icon/><span><b className={language==='bn'?'font-bn':''}>{language==='bn'?bangla:title}</b><small>{language==='bn'?title:'JLPT N5'}</small></span><ArrowRight/></button>)}</div>
         </section>
         <section>
-          <h2 className="font-bn">২৫টি lesson</h2>
+          <h2 className={language==='bn'?'font-bn':''}>{text('২৫টি lesson','25 lessons')}</h2>
           <div className="home-lesson-list">{lessonMap.map(item=><button key={item.lesson} className={item.active?'active':''} onClick={()=>onLesson(item.lesson,'vocabulary')}><span>{String(item.lesson).padStart(2,'0')}</span><div><b>{item.title}</b><small>{item.pct}% vocabulary</small></div><strong>{item.complete?<CheckCircle2/>:`${item.pct}%`}</strong></button>)}</div>
         </section>
       </div>
