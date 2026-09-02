@@ -129,7 +129,7 @@ check(jlpt_resources.count("kind:'full-mock'")>=3 and "Official JLPT" in jlpt_re
 check("noreferrer noopener" in public_free and "noreferrer noopener" in mock,"External resource links are isolated safely")
 
 check("/* FINAL_PRODUCTION_NEO_TORII */" in ui60,"Final Neo Torii style foundation retained")
-check("#050D18" in ui60 and "#EF3F3A" in ui60 and "#F7F9FC" in ui60,"Navy/red/white brand foundation retained")
+check("#050D18" in ui60 and "#e5372d" in ui60 and "#F7F9FC" in ui60,"Navy/red/white brand foundation retained")
 
 for logo in [
     "nihongo-vibes-logo-96.png",
