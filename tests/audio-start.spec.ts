@@ -97,7 +97,7 @@ test('listening playback queues promptly without cancelling an idle voice engine
 
   await page.goto('?lesson=1&view=listening');
   const clickedAt=await page.evaluate(()=>performance.now());
-  await page.getByRole('button',{name:'Play'}).first().click();
+  await page.getByRole('button',{name:'চালান'}).first().click();
   await expect.poll(()=>page.evaluate(()=>(window as typeof window&{__speechStartAt?:number}).__speechStartAt||0)).toBeGreaterThan(0);
 
   const result=await page.evaluate(start=>({
@@ -153,7 +153,7 @@ test('published static neural audio is preferred over browser speech',async({pag
 
   await page.goto('?lesson=1&view=listening');
   await expect.poll(()=>page.evaluate(()=>(window as typeof window&{__staticPlayCount?:number}).__staticPlayCount||0)).toBe(0);
-  await page.getByRole('button',{name:'Play'}).first().click();
+  await page.getByRole('button',{name:'চালান'}).first().click();
   await expect.poll(()=>page.evaluate(()=>(window as typeof window&{__staticPlayCount?:number}).__staticPlayCount||0)).toBe(1);
   expect(await page.evaluate(()=>(window as typeof window&{__speechSpeakCount?:number}).__speechSpeakCount||0)).toBe(0);
 });

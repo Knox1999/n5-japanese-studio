@@ -266,7 +266,7 @@ export default function PublicLanding({onLogin,onJoin}:Props){
         <div className={styles.heroInner}>
           {reduceMotion?<div className={styles.heroCopy}>
             <div className={styles.eyebrow}><Sparkles size={15}/>{text('বাংলায় বুঝুন · Japanese-এ এগিয়ে যান','ONE FOCUSED PATH TO JLPT N5')}</div>
-            <h1>{text('লগইনের আগেই JLPT N5','Start learning JLPT N5')} <span>{text('শেখা শুরু করুন।','before you sign in.')}</span></h1>
+            <h1>{text('বাংলাতেই জাপানি শেখা,','Learn Japanese in Bangla —')} <span>{text('আর মনে হবে না কঠিন!','It won’t feel hard.')}</span></h1>
             <p className={language==='bn'?'font-bn':''}>{text('ফ্রি starter lesson, Japanese listening, diagnostic quiz এবং mock-test directory ব্যবহার করে আগে নিজেই যাচাই করুন—এই studio আপনার জন্য কতটা কাজে দেয়।','Try the free starter lesson, Japanese listening, diagnostic quiz and mock-test directory first. Create an account only when the studio has earned your trust.')}</p>
             <div className={styles.heroActions}>
               <button className={styles.primaryCta} type="button" onClick={()=>goTo('public-free')}>{text('ফ্রি শেখা শুরু করুন','Start free learning')}<ArrowRight size={18}/></button>

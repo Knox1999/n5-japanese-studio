@@ -47,7 +47,7 @@ test('mock hub clearly separates quick, lesson, mini and full practice',async({p
   await expect(hub.getByRole('heading',{name:'Lesson Mock'})).toBeVisible();
   await expect(hub.getByRole('heading',{name:'Mini Mock'})).toBeVisible();
   await expect(hub.getByRole('heading',{name:'Full JLPT N5 Mock'})).toBeVisible();
-  await expect(hub).toContainText('67 original items');
+  await expect(hub).toContainText('৬৭টি original item');
   await expect(hub.locator('.mock-resource-library a[target="_blank"]')).toHaveCount(6);
 
   await hub.getByRole('button',{name:/কুইক চেক শুরু করুন/}).click();
@@ -163,15 +163,15 @@ test('Data Vault opens as the only fixed modal and never as page content',async(
   await page.goto('?lesson=1&view=dashboard');
   await page.getByRole('navigation',{name:'মোবাইল নেভিগেশন'}).getByRole('button',{name:'আরও বিভাগ খুলুন'}).click();
   const drawer=page.getByRole('dialog',{name:'কোর্স মেনু'});
-  await drawer.getByRole('button',{name:/Backup \/ Restore/}).click();
+  await drawer.getByRole('button',{name:/ব্যাকআপ ও রিস্টোর/}).click();
   await expect(drawer).toBeHidden();
-  const vault=page.getByRole('dialog',{name:'Backup & Restore Progress'});
+  const vault=page.getByRole('dialog',{name:'অগ্রগতির ব্যাকআপ ও রিস্টোর'});
   await expect(vault).toBeVisible();
   expect(await vault.evaluate(el=>getComputedStyle(el).position)).toBe('fixed');
   const box=await vault.boundingBox();
   expect(box?.y).toBeGreaterThanOrEqual(0);
   expect((box?.y||0)+(box?.height||0)).toBeLessThanOrEqual((await page.evaluate(()=>window.innerHeight))+1);
-  await vault.getByRole('button',{name:'Close',exact:true}).click();
+  await vault.getByRole('button',{name:'বন্ধ করুন',exact:true}).click();
   await expect(vault).toBeHidden();
 });
 
@@ -198,7 +198,7 @@ test('mobile SRS session keeps fixed navigation away from study controls',async(
   await page.getByRole('button',{name:/Lesson Smart Session/}).click();
   const shell=page.locator('.srs-shell');
   await expect(shell).toBeVisible();
-  const reveal=page.getByRole('button',{name:'Reveal answer'});
+  const reveal=page.getByRole('button',{name:'উত্তর দেখুন'});
   await expect(reveal).toBeVisible();
   const dock=page.getByRole('navigation',{name:'মোবাইল নেভিগেশন'});
   await expect(dock).toBeHidden();
@@ -220,7 +220,7 @@ test('vocabulary audio controls have names and touch-sized targets',async({page}
 
 test('listening transport controls are named and touch-sized',async({page})=>{
   await page.goto('?lesson=1&view=listening');
-  const play=page.getByRole('button',{name:'Play'}).first();
+  const play=page.getByRole('button',{name:'চালান'}).first();
   await expect(play).toBeVisible();
   const box=await play.boundingBox();
   expect(box?.width).toBeGreaterThanOrEqual(44);

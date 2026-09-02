@@ -11,14 +11,14 @@ test.beforeEach(async({page})=>{
 test('guest visitors see the public learning experience before authentication',async({page})=>{
   await page.goto('?lesson=1&view=dashboard',{waitUntil:'networkidle'});
 
-  await expect(page.getByRole('heading',{name:/লগইনের আগেই JLPT N5/,level:1})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/বাংলাতেই জাপানি শেখা/,level:1})).toBeVisible();
   await expect(page.getByRole('heading',{name:/আগে শিখুন, শুনুন/})).toBeVisible();
   await expect(page.locator('#home-title')).toHaveCount(0);
   await expect(page.locator('.account-modal-layer')).toHaveCount(0);
   await expect(page.getByRole('button',{name:/ফ্রি শেখা শুরু করুন/})).toBeVisible();
 
   await page.getByRole('button',{name:'EN',exact:true}).click();
-  await expect(page.getByRole('heading',{name:/Start learning JLPT N5/,level:1})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/Learn Japanese in Bangla/,level:1})).toBeVisible();
 
   const viewportWidth=page.viewportSize()?.width||0;
   if(viewportWidth<=768){
@@ -49,14 +49,15 @@ test('login and join open the account dialog and return to the public landing',a
 
   await dialog.getByRole('button',{name:'Close'}).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole('heading',{name:/Start learning JLPT N5/i,level:1})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/Learn Japanese in Bangla/i,level:1})).toBeVisible();
   await expect(page.locator('#home-title')).toHaveCount(0);
 });
 
 test('free learning lab is useful without login and exposes verified mock resources',async({page})=>{
   await page.goto('?lesson=1&view=dashboard',{waitUntil:'networkidle'});
-  await expect(page.getByText('おはようございます',{exact:true})).toBeVisible();
-  await expect(page.getByText('A は B です',{exact:true})).toBeVisible();
+  const freeLab=page.locator('#public-free');
+  await expect(freeLab.getByText('おはようございます',{exact:true})).toBeVisible();
+  await expect(freeLab.getByText('A は B です',{exact:true})).toBeVisible();
 
   await page.getByRole('tab',{name:'ফ্রি কুইজ'}).click();
   const quiz=page.locator('[role="tabpanel"]');
