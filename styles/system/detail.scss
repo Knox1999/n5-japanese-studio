@@ -71,28 +71,11 @@
 /* Global horizontal overflow guard */
 .future-main img,.future-main svg:not(.header-big-icon){max-width:100%}
 
-@media(max-width:980px){
-  .future-main,.nv60-main,.nv-final-main{width:calc(100% - 24px)!important}
-  .study-header{padding:20px!important}
-  [data-view="grammar"] .grammar-command-bar{position:relative!important;top:auto!important}
-  [data-view="kanji"] .kanji-browser{position:relative!important;top:auto!important}
-  [data-view="listening"] .shadow-player-v57{position:relative!important;top:auto!important}
+@media(max-width:980px){[data-view] .future-main,[data-view] .nv60-main,[data-view] .nv-final-main{width:calc(100% - 24px)!important}[data-view] .study-header{padding:20px!important}[data-view="grammar"] .grammar-command-bar{position:relative!important;top:auto!important}[data-view="kanji"] .kanji-browser{position:relative!important;top:auto!important}[data-view="listening"] .shadow-player-v57{position:relative!important;top:auto!important}
 }
 
-@media(max-width:760px){
-  .future-main,.nv60-main,.nv-final-main{width:calc(100% - 16px)!important;padding-left:0!important;padding-right:0!important}
-  .study-header{padding:17px!important;border-radius:18px!important}
-  .study-header h1{font-size:clamp(1.55rem,8vw,2rem)!important}
-  .study-header p{font-size:.86rem!important;line-height:1.65!important}
-  .premium-panel,.toolbar-panel,.action-panel,.practice-card,.srs-card-premium,
-  .shadow-player-v57,.shadow-library-v57,.grammar-note-card,.kanji-identity,
-  .jlpt-section-card,.history-card-v65{border-radius:17px!important}
-  .future-main button{touch-action:manipulation}
-  .future-main input,.future-main textarea,.future-main select{font-size:16px!important}
+@media(max-width:760px){[data-view] .future-main,[data-view] .nv60-main,[data-view] .nv-final-main{width:calc(100% - 16px)!important;padding-left:0!important;padding-right:0!important}[data-view] .study-header{padding:17px!important;border-radius:18px!important}[data-view] .study-header h1{font-size:clamp(1.55rem,8vw,2rem)!important}[data-view] .study-header p{font-size:.86rem!important;line-height:1.65!important}[data-view] .premium-panel,[data-view] .toolbar-panel,[data-view] .action-panel,[data-view] .practice-card,[data-view] .srs-card-premium,[data-view] .shadow-player-v57,[data-view] .shadow-library-v57,[data-view] .grammar-note-card,[data-view] .kanji-identity,[data-view] .jlpt-section-card,[data-view] .history-card-v65{border-radius:17px!important}[data-view] .future-main button{touch-action:manipulation}[data-view] .future-main input,[data-view] .future-main textarea,[data-view] .future-main select{font-size:16px!important}
 }
 
-@media(max-width:420px){
-  .future-main,.nv60-main,.nv-final-main{width:calc(100% - 12px)!important}
-  .study-header{padding:15px!important}
-  .future-main button{max-width:100%}
+@media(max-width:420px){[data-view] .future-main,[data-view] .nv60-main,[data-view] .nv-final-main{width:calc(100% - 12px)!important}[data-view] .study-header{padding:15px!important}[data-view] .future-main button{max-width:100%}
 }

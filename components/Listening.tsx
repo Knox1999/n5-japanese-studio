@@ -80,12 +80,13 @@ function Waveform({text,progress}:{text:string;progress:number}){
 }
 
 function Transcript({text,playing,activeRange}:{text:string;playing:boolean;activeRange:ActiveRange}){
+  const {text:label}=useLanguage();
   const segments=useMemo(()=>segmentJapanese(text),[text]);
   return <div className="shadow-token-line-v57 font-jp" lang="ja" aria-live="off">{segments.length?segments.map((segment,index)=>{
     const isActive=!!activeRange&&playing&&segment.wordLike&&segment.start<activeRange.end&&segment.end>activeRange.start;
     const isSpoken=!!activeRange&&playing&&segment.wordLike&&segment.end<=activeRange.start;
     return <span key={`${segment.start}-${index}`} className={`${isActive?'active':''} ${isSpoken?'spoken':''}`}>{segment.text}</span>;
-  }):'Select a transcript line'}</div>;
+  }):label('একটি transcript line বেছে নিন','Select a transcript line')}</div>;
 }
 
 export default function Listening({data}:{data:LessonPayload}){
@@ -150,11 +151,11 @@ export default function Listening({data}:{data:LessonPayload}){
 
     <section className="shadow-workbench-v57">
       <article className="shadow-player-v57">
-        <header className="shadow-player-head-v57"><div><small>NOW PRACTICING</small><b>{currentLine?.source||'Select a line'}</b></div><span className={`shadow-persona-pill-v57 ${currentLine?.voiceRole||'default'}`}><UserRound/>{persona}</span></header>
+        <header className="shadow-player-head-v57"><div><small>NOW PRACTICING</small><b>{currentLine?.source||text('একটি line বেছে নিন','Select a line')}</b></div><span className={`shadow-persona-pill-v57 ${currentLine?.voiceRole||'default'}`}><UserRound/>{persona}</span></header>
         <div className="shadow-current-v57"><Transcript text={current} playing={playing} activeRange={activeRange}/>{showMeaning&&currentLine&&<p className="font-bn">{currentLine.bn}{language==='en'&&<small> · Bangla source translation</small>}</p>}</div>
         <Waveform text={current} progress={progress}/><div className="shadow-progress-v57"><i style={{width:`${Math.round(progress*100)}%`}}/><span>{Math.round(progress*100)}%</span></div>
-        <div className="shadow-transport-v57"><button onClick={()=>selectOnly(active-1)} disabled={active<=0} aria-label="Previous"><SkipBack/></button><button className="main" onClick={()=>playing?stop():playOne()} disabled={!current} aria-label={playing?'Stop':'Play'}>{playing?<Square fill="currentColor"/>:<Play fill="currentColor"/>}</button><button onClick={()=>selectOnly(active+1)} disabled={active>=lines.length-1} aria-label="Next"><SkipForward/></button></div>
-        <div className="shadow-practice-modes-v89"><button className={mode==='listen'?'active':''} onClick={()=>playOne()} disabled={playing||!current}><Play/> Listen once</button><button className={mode==='repeat'?'active':''} onClick={repeatThree} disabled={playing||!current}><Repeat2/> Shadow ×3</button><button className={mode==='session'?'active':''} onClick={playSequence} disabled={playing||!lines.length}><Waves/> Full session</button></div>
+        <div className="shadow-transport-v57"><button onClick={()=>selectOnly(active-1)} disabled={active<=0} aria-label={text('আগেরটি','Previous')}><SkipBack/></button><button className="main" onClick={()=>playing?stop():playOne()} disabled={!current} aria-label={playing?text('থামান','Stop'):text('চালান','Play')}>{playing?<Square fill="currentColor"/>:<Play fill="currentColor"/>}</button><button onClick={()=>selectOnly(active+1)} disabled={active>=lines.length-1} aria-label={text('পরেরটি','Next')}><SkipForward/></button></div>
+        <div className="shadow-practice-modes-v89"><button className={mode==='listen'?'active':''} onClick={()=>playOne()} disabled={playing||!current}><Play/> {text('একবার শুনুন','Listen once')}</button><button className={mode==='repeat'?'active':''} onClick={repeatThree} disabled={playing||!current}><Repeat2/> {text('শ্যাডো ×৩','Shadow ×3')}</button><button className={mode==='session'?'active':''} onClick={playSequence} disabled={playing||!lines.length}><Waves/> {text('পুরো সেশন','Full session')}</button></div>
         <div className="shadow-speed-v57"><span><Gauge/> Speed</span><div>{([.75,.9,1] as const).map(x=><button key={x} onClick={()=>setRate(x)} className={rate===x?'active':''}>{x}×</button>)}</div></div>
         {currentLine?.hints?.length>0&&<div className="shadow-hints-v57"><small>WORD HINTS</small><div>{currentLine.hints.map((h,i)=><span key={`${h.jp}-${i}`}><b className="font-jp">{h.jp}</b><em className="font-bn">{h.bn}</em></span>)}</div></div>}
       </article>

@@ -100,8 +100,8 @@ export function Conversation({data}:{data:LessonPayload}){
           <span className="persona-avatar-v57">{i===0?'A':'B'}</span>
           <div>
             <small>{i===0?'JAPANESE VOICE · A':'JAPANESE VOICE · B'}</small>
-            <b>Speaker {s}</b>
-            <span>Browser/OS Japanese voice · free</span>
+            <b>{text('স্পিকার','Speaker')} {s}</b>
+            <span>{text('Browser/OS-এর Japanese voice · ফ্রি','Browser/OS Japanese voice · free')}</span>
           </div>
         </div>)}
       </div>
@@ -109,7 +109,7 @@ export function Conversation({data}:{data:LessonPayload}){
       <div>
         <button className="conversation-master-play-v57" onClick={playFull}>
           {playingAll?<Pause fill="currentColor"/>:<Play fill="currentColor"/>}
-          <span><small>FULL DIALOGUE</small><b>{playingAll?'Stop A ↔ B':'Play A ↔ B'}</b></span>
+          <span><small>FULL DIALOGUE</small><b>{playingAll?text('A ↔ B থামান','Stop A ↔ B'):text('A ↔ B চালান','Play A ↔ B')}</b></span>
         </button>
         <div className="conversation-rate-v7" aria-label="Playback speed">
           {RATES.map(x=><button key={x} className={rate===x?'active':''} onClick={()=>selectRate(x)}>{x}×</button>)}
@@ -118,13 +118,13 @@ export function Conversation({data}:{data:LessonPayload}){
     </section>
 
     <div className="conversation-role-tabs-v57">
-      <button className={role==='all'?'active':''} onClick={()=>{setRole('all');setRevealed({})}}>Full dialogue</button>
+      <button className={role==='all'?'active':''} onClick={()=>{setRole('all');setRevealed({})}}>{text('পুরো কথোপকথন','Full dialogue')}</button>
       {speakers.map((s,i)=><button key={s} className={role===s?'active':''} onClick={()=>{
         playRun.current+=1;stopAudio();setPlayingAll(false);setActiveLine(null);
         setRole(s);setRevealed({});
         track('conversation_roleplay',{lesson_number:data.lesson,speaker:s,voice_role:voiceMap[s]})
       }}>
-        <UserRound/> Shadow {s}<small>{i%2===0?'A · Male':'B · Female'}</small>
+        <UserRound/> {text('শ্যাডো','Shadow')} {s}<small>{i%2===0?text('A · পুরুষ','A · Male'):text('B · নারী','B · Female')}</small>
       </button>)}
     </div>
 
@@ -139,11 +139,11 @@ export function Conversation({data}:{data:LessonPayload}){
           <div className="turn-identity-v57"><span>{side==='male'?'A':'B'}</span><small>{side==='male'?'MALE':'FEMALE'}</small></div>
           <div className="turn-card-v57">
             <header>
-              <div><small>SPEAKER {r[0]}</small><b>{side==='male'?'Voice A':'Voice B'}</b></div>
+              <div><small>SPEAKER {r[0]}</small><b>{side==='male'?text('ভয়েস A','Voice A'):text('ভয়েস B','Voice B')}</b></div>
               <button onClick={()=>{
                 playRun.current+=1;setPlayingAll(false);
                 playLine(r[1],i,r[0],role!=='all')
-              }} aria-label={`Play speaker ${r[0]}`}><Volume2/></button>
+              }} aria-label={text(`স্পিকার ${r[0]} শুনুন`,`Play speaker ${r[0]}`)}><Volume2/></button>
             </header>
             {show
               ?<p className="font-jp" lang="ja">{r[1]}</p>
@@ -172,13 +172,13 @@ export function Reading({data}:{data:LessonPayload}){
     <section className="study-header tone-reading">
       <div>
         <div className="section-kicker">FOCUSED READING · LESSON {String(data.lesson).padStart(2,'0')}</div>
-        <h1>Read without visual noise</h1>
+        <h1 className={language==='bn'?'font-bn':''}>{label('কোনো distraction ছাড়াই পড়ুন','Read without visual noise')}</h1>
         <p className={language==='bn'?'font-bn':''}>{label('Japanese passage আগে পড়ুন। দরকার হলে বাংলা অর্থ ও passage vocabulary খুলুন।','Read the Japanese passage first. Reveal the Bangla translation and passage vocabulary when needed.')}</p>
       </div>
       <BookOpenText className="header-big-icon"/>
     </section>
     <div className="reading-toolbar-v57">
-      <button onClick={()=>playText(text,1,'reading',{}, {lesson_number:data.lesson,reading_mode:'full'})}><Volume2/> Natural full passage</button>
+      <button onClick={()=>playText(text,1,'reading',{}, {lesson_number:data.lesson,reading_mode:'full'})}><Volume2/> {label('সম্পূর্ণ passage শুনুন','Natural full passage')}</button>
       <button onClick={()=>setShowBn(x=>!x)}>{showBn?<EyeOff/>:<Eye/>} {showBn?label('বাংলা লুকান','Hide Bangla'):label('বাংলা দেখান','Show Bangla')}</button>
     </div>
     <article className="reading-paper reading-paper-v57">

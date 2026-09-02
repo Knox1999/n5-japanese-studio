@@ -28,14 +28,14 @@ export default function LessonJourneyPanel({ journey, completed, onOpen, onToggl
           <p className={language==='bn'?'font-bn':''}>{language==='bn'?journey.objective:journey.objectiveEn||journey.objective}</p>
 
           <div className="lesson-journey__progress">
-            <div><span>Lesson progress</span><b>{percent}%</b></div>
+            <div><span>{text('লেসন অগ্রগতি','Lesson progress')}</span><b>{percent}%</b></div>
             <div className="lesson-journey__progress-track"><i style={{width:`${percent}%`}}/></div>
-            <small><span>{requiredDone}/{required.length} core stages</span><span>≈ {totalMinutes} min total</span></small>
+            <small><span>{text(`${requiredDone}/${required.length} core stage`,`${requiredDone}/${required.length} core stages`)}</span><span>{text(`≈ ${totalMinutes} মিনিট মোট`,`≈ ${totalMinutes} min total`)}</span></small>
           </div>
 
           {current && (
             <div className="lesson-journey__next">
-              <span>Up next</span>
+              <span>{text('এরপর','Up next')}</span>
               <div>
                 <div><b className={language==='bn'?'font-bn':''}>{language==='bn'?current.title:current.titleEn||current.title}</b><small>≈ {current.estimatedMinutes || 0} min</small></div>
                 {current.targetView && <button type="button" onClick={()=>onOpen(current.targetView!,current.id)} className="lesson-journey__start"><Play size={14} fill="currentColor"/><span className={language==='bn'?'font-bn':''}>{text('শুরু করুন','Start')}</span></button>}
@@ -50,9 +50,9 @@ export default function LessonJourneyPanel({ journey, completed, onOpen, onToggl
             const active = current?.id === stage.id;
             return (
               <article key={stage.id} className={`lesson-journey__stage ${active?'is-active':''} ${done?'is-done':''}`}>
-                <button type="button" onClick={() => onToggleComplete(stage.id)} className="lesson-journey__done" aria-pressed={done} aria-label={`${language==='bn'?stage.title:stage.titleEn||stage.title} ${done?text('অসম্পূর্ণ করুন','mark incomplete'):text('সম্পন্ন করুন','mark complete')}`}>{done?<Check size={13}/>:<Circle size={12}/>}<span className={language==='bn'?'font-bn':''}>{done?'Done':text('শেষ?','Done?')}</span></button>
+                <button type="button" onClick={() => onToggleComplete(stage.id)} className="lesson-journey__done" aria-pressed={done} aria-label={`${language==='bn'?stage.title:stage.titleEn||stage.title} ${done?text('অসম্পূর্ণ করুন','mark incomplete'):text('সম্পন্ন করুন','mark complete')}`}>{done?<Check size={13}/>:<Circle size={12}/>}<span className={language==='bn'?'font-bn':''}>{done?text('হয়েছে','Done'):text('শেষ?','Done?')}</span></button>
                 <div className="lesson-journey__stage-copy">
-                  <div><span>{String(index+1).padStart(2,'0')}</span>{active&&<mark>next</mark>}{stage.optional&&<mark className="optional">optional</mark>}</div>
+                  <div><span>{String(index+1).padStart(2,'0')}</span>{active&&<mark>{text('পরবর্তী','next')}</mark>}{stage.optional&&<mark className="optional">{text('ঐচ্ছিক','optional')}</mark>}</div>
                   <b className={language==='bn'?'font-bn':''}>{language==='bn'?stage.title:stage.titleEn||stage.title}</b>
                   <small>≈ {stage.estimatedMinutes || 0} min</small>
                 </div>

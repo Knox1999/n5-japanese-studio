@@ -725,7 +725,7 @@ export default function MockTest({
                   onClick={()=>void start(id)}
                   disabled={loading}
                 >
-                  {loading?<><Loader2 className="animate-spin"/> Loading…</>:text(`${m.titleBn} শুরু করুন`,`Start ${m.title}`)}
+                  {loading?<><Loader2 className="animate-spin"/> {text('লোড হচ্ছে…','Loading…')}</>:text(`${m.titleBn} শুরু করুন`,`Start ${m.title}`)}
                 </button>
               </article>
             );
@@ -734,9 +734,9 @@ export default function MockTest({
 
         <div className="jlpt-launch">
           <div>
-            <b>Full Mock practice blueprint · 67 original items</b>
-            <p className="font-bn">
-              Vocabulary 21 + Grammar/Reading 22 + Listening 24 · official 20/40/30-minute section timing.
+            <b className={language==='bn'?'font-bn':''}>{text('Full Mock practice blueprint · ৬৭টি original item','Full Mock practice blueprint · 67 original items')}</b>
+            <p className={language==='bn'?'font-bn':''}>
+              {text('Vocabulary ২১ + Grammar/Reading ২২ + Listening ২৪ · official ২০/৪০/৩০ মিনিটের section timing।','Vocabulary 21 + Grammar/Reading 22 + Listening 24 · official 20/40/30-minute section timing.')}
             </p>
           </div>
           <button className="premium-btn premium-btn-primary" onClick={()=>void start('full')} disabled={loading}>
@@ -807,7 +807,7 @@ export default function MockTest({
         <div className="mock-q-meta">
           <span>Q{i+1}/{questions.length}</span>
           <b>{q.itemType}</b>
-          <em><SectionIcon size={15}/>{section.titleEn}</em>
+          <em><SectionIcon size={15}/>{language==='bn'?section.titleBn:section.titleEn}</em>
           <small>{Object.keys(answers).length} {text('টির উত্তর দেওয়া','answered')}</small>
         </div>
 

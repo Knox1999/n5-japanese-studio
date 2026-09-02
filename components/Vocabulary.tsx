@@ -80,10 +80,10 @@ export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;
         <h1>{data.title}</h1>
         <p className={language==='bn'?'font-bn':''}>{text('প্রথমে শব্দ, অর্থ, উচ্চারণ ও example—cleanভাবে শিখুন। Verb-এর চারটি core form দরকার হলে Verb mode থেকে Forms Lab খুলুন।','Learn each word with its meaning, pronunciation and example. Open Forms Lab from Verb mode for the four core conjugations.')}</p>
       </div>
-      <div className="header-progress"><b>{done}/{data.vocabulary.length}</b><span>Mastered</span><div><i style={{width:`${pct}%`}}/></div></div>
+      <div className="header-progress"><b>{done}/{data.vocabulary.length}</b><span className={language==='bn'?'font-bn':''}>{text('আয়ত্ত','Mastered')}</span><div><i style={{width:`${pct}%`}}/></div></div>
     </section>
 
-    <section className="word-class-guide word-class-guide-v54" aria-label="Vocabulary categories">
+    <section className="word-class-guide word-class-guide-v54" aria-label={text('শব্দভান্ডার বিভাগ','Vocabulary categories')}>
       <button className={`word-guide-card verb ${filter==='verb'?'active':''}`} onClick={()=>setPrimary('verb')}>
         <span className="guide-icon"><Layers3/></span><div><b>動詞</b><strong>Verb</strong><small>{text('চারটি core form দেখুন','View four core forms')}</small></div><em>{counts.verb||0}</em>
       </button>
@@ -105,8 +105,8 @@ export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;
     </section>}
 
     <div className="toolbar-panel vocab-toolbar-v54">
-      <label className="search-field"><Search size={20}/><input value={query} onChange={e=>{setQuery(e.target.value);setLimit(30)}} placeholder="Japanese / Kanji / বাংলা / English…" aria-label="Search vocabulary"/></label>
-      <button className={`premium-btn ${hideMeaning?'premium-btn-primary':'premium-btn-secondary'}`} onClick={()=>setHideMeaning(x=>!x)}>{hideMeaning?'Reveal meanings':'Hide meanings'}</button>
+      <label className="search-field"><Search size={20}/><input value={query} onChange={e=>{setQuery(e.target.value);setLimit(30)}} placeholder="Japanese / Kanji / বাংলা / English…" aria-label={text('শব্দভান্ডার খুঁজুন','Search vocabulary')}/></label>
+      <button className={`premium-btn ${hideMeaning?'premium-btn-primary':'premium-btn-secondary'}`} onClick={()=>setHideMeaning(x=>!x)}>{hideMeaning?text('অর্থ দেখান','Reveal meanings'):text('অর্থ লুকান','Hide meanings')}</button>
       <div className="word-filter-row">
         {PRIMARY_FILTERS.map(([id,label])=><button key={id} className={filter===id?'active':''} onClick={()=>setPrimary(id)}>
           {id==='all'?text('সব','All'):label}{id!=='all'&&<small>{counts[id]||0}</small>}
@@ -121,7 +121,7 @@ export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;
       />)}
     </div>
 
-    {limit<filtered.length&&<button className="premium-btn premium-btn-secondary mx-auto flex" onClick={()=>setLimit(x=>x+30)}>Show {Math.min(30,filtered.length-limit)} more</button>}
+    {limit<filtered.length&&<button className="premium-btn premium-btn-secondary mx-auto flex" onClick={()=>setLimit(x=>x+30)}>{text(`আরও ${Math.min(30,filtered.length-limit)}টি দেখান`,`Show ${Math.min(30,filtered.length-limit)} more`)}</button>}
     {!filtered.length&&<div className="empty-state vocab-empty-v54"><Sparkles/><b>{text('এই Lesson-এ এই category নেই','This category is empty in this lesson')}</b><p className={language==='bn'?'font-bn':''}>{text('বর্তমান lesson-এর source vocabulary-তে এই type নেই। অন্য category বা lesson বেছে নিন।','The source vocabulary for this lesson has no items of this type. Choose another category or lesson.')}</p><button className="premium-btn premium-btn-primary" onClick={()=>setPrimary('all')}>{text('সব শব্দ দেখুন','Show all words')}</button></div>}
 
     {formsWord&&<VerbFormsLab v={formsWord} onClose={()=>setFormsWord(null)}/>}
@@ -144,7 +144,7 @@ function VocabCard({v,mastered,hideMeaning,onToggle,index,verbMode,onOpenForms}:
         <h2 className="font-jp" lang="ja">{jp}</h2>
         {v.kanji&&v.kanji!==v.japanese&&<div className="kana-reading font-jp" lang="ja">{v.japanese}</div>}
       </div>
-      <button className="icon-btn" aria-label={`Play ${v.japanese}`} onClick={()=>playText(v.tts_text||v.japanese,1,'word',{}, {lesson_number:v.lesson,word_id:v.id})}><Volume2 size={21}/></button>
+      <button className="icon-btn" aria-label={text(`${v.japanese} শুনুন`,`Play ${v.japanese}`)} onClick={()=>playText(v.tts_text||v.japanese,1,'word',{}, {lesson_number:v.lesson,word_id:v.id})}><Volume2 size={21}/></button>
     </div>
 
     <div className={`meaning-stack ${hideMeaning?'meaning-hidden':''}`}>
@@ -154,7 +154,7 @@ function VocabCard({v,mastered,hideMeaning,onToggle,index,verbMode,onOpenForms}:
     {ex&&<div className="example-block"><div className="flex items-start justify-between gap-3"><p className="font-jp" lang="ja">{ex}</p><button className="mini-audio" aria-label={text(`${v.kanji||v.japanese} শব্দের উদাহরণ শুনুন`,`Play the example for ${v.kanji||v.japanese}`)} title={text('উদাহরণের জাপানি অডিও শুনুন','Play the Japanese example audio')} onClick={()=>playText(ex,1,'sentence',{}, {lesson_number:v.lesson,word_id:v.id})}><Headphones size={18}/></button></div><span className={`font-bn ${hideMeaning?'blur-sm select-none':''}`}>{v.example?.bn}</span></div>}
 
     <div className={`vocab-card-footer ${verbMode&&meta.kind==='verb'?'has-forms':''}`}>
-      <button className={`mastery-button ${mastered?'done':''}`} onClick={()=>{onToggle(v.id);track('vocabulary_mastered',{lesson_number:v.lesson,word_id:v.id,mastered:!mastered})}}><Check size={18}/>{mastered?'Mastered':'Mark mastered'}</button>
+      <button className={`mastery-button ${mastered?'done':''}`} onClick={()=>{onToggle(v.id);track('vocabulary_mastered',{lesson_number:v.lesson,word_id:v.id,mastered:!mastered})}}><Check size={18}/>{mastered?text('আয়ত্ত','Mastered'):text('আয়ত্ত হিসেবে চিহ্নিত করুন','Mark mastered')}</button>
       {verbMode&&meta.kind==='verb'&&<button className="open-forms-button" onClick={()=>{onOpenForms(v);track('verb_forms_open',{lesson_number:v.lesson,word_id:v.id,verb_group:meta.groupId})}}><BookOpenCheck/> Forms <ChevronRight/></button>}
     </div>
   </motion.article>
@@ -176,11 +176,11 @@ function VerbFormsLab({v,onClose}:{v:VocabItem;onClose:()=>void}){
   ] as const;
 
   return <div className="verb-lab-layer" role="dialog" aria-modal="true" aria-labelledby="verb-lab-title">
-    <button className="future-layer-backdrop" onClick={onClose} aria-label="Close Verb Forms Lab"/>
+    <button className="future-layer-backdrop" onClick={onClose} aria-label={text('Verb Forms Lab বন্ধ করুন','Close Verb Forms Lab')}/>
     <section className="verb-lab-dialog">
       <header className="verb-lab-head">
         <div><span>VERB FORMS LAB · {meta.groupJa}</span><h2 id="verb-lab-title" className="font-jp">{v.kanji||v.japanese}</h2><p className={language==='bn'?'font-bn':''}>{language==='bn'?v.bangla_meaning:v.english_meaning}</p></div>
-        <button onClick={onClose} aria-label="Close"><X/></button>
+        <button onClick={onClose} aria-label={text('বন্ধ করুন','Close')}><X/></button>
       </header>
 
       <div className="verb-lab-group"><span>{meta.group}</span><b className="font-jp">{meta.groupJa}</b></div>

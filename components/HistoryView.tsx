@@ -30,14 +30,14 @@ export default function HistoryView({history,onReviewMistakes,onStartMock}:{hist
     </section>
 
     {history.length>0&&<section className="history-metrics-v65">
-      <article><Trophy/><span>Best score</span><b>{stats.best}%</b><small>highest attempt</small></article>
-      <article><Target/><span>Average</span><b>{stats.average}%</b><small>all attempts</small></article>
-      <article><BarChart3/><span>Attempts</span><b>{stats.attempts}</b><small>{text('account-এ synced','synced to account')}</small></article>
-      <article><CalendarDays/><span>Latest</span><b>{stats.last}%</b><small>most recent score</small></article>
+      <article><Trophy/><span>{text('সেরা স্কোর','Best score')}</span><b>{stats.best}%</b><small>{text('সর্বোচ্চ attempt','highest attempt')}</small></article>
+      <article><Target/><span>{text('গড়','Average')}</span><b>{stats.average}%</b><small>{text('সব attempt','all attempts')}</small></article>
+      <article><BarChart3/><span>{text('মোট attempt','Attempts')}</span><b>{stats.attempts}</b><small>{text('account-এ synced','synced to account')}</small></article>
+      <article><CalendarDays/><span>{text('সর্বশেষ','Latest')}</span><b>{stats.last}%</b><small>{text('সাম্প্রতিক স্কোর','most recent score')}</small></article>
     </section>}
 
     {!history.length
-      ?<div className="empty-state history-empty-v65"><Trophy/><b>No mock history yet</b><p className={language==='bn'?'font-bn':''}>{text('একটি Quick, Mini অথবা Full mock শেষ করলে এখানে performance trend তৈরি হবে।','Complete a Quick, Mini or Full mock to build your performance trend here.')}</p></div>
+      ?<div className="empty-state history-empty-v65"><Trophy/><b className={language==='bn'?'font-bn':''}>{text('এখনো কোনো mock history নেই','No mock history yet')}</b><p className={language==='bn'?'font-bn':''}>{text('একটি Quick, Mini অথবা Full mock শেষ করলে এখানে performance trend তৈরি হবে।','Complete a Quick, Mini or Full mock to build your performance trend here.')}</p></div>
       :<section className="history-list-v65">
         <header><div><span>ATTEMPT TIMELINE</span><h2 className={language==='bn'?'font-bn':''}>{text('সাম্প্রতিক ফলাফল','Recent results')}</h2></div><small>{history.length} saved attempt{history.length===1?'':'s'}</small></header>
         <div>
@@ -45,8 +45,8 @@ export default function HistoryView({history,onReviewMistakes,onStartMock}:{hist
             const label=x.label||(x.scope==='n5-full'?'JLPT N5 Full Simulation':x.scope==='n5-mini'?'JLPT N5 Mini Mock':`Lesson ${String(x.lesson).padStart(2,'0')}`);
             const date=new Date(x.date);const wrong=x.responses?.filter(row=>!row.correct)||[];const wrongWordIds=Array.from(new Set(wrong.map(row=>row.wordId).filter((id):id is number=>typeof id==='number')));
             return <article className="history-card-v65" key={`${x.date}-${i}`}>
-              <div className="history-score-v65"><strong>{x.score}%</strong><span>{x.score>=80?'Strong':x.score>=60?'Developing':'Review'}</span></div>
-              <div className="history-copy-v65"><small>{x.scope==='n5-full'?'FULL N5':x.scope==='n5-mini'?'MINI N5':'LESSON PRACTICE'}</small><b>{label}</b><p className={language==='bn'?'font-bn':''}>{x.correct}/{x.total} {text('সঠিক','correct')} · {date.toLocaleDateString(language==='bn'?'bn-BD':'en-BD')} · {date.toLocaleTimeString(language==='bn'?'bn-BD':'en-BD',{hour:'2-digit',minute:'2-digit'})}{x.durationSeconds?` · ${Math.round(x.durationSeconds/60)} min`:''}</p></div>
+              <div className="history-score-v65"><strong>{x.score}%</strong><span>{x.score>=80?text('চমৎকার','Strong'):x.score>=60?text('উন্নতি হচ্ছে','Developing'):text('রিভিউ দরকার','Review')}</span></div>
+              <div className="history-copy-v65"><small>{x.scope==='n5-full'?text('ফুল N5','FULL N5'):x.scope==='n5-mini'?text('মিনি N5','MINI N5'):text('লেসন প্র্যাকটিস','LESSON PRACTICE')}</small><b>{label}</b><p className={language==='bn'?'font-bn':''}>{x.correct}/{x.total} {text('সঠিক','correct')} · {date.toLocaleDateString(language==='bn'?'bn-BD':'en-BD')} · {date.toLocaleTimeString(language==='bn'?'bn-BD':'en-BD',{hour:'2-digit',minute:'2-digit'})}{x.durationSeconds?` · ${Math.round(x.durationSeconds/60)} min`:''}</p></div>
               <div className="history-progress-v65"><i style={{width:`${Math.max(2,x.score)}%`}}/></div>
               {x.responses?.length?<details className="history-answer-review"><summary>{text(`${wrong.length}টি ভুলসহ সব উত্তর দেখুন`,`Review all answers · ${wrong.length} incorrect`)}</summary><div>
                 {x.responses.map((response,index)=><article key={`${x.id||x.date}-${response.id}`} className={response.correct?'correct':'wrong'}><header><span>Q{index+1}</span><b>{response.itemType}</b><em>{response.correct?text('সঠিক','Correct'):text('ভুল','Incorrect')}</em></header>{response.audioText&&<button type="button" onClick={()=>void playText(response.audioText!,1,'history_review')}><Headphones/>{text('শুনুন','Replay')}</button>}<p className={/[ぁ-んァ-ヶ一-龯]/.test(response.prompt)?'font-jp':'font-bn'}>{response.prompt}</p><small>{text('আপনার উত্তর','Your answer')}: {response.userAnswer||text('দেওয়া হয়নি','Not answered')}</small><strong>{text('সঠিক উত্তর','Correct answer')}: {response.correctAnswer}</strong></article>)}

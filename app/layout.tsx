@@ -101,7 +101,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 
   return (
     <html lang="bn">
-      <head><meta httpEquiv="Content-Security-Policy" content={csp}/></head>
+      <head>
+        <meta httpEquiv="Content-Security-Policy" content={csp}/>
+        {/* Inline so the very first paint is navy, not the browser's default
+            dark canvas, on slow connections before globals.css finishes loading. */}
+        <style dangerouslySetInnerHTML={{__html:'html,body{background:#050812}'}}/>
+      </head>
       <body>
         <a className="skip-link" href="#main-content">মূল কনটেন্টে যান</a>
         {children}

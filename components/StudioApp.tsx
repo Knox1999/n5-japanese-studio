@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { AlertTriangle, BookOpen, Loader2, RefreshCcw, WifiOff, X } from 'lucide-react';
 import type { ConfidenceLevel, LessonPayload, LearningSkill, MockAttempt, StudioMeta, ViewName } from '@/lib/types';
 import { loadLesson, loadMeta } from '@/lib/data';
@@ -63,7 +64,7 @@ function WorkspaceBoot({online}:{online:boolean}){
   const {language,text}=useLanguage();
   return <main className="boot-screen boot-screen-v2" id="main-content" aria-busy="true" aria-labelledby="boot-title">
     <div className="boot-workspace-card">
-      <div className="boot-brand-row"><div className="boot-seal">日</div><div><span>THE NIHONGO VIBES</span><h1 id="boot-title" className={language==='bn'?'font-bn':''}>{text('আপনার study workspace প্রস্তুত হচ্ছে','Preparing your study workspace')}</h1></div></div>
+      <div className="boot-brand-row"><div className="boot-seal"><Image src={`${process.env.NEXT_PUBLIC_BASE_PATH||''}/assets/nihongo-vibes-logo-96.png`} alt="" width={40} height={40}/></div><div><span>THE NIHONGO VIBES</span><h1 id="boot-title" className={language==='bn'?'font-bn':''}>{text('আপনার study workspace প্রস্তুত হচ্ছে','Preparing your study workspace')}</h1></div></div>
       <p className={language==='bn'?'font-bn':''}>{online?text('Lesson progress ও আজকের next step প্রস্তুত করছি…','Preparing lesson progress and your next step for today…'):text('সংরক্ষিত lesson ও progress খোলা হচ্ছে…','Opening cached lessons and progress…')}</p>
       <div className="boot-skeleton-grid" aria-hidden="true"><i/><i/><i/></div>
       <div className="boot-loading-line"><Loader2 className="animate-spin"/><span>{online?text('Lesson data খোলা হচ্ছে','Loading lesson data'):text('অফলাইন মোড','Offline mode')}</span></div>
@@ -77,6 +78,7 @@ export default function StudioApp(){
  const [lesson,setLessonState]=useState(1);
  const [data,setData]=useState<LessonPayload|null>(null);
  const [view,setView]=useState<ViewName>('dashboard');
+ const [srsAutoStart,setSrsAutoStart]=useState<'smart'|'due'|null>(null);
  const [progress,setProgress]=useState<ProgressMap>({});
  const [srs,setSrs]=useState<SrsMap>({});
  const [historyRows,setHistory]=useState<MockAttempt[]>([]);
@@ -152,7 +154,7 @@ export default function StudioApp(){
    stopAudio();
    const safe=Math.max(1,Math.min(25,n));setLessonState(safe);writeLesson(safe);setView(v);syncUrl(safe,v)
  },[]);
- const changeView=(v:ViewName)=>{stopAudio();setView(v);syncUrl(lesson,v);track('section_open',{section_name:v,lesson_number:lesson})};
+ const changeView=(v:ViewName)=>{stopAudio();setView(v);syncUrl(lesson,v);track('section_open',{section_name:v,lesson_number:lesson});setSrsAutoStart(null)};
  const toggleMastery=(id:number)=>{setProgress(p=>{const n={...p,[String(id)]:!p[String(id)]};if(!n[String(id)])delete n[String(id)];saveProgress(n);return n})};
  const updateSrs=(n:SrsMap)=>{setSrs(n);saveSrs(n)};
  const updateProgress=(n:ProgressMap)=>{setProgress(n);saveProgress(n)};
@@ -233,6 +235,8 @@ export default function StudioApp(){
  const openJourneyStage=(target:ViewName,stageId:string)=>{
    track('lesson_stage_open',{lesson_number:lesson,stage_id:stageId,target_view:target});
    changeView(target);
+   if(stageId==='repair')setSrsAutoStart('due');
+   else if(stageId==='practice')setSrsAutoStart('smart');
  };
 
  if(fatal){
@@ -266,7 +270,7 @@ export default function StudioApp(){
        journey={journey?<LessonJourneyPanel journey={journey} completed={completedJourney} onOpen={openJourneyStage} onToggleComplete={toggleJourneyStage}/>:null}
      /></div>;
      case'vocabulary':return <Vocabulary data={data} progress={progress} onToggle={toggleMastery}/>;
-     case'srs':return <SRS data={data} meta={meta} srs={srs} progress={progress} onSrsChange={updateSrs} onProgressChange={updateProgress} onReviewResult={recordSrsReview}/>;
+     case'srs':return <SRS data={data} meta={meta} srs={srs} progress={progress} onSrsChange={updateSrs} onProgressChange={updateProgress} onReviewResult={recordSrsReview} autoStart={srsAutoStart}/>;
      case'spelling':return <Spelling data={data} onAttempt={recordSpellingAttempt}/>;
      case'conversation':return <Conversation data={data}/>;
      case'reading':return <Reading data={data}/>;

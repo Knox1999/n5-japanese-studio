@@ -70,7 +70,7 @@ export default function DailyCoachPanel({ plan, recommendations, unresolvedMista
             <button type="button" onClick={() => onNavigate(targetFor(primary.kind))} className="daily-coach__primary">
               <span className="daily-coach__primary-icon">{iconNode(primary.kind,20)}</span>
               <span className="daily-coach__primary-copy">
-                <small><span>Next best action</span><i/> <span>{primary.minutes} min</span></small>
+                <small><span>{text('পরের সেরা কাজ','Next best action')}</span><i/> <span>{primary.minutes} min</span></small>
                 <b className={language==='bn'?'font-bn':''}>{language==='bn'?primary.title:primary.titleEn||primary.title}</b>
                 <em className={language==='bn'?'font-bn':''}>{language==='bn'?primary.reason:primary.reasonEn||primary.reason}</em>
                 <span className={`daily-coach__start ${language==='bn'?'font-bn':''}`}><Play size={14} fill="currentColor"/> {text('শুরু করুন','Start')}</span>

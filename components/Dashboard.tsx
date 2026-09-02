@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import {
   ArrowRight, BookOpen, Brain, CheckCircle2, ChevronDown, Headphones,
   Languages, MessageCircle, PenLine, TreePine, BookOpenText, ClipboardCheck,
-  AudioLines, Sparkles, Target, type LucideIcon,
+  AudioLines, Sparkles, Target, Sunrise, Sun, Moon, type LucideIcon,
 } from 'lucide-react';
 
 import type { MockAttempt, SrsCardState, StudioMeta, ViewName } from '@/lib/types';
@@ -55,6 +55,11 @@ const HERO_TOOLS:[ViewName,string,string,string][]=[
   ['conversation','স্পিকিং','Speaking','会話'],
 ];
 
+function timeGreeting(hour:number){
+  if(hour>=5&&hour<=11)return{icon:Sunrise,jp:'おはよう',en:'Good morning',bn:'শুভ সকাল'};
+  if(hour>=12&&hour<=17)return{icon:Sun,jp:'こんにちは',en:'Good afternoon',bn:'শুভ অপরাহ্ন'};
+  return{icon:Moon,jp:'こんばんは',en:'Good evening',bn:'শুভ সন্ধ্যা'};
+}
 function mastered(progress:ProgressMap,ids:number[]){return ids.reduce((n,id)=>n+(progress[String(id)]?1:0),0)}
 function getSrsHealth(srs:SrsMap){const now=Date.now();let due=0;Object.values(srs).forEach((state:SrsCardState)=>{if(state.due_at&&new Date(state.due_at).getTime()<=now)due+=1});return{due}}
 function relativeTime(value:string,language:'bn'|'en'){const ms=Date.now()-new Date(value).getTime();if(!Number.isFinite(ms)||ms<60000)return language==='bn'?'এখনই':'just now';const mins=Math.floor(ms/60000);if(mins<60)return language==='bn'?`${mins}m আগে`:`${mins}m ago`;const hours=Math.floor(mins/60);if(hours<24)return language==='bn'?`${hours}h আগে`:`${hours}h ago`;const days=Math.floor(hours/24);return language==='bn'?`${days}d আগে`:`${days}d ago`}
@@ -125,6 +130,7 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
   const recent=latestActivity(activity,lesson);
   const lessonMap=useMemo(()=>meta.lessons.map(item=>{const count=mastered(progress,item.ids||[]);const pct=Math.round(count/Math.max(1,item.count||1)*100);return{lesson:item.lesson,title:item.title,pct,complete:pct>=80,active:item.lesson===lesson}}),[lesson,meta.lessons,progress]);
   const dialStyle={'--home-motion-progress':`${Math.max(0,Math.min(100,overall))*3.6}deg`} as CSSProperties;
+  const greeting=useMemo(()=>timeGreeting(new Date().getHours()),[]);
   const scrollToCoach=()=>{
     const title=document.getElementById('daily-coach-title');
     (title?.closest('section')??title)?.scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'});
@@ -146,6 +152,11 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
       <div className="home-motion-glyphs font-jp" aria-hidden="true"><span>あ</span><span>語</span><span>日</span></div>
 
       <div className="home-motion-copy">
+        <div className="home-motion-greeting">
+          <greeting.icon size={14}/>
+          <span className="font-jp" lang="ja">{greeting.jp}</span>
+          <span className={language==='bn'?'font-bn':''}>· {text(`${greeting.bn}!`,`${greeting.en}!`)}</span>
+        </div>
         <div className="home-motion-trust">
           <Sparkles size={14}/>
           <span className={language==='bn'?'font-bn':''}>{text(`ফ্রি · ${meta.lesson_count||25}টি GUIDED LESSON · JLPT N5`,`FREE · ${meta.lesson_count||25} GUIDED LESSONS · JLPT N5`)}</span>
@@ -214,8 +225,8 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
 
         <div className="home-motion-card-stats">
           <div><span>{text('শব্দ','Words')}</span><b>{meta.vocabulary_count.toLocaleString()}</b></div>
-          <div><span>Due</span><b>{health.due}</b></div>
-          <div><span>Best mock</span><b>{best}%</b></div>
+          <div><span>{text('রিভিউ বাকি','Due')}</span><b>{health.due}</b></div>
+          <div><span className={language==='bn'?'font-bn':''}>{text('সেরা mock','Best mock')}</span><b>{best}%</b></div>
         </div>
         {recent&&<small className="home-last-activity">{text('শেষ activity','Last activity')}: {VIEW_LABEL[recent.view]||recent.view} · {relativeTime(recent.lastAt,language)}</small>}
       </aside>
@@ -238,15 +249,15 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
 
     <motion.section
       className="home-compact-stats"
-      aria-label="Course progress summary"
+      aria-label={text('কোর্স অগ্রগতির সারাংশ','Course progress summary')}
       initial={reduceMotion?false:{opacity:0,y:18}}
       whileInView={{opacity:1,y:0}}
       viewport={{once:true,amount:.24}}
       transition={{duration:.48,ease:[.2,.8,.2,1]}}
     >
-      <article><span>Course vocabulary</span><b>{overall}%</b></article>
-      <article><span>Due review</span><b>{health.due}</b></article>
-      <article><span>Best mock</span><b>{best}%</b></article>
+      <article><span className={language==='bn'?'font-bn':''}>{text('কোর্স vocabulary','Course vocabulary')}</span><b>{overall}%</b></article>
+      <article><span className={language==='bn'?'font-bn':''}>{text('রিভিউ বাকি','Due review')}</span><b>{health.due}</b></article>
+      <article><span className={language==='bn'?'font-bn':''}>{text('সেরা mock','Best mock')}</span><b>{best}%</b></article>
     </motion.section>
 
     <motion.details
@@ -259,12 +270,12 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
       <summary><div><b className={language==='bn'?'font-bn':''}>{text('আরও explore করুন','Explore more')}</b><span>{text('সব skill ও ২৫টি lesson','All skills and 25 lessons')}</span></div><ChevronDown/></summary>
       <div className="home-explore-body">
         <section>
-          <h2 className="font-bn">Learning tools</h2>
+          <h2 className={language==='bn'?'font-bn':''}>{text('লার্নিং টুলস','Learning tools')}</h2>
           <div className="home-tool-grid">{MODULES.map(({view,title,bangla,icon:Icon})=><button key={view} onClick={()=>onNavigate(view)}><Icon/><span><b className={language==='bn'?'font-bn':''}>{language==='bn'?bangla:title}</b><small>{language==='bn'?title:'JLPT N5'}</small></span><ArrowRight/></button>)}</div>
         </section>
         <section>
           <h2 className={language==='bn'?'font-bn':''}>{text('২৫টি lesson','25 lessons')}</h2>
-          <div className="home-lesson-list">{lessonMap.map(item=><button key={item.lesson} className={item.active?'active':''} onClick={()=>onLesson(item.lesson,'vocabulary')}><span>{String(item.lesson).padStart(2,'0')}</span><div><b>{item.title}</b><small>{item.pct}% vocabulary</small></div><strong>{item.complete?<CheckCircle2/>:`${item.pct}%`}</strong></button>)}</div>
+          <div className="home-lesson-list">{lessonMap.map(item=><button key={item.lesson} className={item.active?'active':''} onClick={()=>onLesson(item.lesson,'vocabulary')}><span>{String(item.lesson).padStart(2,'0')}</span><div><b>{item.title}</b><small className={language==='bn'?'font-bn':''}>{text(`${item.pct}% শব্দভান্ডার`,`${item.pct}% vocabulary`)}</small></div><strong>{item.complete?<CheckCircle2/>:`${item.pct}%`}</strong></button>)}</div>
         </section>
       </div>
     </motion.details>

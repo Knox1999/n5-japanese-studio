@@ -6,7 +6,7 @@
   --v89-panel:#0d2638;
   --v89-panel-2:#102c40;
   --v89-line:rgba(196,216,227,.12);
-  --v89-red:#f0443e;
+  --v89-red:#e5372d;
   --v89-teal:#72d3d5;
   --v89-text:#f4f7f9;
   --v89-muted:#8ea5b3;
@@ -58,7 +58,7 @@
   max-width:none!important;
   overflow:visible!important;
   color:#f7f4ee!important;
-  font-family:Georgia,'Times New Roman',serif!important;
+  font-family:var(--nv-font-display)!important;
   font-size:.78rem!important;
   font-weight:800!important;
   line-height:1.08!important;
@@ -137,7 +137,7 @@
 }
 .listening-v89 .shadow-token-line-v57{font-size:clamp(1.65rem,3vw,2.55rem)!important;line-height:1.75!important;letter-spacing:.01em!important}
 .listening-v89 .shadow-token-line-v57 span{display:inline!important;padding:.04em .08em!important;border-radius:.28em!important;transition:none!important;animation:none!important}
-.listening-v89 .shadow-token-line-v57 span.active{color:#fff!important;background:var(--v89-red)!important;box-shadow:0 0 0 2px rgba(240,68,62,.15),0 8px 22px rgba(240,68,62,.24)!important}
+.listening-v89 .shadow-token-line-v57 span.active{color:#fff!important;background:var(--v89-red)!important;box-shadow:0 0 0 2px rgba(229,55,45,.15),0 8px 22px rgba(229,55,45,.24)!important}
 .listening-v89 .shadow-token-line-v57 span.spoken{color:rgba(255,197,193,.66)!important;background:transparent!important;box-shadow:none!important}
 .shadow-practice-modes-v89{
   display:grid!important;
@@ -159,9 +159,9 @@
   font-size:.8rem!important;
   font-weight:800!important;
 }
-.shadow-practice-modes-v89 button:hover,.shadow-practice-modes-v89 button.active{border-color:rgba(240,68,62,.36)!important;color:#fff!important;background:rgba(240,68,62,.085)!important}
-.shadow-practice-modes-v89 button svg{width:17px!important;height:17px!important;color:#ff726c!important}
-.listening-v89 .shadow-wave-v57 i{background:#542024!important;opacity:.8!important}.listening-v89 .shadow-wave-v57 i.played{background:#f0443e!important;opacity:1!important;box-shadow:0 0 7px rgba(240,68,62,.48)!important}
+.shadow-practice-modes-v89 button:hover,.shadow-practice-modes-v89 button.active{border-color:rgba(229,55,45,.36)!important;color:#fff!important;background:rgba(229,55,45,.085)!important}
+.shadow-practice-modes-v89 button svg{width:17px!important;height:17px!important;color:#ff6a5e!important}
+.listening-v89 .shadow-wave-v57 i{background:#542024!important;opacity:.8!important}.listening-v89 .shadow-wave-v57 i.played{background:#e5372d!important;opacity:1!important;box-shadow:0 0 7px rgba(229,55,45,.48)!important}
 
 /* ---------- Overall layout refinement ---------- */
 .future-main,.nv60-main,.nv-final-main{min-width:0!important}

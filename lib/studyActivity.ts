@@ -58,7 +58,11 @@ export function recordStudyActivity(lesson:number,view:ViewName,kind:'open'|'act
     .sort((a,b)=>String(b[1].lastAt).localeCompare(String(a[1].lastAt)))
     .slice(0,275);
   save({version:VERSION,entries:Object.fromEntries(rows)});
-  try{window.dispatchEvent(new CustomEvent('nv:study-activity',{detail:next}))}catch{}
+  // Deferred so this never fires synchronously inside another component's render
+  // (e.g. a track() call made while React is rendering a parent/sibling), which
+  // would otherwise trigger "Cannot update a component while rendering a different
+  // component" for any listener that calls setState (see Dashboard's refresh effect).
+  setTimeout(()=>{try{window.dispatchEvent(new CustomEvent('nv:study-activity',{detail:next}))}catch{}},0);
 }
 
 function eventView(event:string,params:Record<string,unknown>):ViewName|null{

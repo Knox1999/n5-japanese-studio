@@ -111,11 +111,12 @@ const DRAWER_GROUPS = [
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 function Brand({onClick}:{onClick:()=>void}) {
+  const {text}=useLanguage();
   return (
     <button
       className="future-brand nv60-brand nv-final-brand"
       onClick={onClick}
-      aria-label="The Nihongo Vibes হোমে যান"
+      aria-label={text('The Nihongo Vibes হোমে যান','Go to The Nihongo Vibes home')}
     >
       <span className="future-brand-logo-wrap nv60-brand-logo nv-final-brand-logo">
         <Image
@@ -503,7 +504,7 @@ export default function Shell({
             <div className="future-drawer-utilities">
               <button onClick={()=>window.dispatchEvent(new Event('n5-open-vault'))}>
                 <DatabaseBackup size={18}/>
-                <span className="font-bn">Backup / Restore</span>
+                <span className={language==='bn'?'font-bn':''}>{text('ব্যাকআপ ও রিস্টোর','Backup / Restore')}</span>
               </button>
               <button onClick={()=>void copyCurrentLink()}>
                 <Share2 size={18}/>
@@ -556,9 +557,9 @@ export default function Shell({
               ):searchError?(
                 <div className="nv58-search-state error">
                   <Search/>
-                  <b>Search index unavailable</b>
+                  <b className={language==='bn'?'font-bn':''}>{text('Search index পাওয়া যায়নি','Search index unavailable')}</b>
                   <span>{searchError}</span>
-                  <button onClick={()=>void openSearch(true)}>Retry search</button>
+                  <button onClick={()=>void openSearch(true)}>{text('আবার চেষ্টা করুন','Retry search')}</button>
                 </div>
               ):shown.length?(
                 shown.map(row=>(

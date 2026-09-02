@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { BookOpen, ChevronDown, CloudOff, DatabaseBackup, Download, KeyRound, Loader2, LockKeyhole, LogIn, LogOut, Mail, ShieldCheck, Trash2, UserPlus, UserRound, X } from 'lucide-react';
 import PublicLanding from './PublicLanding';
@@ -312,7 +313,7 @@ export default function AccountGate(){
     <section ref={dialogRef} className="account-gate" role="dialog" aria-modal="true" aria-labelledby="account-title" tabIndex={-1}>
       <section className="account-card">
         {!recovery&&<button className="account-modal-close" type="button" onClick={()=>setAuthOpen(false)} aria-label={text('বন্ধ করুন','Close')}><X size={20}/></button>}
-        <div className="account-brand"><span>日</span><div><small>THE NIHONGO VIBES</small><b>JLPT N5 PERSONAL STUDIO</b></div></div>
+        <div className="account-brand"><span><Image src={`${process.env.NEXT_PUBLIC_BASE_PATH||''}/assets/nihongo-vibes-logo-96.png`} alt="" width={46} height={46}/></span><div><small>THE NIHONGO VIBES</small><b>JLPT N5 PERSONAL STUDIO</b></div></div>
         <div className="account-copy">
           <span className="account-kicker"><LockKeyhole size={15}/> PERSONAL STUDY WORKSPACE</span>
           <h1 id="account-title" className={language==='bn'?'font-bn':''}>{recovery?text('নতুন password সেট করুন','Set a new password'):mode==='signup'?text('নিজের learning account তৈরি করুন','Create your learning account'):text('আপনার account-এ login করুন','Log in to your account')}</h1>
@@ -347,7 +348,7 @@ export default function AccountGate(){
   if(restoring){
     return <main className="boot-screen boot-screen-v2" id="main-content" aria-busy="true">
       <div className="boot-workspace-card">
-        <div className="boot-brand-row"><div className="boot-seal">日</div><div><span>THE NIHONGO VIBES</span><h1 className="font-bn">আপনার account যাচাই করা হচ্ছে</h1></div></div>
+        <div className="boot-brand-row"><div className="boot-seal"><Image src={`${process.env.NEXT_PUBLIC_BASE_PATH||''}/assets/nihongo-vibes-logo-96.png`} alt="" width={40} height={40}/></div><div><span>THE NIHONGO VIBES</span><h1 className="font-bn">আপনার account যাচাই করা হচ্ছে</h1></div></div>
         <div className="boot-loading-line"><Loader2 className="animate-spin"/><span>Restoring workspace</span></div>
       </div>
       {authModal}

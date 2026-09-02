@@ -42,7 +42,7 @@
 }
 .verb-mode-tabs button small{min-width:21px;height:21px;display:grid;place-items:center;border-radius:999px;background:rgba(255,255,255,.045);font-size:7px}
 .verb-mode-tabs button:hover{border-color:rgba(98,213,229,.20);color:#cce8f0}
-.verb-mode-tabs button.active{border-color:rgba(240,68,62,.30);background:rgba(240,68,62,.09);color:#fff;box-shadow:0 0 24px rgba(240,68,62,.05)}
+.verb-mode-tabs button.active{border-color:rgba(229,55,45,.30);background:rgba(229,55,45,.09);color:#fff;box-shadow:0 0 24px rgba(229,55,45,.05)}
 
 /* Toolbar no longer carries Group 1/2/3 clutter. */
 .vocab-toolbar-v54{
@@ -62,7 +62,7 @@
   border:1px solid rgba(98,213,229,.14);border-radius:999px;
   background:rgba(98,213,229,.04);color:#86cbd6;font-size:7px;font-weight:900
 }
-.clean-group-chip.group-3{border-color:rgba(240,68,62,.18);background:rgba(240,68,62,.045);color:#ef7771}
+.clean-group-chip.group-3{border-color:rgba(229,55,45,.18);background:rgba(229,55,45,.045);color:#ef7771}
 .vocab-card-footer{display:block;margin-top:14px}
 .vocab-card-footer.has-forms{display:grid;grid-template-columns:1fr auto;gap:8px}
 .open-forms-button{
@@ -72,7 +72,7 @@
   color:#a9d9e0;font-size:9px;font-weight:900;cursor:pointer
 }
 .open-forms-button svg{width:17px;height:17px}.open-forms-button svg:last-child{width:14px;color:#638fa2}
-.open-forms-button:hover{border-color:rgba(240,68,62,.25);color:#fff;background:linear-gradient(135deg,rgba(240,68,62,.09),rgba(8,39,68,.80))}
+.open-forms-button:hover{border-color:rgba(229,55,45,.25);color:#fff;background:linear-gradient(135deg,rgba(229,55,45,.09),rgba(8,39,68,.80))}
 
 /* Verb Forms Lab modal */
 .verb-lab-layer{
@@ -80,16 +80,16 @@
 }
 .verb-lab-dialog{
   position:relative;z-index:2;width:min(920px,100%);max-height:min(850px,92dvh);overflow:auto;
-  border:1px solid rgba(240,68,62,.22);border-radius:23px;
+  border:1px solid rgba(229,55,45,.22);border-radius:23px;
   background:
-    radial-gradient(circle at 92% 5%,rgba(240,68,62,.12),transparent 27%),
+    radial-gradient(circle at 92% 5%,rgba(229,55,45,.12),transparent 27%),
     linear-gradient(155deg,#071e37,#041426);
   box-shadow:0 35px 110px rgba(0,0,0,.56);
   color:#eaf4f9;padding:22px
 }
 .verb-lab-dialog:before{
   content:"";position:absolute;left:0;top:0;width:100%;height:2px;
-  background:linear-gradient(90deg,#f0443e,rgba(255,255,255,.4) 45%,#62d5e5 72%,transparent)
+  background:linear-gradient(90deg,#e5372d,rgba(255,255,255,.4) 45%,#62d5e5 72%,transparent)
 }
 .verb-lab-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
 .verb-lab-head>div>span{display:block;color:#ef746e;font-size:7px;font-weight:900;letter-spacing:.15em}
@@ -119,8 +119,8 @@
 .verb-form-cell b{display:block;margin-top:5px;color:#f2f8fb;font-size:17px;line-height:1.45}
 .verb-form-cell small{display:block;margin-top:4px;color:#657f90;font-size:7px;line-height:1.4}
 .verb-form-cell>button{
-  width:34px;height:34px;display:grid;place-items:center;border:1px solid rgba(240,68,62,.15);border-radius:10px;
-  background:rgba(240,68,62,.045);color:#ef746e
+  width:34px;height:34px;display:grid;place-items:center;border:1px solid rgba(229,55,45,.15);border-radius:10px;
+  background:rgba(229,55,45,.045);color:#ef746e
 }
 .verb-form-cell>button svg{width:16px}
 

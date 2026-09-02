@@ -54,7 +54,7 @@ export default function DataVault(){
     const a=document.createElement('a');
     a.href=url;a.download=`the-nihongo-vibes-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();
     URL.revokeObjectURL(url);
-    setStatus('Backup downloaded successfully.');
+    setStatus(text('ব্যাকআপ ডাউনলোড হয়েছে।','Backup downloaded successfully.'));
     track('progress_backup',{backup_action:'export'});
   };
 
@@ -64,10 +64,10 @@ export default function DataVault(){
       const parsed=JSON.parse(await file.text());
       importBackup(parsed);
       track('progress_backup',{backup_action:'import'});
-      setStatus('Backup restored. Reloading…');
+      setStatus(text('ব্যাকআপ রিস্টোর হয়েছে। রিলোড হচ্ছে…','Backup restored. Reloading…'));
       setTimeout(()=>location.reload(),650);
     }catch(e){
-      setStatus(e instanceof Error?e.message:'Backup import failed');
+      setStatus(e instanceof Error?e.message:text('ব্যাকআপ import ব্যর্থ হয়েছে','Backup import failed'));
     }finally{
       if(fileRef.current)fileRef.current.value='';
     }
@@ -89,7 +89,7 @@ export default function DataVault(){
     <button
       className="future-layer-backdrop"
       onClick={()=>setOpen(false)}
-      aria-label="Close backup center"
+      aria-label={text('ব্যাকআপ সেন্টার বন্ধ করুন','Close backup center')}
       style={{position:'absolute',inset:0,width:'100%',height:'100%',border:0,background:'rgba(1,8,14,.82)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)'}}
     />
     <section
@@ -97,17 +97,17 @@ export default function DataVault(){
       style={{position:'relative',zIndex:2,width:'min(620px, 100%)',maxHeight:'min(760px, calc(100dvh - 24px))',overflow:'auto',margin:0}}
     >
       <div className="vault-head">
-        <div><span>LOCAL DATA VAULT</span><h2 id="vault-title">Backup & Restore Progress</h2></div>
-        <button ref={closeRef} onClick={()=>setOpen(false)} aria-label="Close"><X/></button>
+        <div><span>LOCAL DATA VAULT</span><h2 id="vault-title" className={language==='bn'?'font-bn':''}>{text('অগ্রগতির ব্যাকআপ ও রিস্টোর','Backup & Restore Progress')}</h2></div>
+        <button ref={closeRef} onClick={()=>setOpen(false)} aria-label={text('বন্ধ করুন','Close')}><X/></button>
       </div>
       <p className={language==='bn'?'font-bn':''}>{text('আপনার mastery, SRS, lesson এবং mock history browser-এ দ্রুত কাজ করে এবং login থাকলে account cloud backup-এর সাথে sync হয়। আলাদা JSON backup রাখলে যেকোনো সময় নিজে restore করতে পারবেন।','Your mastery, SRS, lesson and mock history work locally for speed and sync to your account backup when you are logged in. Keep a separate JSON copy whenever you want.')}</p>
       <div className="vault-actions">
-        <button onClick={download}><Download/><div><b>Export backup</b><span>Save progress as JSON</span></div></button>
-        <button onClick={()=>fileRef.current?.click()}><Upload/><div><b>Import backup</b><span>Restore a saved JSON file</span></div></button>
+        <button onClick={download}><Download/><div><b className={language==='bn'?'font-bn':''}>{text('ব্যাকআপ export করুন','Export backup')}</b><span className={language==='bn'?'font-bn':''}>{text('অগ্রগতি JSON হিসেবে সেভ করুন','Save progress as JSON')}</span></div></button>
+        <button onClick={()=>fileRef.current?.click()}><Upload/><div><b className={language==='bn'?'font-bn':''}>{text('ব্যাকআপ import করুন','Import backup')}</b><span className={language==='bn'?'font-bn':''}>{text('সেভ করা JSON ফাইল রিস্টোর করুন','Restore a saved JSON file')}</span></div></button>
       </div>
       <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={e=>restore(e.target.files?.[0])}/>
       {status&&<div className="vault-status"><CheckCircle2/>{status}</div>}
-      <div className="vault-note"><DatabaseBackup/><span>Local-first for speed · account sync for continuity · JSON export for your own copy.</span></div>
+      <div className="vault-note"><DatabaseBackup/><span className={language==='bn'?'font-bn':''}>{text('গতির জন্য local-first · ধারাবাহিকতার জন্য account sync · নিজের কপির জন্য JSON export।','Local-first for speed · account sync for continuity · JSON export for your own copy.')}</span></div>
     </section>
   </div>;
 

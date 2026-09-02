@@ -96,8 +96,8 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
     track('grammar_rule_open',{lesson_number:data.lesson,rule_id:id});
   };
 
-  if(error)return <div className="empty-state"><AlertTriangle/><b>Grammar visual data could not load</b><p>{error}</p></div>;
-  if(!lesson)return <div className="grammar-boot"><Loader2 className="animate-spin"/><b>Visual Grammar Notebook</b><span>Loading Lesson {String(data.lesson).padStart(2,'0')}…</span></div>;
+  if(error)return <div className="empty-state"><AlertTriangle/><b>{text('Grammar visual data লোড করা যায়নি','Grammar visual data could not load')}</b><p>{error}</p></div>;
+  if(!lesson)return <div className="grammar-boot"><Loader2 className="animate-spin"/><b>{text('ভিজ্যুয়াল গ্রামার নোটবুক','Visual Grammar Notebook')}</b><span>{text(`Lesson ${String(data.lesson).padStart(2,'0')} লোড হচ্ছে…`,`Loading Lesson ${String(data.lesson).padStart(2,'0')}…`)}</span></div>;
 
   return <div className="grammar-studio space-y-5">
     <section className="study-header tone-grammar grammar-hero-v53">
@@ -124,7 +124,7 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
           {hideBn?<Eye/>:<EyeOff/>}{hideBn?text('বাংলা দেখান','Show Bangla'):text('বাংলা লুকান','Hide Bangla')}
         </button>
         <button className={practice?'active':''} onClick={()=>{setPractice(x=>!x);track('grammar_practice_mode',{lesson_number:data.lesson,enabled:!practice})}}>
-          <Lightbulb/>{practice?'Practice ON':'Practice'}
+          <Lightbulb/>{practice?text('প্র্যাকটিস চালু','Practice ON'):text('প্র্যাকটিস','Practice')}
         </button>
       </div>
     </section>
@@ -159,18 +159,18 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
         {r.warningBn&&<div className="grammar-warning"><AlertTriangle/><div><b>{text('ব্যতিক্রম / সাবধান','Exception / caution')}</b><p className={`font-bn ${practice?'practice-conceal':''}`}>{r.warningBn}</p></div></div>}
 
         <section className="grammar-examples">
-          <div className="grammar-examples-head"><div><span>PRACTICE SENTENCES</span><h3>{text('৫টি Example Sentence','5 example sentences')}</h3></div><small>Tap 🔊 for Japanese audio</small></div>
+          <div className="grammar-examples-head"><div><span>PRACTICE SENTENCES</span><h3>{text('৫টি Example Sentence','5 example sentences')}</h3></div><small>{text('Japanese audio শুনতে 🔊 চাপুন','Tap 🔊 for Japanese audio')}</small></div>
           <div className="grammar-example-grid">
             {r.examples.map((e,j)=><article key={j} className="grammar-example-card">
               <span className="grammar-example-no">{j+1}</span>
               <div><p className="font-jp" lang="ja">{e.jp}</p><b className={`font-bn ${hideBn||practice?'grammar-hidden-answer':''}`}>{e.bn}</b></div>
-              <button aria-label="Play Japanese example" onClick={()=>playText(e.jp,1,'grammar_visual',{},{
+              <button aria-label={text('জাপানি উদাহরণ শুনুন','Play Japanese example')} onClick={()=>playText(e.jp,1,'grammar_visual',{},{
                 lesson_number:data.lesson,rule_id:r.id,example_number:j+1
               })}><Volume2/></button>
               {(hideBn||practice)&&<button className="grammar-reveal" onClick={ev=>{
                 const card=ev.currentTarget.closest('.grammar-example-card');
                 card?.classList.toggle('revealed');
-              }}>Reveal</button>}
+              }}>{text('দেখুন','Reveal')}</button>}
             </article>)}
           </div>
         </section>
