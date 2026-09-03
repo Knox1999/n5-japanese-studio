@@ -87,8 +87,8 @@ export function Conversation({data}:{data:LessonPayload}){
   return <div className="space-y-5 conversation-view-v57">
     <section className="study-header tone-conversation">
       <div>
-        <div className="section-kicker">FREE JAPANESE DEVICE VOICES · LESSON {String(data.lesson).padStart(2,'0')}</div>
-        <h1>Listen like a real conversation</h1>
+        <div className="section-kicker">{text('ফ্রি জাপানিজ ডিভাইস ভয়েস','FREE JAPANESE DEVICE VOICES')} · {text('লেসন','LESSON')} {String(data.lesson).padStart(2,'0')}</div>
+        <h1 className={language==='bn'?'font-bn':''}>{text('আসল কথোপকথনের মতো শুনুন','Listen like a real conversation')}</h1>
         <p className={language==='bn'?'font-bn':''}>{text('আপনার browser বা Windows-এর Japanese voice দিয়ে A/B role আলাদা স্বরে চলে। কোনো paid API বা key লাগে না।','A/B roles use distinct Japanese voices available in your browser or operating system. No paid API or key is required.')}</p>
       </div>
       <MessageCircle className="header-big-icon"/>
@@ -171,7 +171,7 @@ export function Reading({data}:{data:LessonPayload}){
   return <div className="space-y-5 reading-view-v57">
     <section className="study-header tone-reading">
       <div>
-        <div className="section-kicker">FOCUSED READING · LESSON {String(data.lesson).padStart(2,'0')}</div>
+        <div className="section-kicker">{label('ফোকাসড রিডিং','FOCUSED READING')} · {label('লেসন','LESSON')} {String(data.lesson).padStart(2,'0')}</div>
         <h1 className={language==='bn'?'font-bn':''}>{label('কোনো distraction ছাড়াই পড়ুন','Read without visual noise')}</h1>
         <p className={language==='bn'?'font-bn':''}>{label('Japanese passage আগে পড়ুন। দরকার হলে বাংলা অর্থ ও passage vocabulary খুলুন।','Read the Japanese passage first. Reveal the Bangla translation and passage vocabulary when needed.')}</p>
       </div>
@@ -187,7 +187,7 @@ export function Reading({data}:{data:LessonPayload}){
       {showBn&&<div className="reading-translation font-bn"><b>{label('বাংলা অর্থ','Bangla translation')}</b><p>{bn}</p></div>}
     </article>
     {words.length>0&&<section className="reading-vocab-panel-v57">
-      <div><span className="section-kicker">PASSAGE VOCABULARY</span><h2>{label('গুরুত্বপূর্ণ শব্দ','Key words')}</h2></div>
+      <div><span className="section-kicker">{label('প্যাসেজ ভোকাবুলারি','PASSAGE VOCABULARY')}</span><h2>{label('গুরুত্বপূর্ণ শব্দ','Key words')}</h2></div>
       <div className="reading-vocab-grid-v57">
         {words.map(v=><button key={v.id} onClick={()=>playText(v.tts_text||v.japanese,1,'reading_word',{}, {lesson_number:data.lesson,word_id:v.id})}>
           <div><b className="font-jp" lang="ja">{v.kanji||v.japanese}</b><span className={language==='bn'?'font-bn':''}>{language==='bn'?v.bangla_meaning:v.english_meaning}</span></div><Volume2/>

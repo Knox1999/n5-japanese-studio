@@ -710,8 +710,7 @@ export default function MockTest({
               <article className={`jlpt-section-card ${id}`} key={id}>
                 <span>{m.label}</span>
                 <Icon size={22}/>
-                <h3>{m.title}</h3>
-                <small className={language==='bn'?'font-bn':''}>{language==='bn'?m.titleBn:m.label}</small>
+                <h3 className={language==='bn'?'font-bn':''}>{language==='bn'?m.titleBn:m.title}</h3>
                 <b><Clock3 size={17}/> {text(`লক্ষ্য ${Object.values(m.minutes).reduce((a,b)=>a+b,0)} মিনিট`,`${Object.values(m.minutes).reduce((a,b)=>a+b,0)} min target`)}</b>
                 <p className={language==='bn'?'font-bn':''}>{language==='bn'?m.descriptionBn:m.descriptionEn}</p>
                 <div className="mock-mode-breakdown">

@@ -105,7 +105,7 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
     return <div className="srs-shell">
       <section className="study-header tone-srs">
         <div>
-          <div className="section-kicker">{scope==='global'?'Global SRS Queue':'Lesson SRS Queue'}</div>
+          <div className="section-kicker">{scope==='global'?text('গ্লোবাল SRS Queue','Global SRS Queue'):text('লেসন SRS Queue','Lesson SRS Queue')}</div>
           <h1 className={language==='bn'?'font-bn':''}>{text('শিখুন → মনে রাখুন → ব্যবহার করুন → রিভিউ করুন','Learn → Recall → Use → Review')}</h1>
           <p className={language==='bn'?'font-bn':''}>{scope==='global'?text('সব ২৫ lesson-এর due word এক queue-তে review হচ্ছে।','Due words from all 25 lessons are being reviewed in one queue.'):text(`Lesson ${data.lesson}-এর adaptive review session।`,`Adaptive review session for Lesson ${data.lesson}.`)}</p>
         </div>
@@ -118,7 +118,7 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
       </div>
       <AnimatePresence mode="wait"><motion.article key={`${card.id}-${idx}`} initial={{opacity:0,y:12,scale:.99}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:-8}} className="srs-card-premium">
         <div className="text-center">
-          <span className="section-kicker">ACTIVE RECALL · L{String(card.lesson||data.lesson).padStart(2,'0')}</span>
+          <span className="section-kicker">{text('অ্যাক্টিভ রিকল','ACTIVE RECALL')} · L{String(card.lesson||data.lesson).padStart(2,'0')}</span>
           <h2 className="font-jp">{card.kanji||card.japanese}</h2>
           {card.kanji&&<p className="font-jp text-slatecopy">{card.japanese}</p>}
         </div>
@@ -159,12 +159,12 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
     </section>
 
     {dueByLesson.length>0&&<section className="nv58-due-map">
-      <header><div><span>GLOBAL DUE MAP</span><b>{text('কোন lesson-এ কত review বাকি','Reviews remaining by lesson')}</b></div><strong>{globalDueIds.size}</strong></header>
+      <header><div><span>{text('গ্লোবাল ডিউ ম্যাপ','GLOBAL DUE MAP')}</span><b>{text('কোন lesson-এ কত review বাকি','Reviews remaining by lesson')}</b></div><strong>{globalDueIds.size}</strong></header>
       <div>{dueByLesson.map(x=><span key={x.lesson}><b>L{String(x.lesson).padStart(2,'0')}</b><em>{x.due}</em></span>)}</div>
     </section>}
 
     <section className="grid gap-3 md:grid-cols-3">
-      <button onClick={()=>startLesson(false)} className="action-panel"><RotateCcw/><div><b className={language==='bn'?'font-bn':''}>{text('Lesson Smart Session','Lesson Smart Session')}</b><p className={language==='bn'?'font-bn':''}>{text('বর্তমান lesson-এর due ও নতুন শব্দ।','Current lesson due + new words.')}</p></div></button>
+      <button onClick={()=>startLesson(false)} className="action-panel"><RotateCcw/><div><b className={language==='bn'?'font-bn':''}>{text('লেসন স্মার্ট সেশন','Lesson Smart Session')}</b><p className={language==='bn'?'font-bn':''}>{text('বর্তমান lesson-এর due ও নতুন শব্দ।','Current lesson due + new words.')}</p></div></button>
       <button onClick={()=>startLesson(true)} className="action-panel"><Brain/><div><b className={language==='bn'?'font-bn':''}>{text('বর্তমান Lesson Due','Current Lesson Due')}</b><p className={language==='bn'?'font-bn':''}>{text(`শুধু Lesson ${data.lesson}-এর due card।`,`Only due cards from Lesson ${data.lesson}.`)}</p></div></button>
       <button onClick={startGlobal} className="action-panel nv58-global-srs" disabled={globalLoading}>
         {globalLoading?<Loader2 className="animate-spin"/>:<Globe2/>}<div><b className={language==='bn'?'font-bn':''}>{text('গ্লোবাল Due Queue','Global Due Queue')}</b><p className={language==='bn'?'font-bn':''}>{globalDueIds.size?text(`সব lesson মিলিয়ে ${globalDueIds.size}টি due card review করুন।`,`Review ${globalDueIds.size} due cards across all lessons.`):text('পুরো course-এ কিছুই due নেই।','Nothing due across the course.')}</p></div>
