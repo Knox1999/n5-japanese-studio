@@ -127,7 +127,7 @@ export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;
     </div>
 
     <div className="vocab-study-modes-v1" role="tablist" aria-label={text('স্টাডি মোড','Study mode')}>
-      {STUDY_MODES.map(([id,bn,en,Icon])=><button key={id} role="tab" aria-selected={studyMode===id} className={studyMode===id?'active':''} onClick={()=>setStudy(id)}><Icon size={16}/><span>{text(bn,en)}</span></button>)}
+      {STUDY_MODES.map(([id,bn,en,Icon])=><button key={id} role="tab" aria-selected={studyMode===id} aria-label={text(bn,en)} className={studyMode===id?'active':''} onClick={()=>setStudy(id)}><Icon size={16}/><span>{text(bn,en)}</span></button>)}
     </div>
 
     {!filtered.length?<div className="empty-state vocab-empty-v54"><Sparkles/><b>{text('এই Lesson-এ এই category নেই','This category is empty in this lesson')}</b><p className={language==='bn'?'font-bn':''}>{text('বর্তমান lesson-এর source vocabulary-তে এই type নেই। অন্য category বা lesson বেছে নিন।','The source vocabulary for this lesson has no items of this type. Choose another category or lesson.')}</p><button className="premium-btn premium-btn-primary" onClick={()=>setPrimary('all')}>{text('সব শব্দ দেখুন','Show all words')}</button></div>:<>
