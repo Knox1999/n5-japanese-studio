@@ -137,14 +137,11 @@ jobs:
 
       # Re-export at the root path (no /n5-japanese-studio/ basePath) for Vercel,
       # reusing the same already-generated public/data, public/audio and
-      # public/strokes on disk — GITHUB_ACTIONS is forced false here only to
-      # defeat the basePath auto-detection in next.config.mjs, which otherwise
-      # treats every Actions run as a GitHub Pages build.
+      # public/strokes on disk. Leaving GITHUB_PAGES unset here is what keeps
+      # next.config.mjs's basePath detection off for this build.
       - name: Re-export static site for Vercel (root path)
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
-          GITHUB_ACTIONS: 'false'
-          GITHUB_PAGES: 'false'
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}

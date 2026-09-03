@@ -1,5 +1,5 @@
 const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1] || 'n5-japanese-studio';
-const onPages = process.env.GITHUB_ACTIONS === 'true' || process.env.GITHUB_PAGES === 'true';
+const onPages = process.env.GITHUB_PAGES === 'true';
 const basePath = onPages ? `/${repoName}` : '';
 
 /** @type {import('next').NextConfig} */
