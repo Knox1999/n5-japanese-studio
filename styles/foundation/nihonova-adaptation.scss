@@ -78,6 +78,15 @@ body{background-color:var(--nha-bg)!important;color:var(--nha-text)!important}
 .future-search-trigger svg,.future-header-node>svg,.lesson-picker-trigger svg{color:#ff9c62!important}
 .future-search-trigger kbd{border-color:var(--nha-border)!important;background:rgba(255,255,255,.045)!important;color:#9dacbe!important}
 
+/* Shared page-entrance motion: every module remounts its content on navigation
+   (StudioApp keys the view container), so this CSS-only reveal replays on every
+   page switch without touching each page's markup. Mirrors the public site's
+   scroll-reveal signature (opacity 0→1, y 26px→0) and respects reduced motion. */
+@keyframes nhaPageIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.future-main .study-header{animation:nhaPageIn .55s var(--nha-ease) both!important}
+.future-main :is(.toolbar-panel,.practice-card,.srs-card-premium,.action-panel,.metric-card,.conversation-control-v57,.conversation-stage-v57,.reading-paper-v57,.shadow-player-v57,.shadow-library-v57,.grammar-command-bar,.grammar-note-card,.grammar-matrix,.kanji-layout,.kanji-browser,.kanji-detail,.mock-question,.mock-sticky-head,.history-list-v65,.kana-focus-card,.kana-trace-section,.kana-recognition-lab,.arcade-runner,.arcade-mode-grid,.jlpt-mock-home,.jlpt-blueprint,.student-dashboard-panel,.home-motion-hero,.daily-coach,.lesson-journey){animation:nhaPageIn .5s .06s var(--nha-ease) both!important}
+@media(prefers-reduced-motion:reduce){.future-main .study-header,.future-main :is(.toolbar-panel,.practice-card,.srs-card-premium,.action-panel,.metric-card,.conversation-control-v57,.conversation-stage-v57,.reading-paper-v57,.shadow-player-v57,.shadow-library-v57,.grammar-command-bar,.grammar-note-card,.grammar-matrix,.kanji-layout,.kanji-browser,.kanji-detail,.mock-question,.mock-sticky-head,.history-list-v65,.kana-focus-card,.kana-trace-section,.kana-recognition-lab,.arcade-runner,.arcade-mode-grid,.jlpt-mock-home,.jlpt-blueprint,.student-dashboard-panel,.home-motion-hero,.daily-coach,.lesson-journey){animation:none!important}}
+
 /* Shared page geometry and typography */
 .future-main{width:min(100%,var(--nha-container))!important;max-width:var(--nha-container)!important;margin:0 auto!important;padding:38px var(--nha-page-pad) 80px!important;color:var(--nha-text)!important}
 .future-main h1,.future-main h2,.future-main h3,.future-main h4,.future-main strong,.future-main b{color:var(--nha-text)}
