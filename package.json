@@ -6,7 +6,6 @@
     "data:build": "python scripts/build_klc_from_csv.py && python scripts/build_data.py",
     "dev": "npm run data:build && next dev",
     "build": "npm run data:build && next build",
-    "vercel-build": "next build",
     "start": "serve out",
     "lint": "eslint . --max-warnings=0",
     "lint:types": "tsc --noEmit",
