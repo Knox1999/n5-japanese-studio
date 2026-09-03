@@ -162,6 +162,12 @@ export default function PracticeArcade({data,onAttempt}:Props){
   const start=(next:GameMode)=>{setMode(next);setSeed(x=>x+1);setIndex(0);setScore(0);setChoice(null);setFinished(false);if(MCQ_MODES.has(next))track('section_open',{section_name:'practice_arcade',game_mode:next,lesson_number:data.lesson})};
   const answer=(value:string)=>{if(!q||choice)return;setChoice(value);const ok=value===q.correct;if(ok)setScore(x=>x+1);onAttempt?.({itemId:q.id,userAnswer:value,correctAnswer:q.correct,correct:ok,questionType:q.type,skill:q.skill});track('practice_result',{practice_type:`arcade_${q.type}`,result:ok?'correct':'wrong',lesson_number:data.lesson});};
   const next=()=>{if(index+1>=questions.length){setFinished(true);track('game_completed',{lesson_number:data.lesson,game_mode:mode,score,total:questions.length});return}setIndex(x=>x+1);setChoice(null)};
+  useEffect(()=>{
+    if(!q||!choice||choice!==q.correct)return;
+    const timer=window.setTimeout(next,900);
+    return()=>window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[choice]);
 
   if(!mode)return <div className="practice-arcade-v64 space-y-5"><section className="study-header tone-arcade"><div><div className="section-kicker">{text('প্র্যাকটিস আর্কেড','PRACTICE ARCADE')} · {text('অরিজিনাল গেম সিস্টেম','ORIGINAL GAME SYSTEM')}</div><h1>{text('ছোট গেম, বাস্তব শেখার ফল।','Short games. Real learning value.')}</h1><p className={language==='bn'?'font-bn':''}>{text('সব গেম বর্তমান লেসনের তথ্য দিয়ে তৈরি। ফলাফল ভুলের ইতিহাস ও ভবিষ্যৎ রিভিশনে কাজে লাগে—এগুলো বিচ্ছিন্ন বিনোদন নয়।','Every game uses the current lesson data. Results feed your mistake history and future repair flow, so practice stays connected to learning.')}</p></div><Gamepad2 className="header-big-icon"/></section><div className="arcade-mode-grid">{MODES.map(m=><button key={m.id} onClick={()=>start(m.id)}><div><Gamepad2/></div><h2 className={language==='bn'?'font-bn':''}>{language==='bn'?m.bn:m.title}</h2><p className={language==='bn'?'font-bn':''}>{language==='bn'?m.desc:m.descEn}</p><em>{text('গেম শুরু করুন →','Start game →')}</em></button>)}</div></div>;
 

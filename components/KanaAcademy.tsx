@@ -75,6 +75,12 @@ export default function KanaAcademy({onAttempt}:Props){
   const markDone=()=>{const key=`${script}:${card.h}`;setDone(prev=>{const next={...prev,[key]:true};try{localStorage.setItem('nihongo_kana_academy_v1',JSON.stringify(next))}catch{};return next})};
   const answer=(value:string)=>{if(choice)return;setChoice(value);const ok=value===quiz.r;onAttempt?.({itemId:`${script}:${quiz.h}`,userAnswer:value,correctAnswer:quiz.r,correct:ok,questionType:'kana-character-to-sound'});track('practice_result',{practice_type:'kana_recognition',result:ok?'correct':'wrong',script,character:quiz.char});};
   const nextQuiz=()=>{setChoice(null);setQuizSeed(x=>x+1)};
+  useEffect(()=>{
+    if(!choice||choice!==quiz.r)return;
+    const timer=window.setTimeout(nextQuiz,900);
+    return()=>window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[choice]);
 
   return <div className="kana-academy-v64 space-y-5">
     <section className="study-header tone-kana">

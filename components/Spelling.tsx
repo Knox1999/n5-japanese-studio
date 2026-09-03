@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, PenLine, Shuffle, SkipForward, Volume2, XCircle } from 'lucide-react';
 import type { ConfidenceLevel, LessonPayload, VocabItem } from '@/lib/types';
@@ -38,6 +38,11 @@ export default function Spelling({data,onAttempt}:{data:LessonPayload;onAttempt?
     onAttempt?.({itemId:card.id,lesson:data.lesson,userAnswer:answer,correctAnswer,correct:ok,confidence});
     track('practice_result',{practice_type:'spelling',result:ok?'correct':'wrong',word_id:card.id,lesson_number:data.lesson,confidence});
   };
+  useEffect(()=>{
+    if(result!=='ok')return;
+    const timer=window.setTimeout(next,1100);
+    return()=>window.clearTimeout(timer);
+  },[result]);
 
   if(!card)return <div className="empty-state"><PenLine/><b>{text('এই লেসনে spelling card নেই','No spelling cards in this lesson')}</b></div>;
   const confidenceLabel:Record<ConfidenceLevel,string>={guess:text('অনুমান','Guess'),unsure:text('অনিশ্চিত','Unsure'),confident:text('নিশ্চিত','Confident')};
