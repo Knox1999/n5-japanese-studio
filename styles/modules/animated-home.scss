@@ -222,7 +222,6 @@
 .nv-final-header::after{background:linear-gradient(90deg,transparent,rgba(229,55,45,.55),rgba(255,189,92,.32),rgba(109,221,226,.22),transparent)!important}
 .nv-final-brand-logo img{transition:transform .35s var(--nv-motion-ease),box-shadow .35s ease!important}.nv-final-brand:hover .nv-final-brand-logo img{transform:rotate(-4deg) scale(1.04);box-shadow:0 0 0 3px rgba(229,55,45,.09),0 10px 30px rgba(0,0,0,.34),0 0 28px rgba(229,55,45,.14)!important}
 .nv-final-primary-nav button{position:relative;transition:transform .16s var(--nv-motion-ease),color .16s ease,background .16s ease!important}.nv-final-primary-nav button:hover{transform:translateY(-1px)}
-.nv-final-primary-nav button.active::after{content:"";position:absolute;left:28%;right:28%;bottom:5px;height:2px;border-radius:99px;background:linear-gradient(90deg,#e5372d,#ffbd5c);box-shadow:0 0 10px rgba(229,55,45,.35)}
 
 @media(max-width:1050px){
   .home-motion-hero{grid-template-columns:1fr;min-height:auto;padding:42px}.home-motion-copy{max-width:820px}.home-motion-progress-card{width:min(100%,720px);animation:none}.home-motion-copy h1{font-size:clamp(3rem,8vw,5.2rem)!important}.home-motion-dial-wrap{grid-template-columns:138px 1fr}

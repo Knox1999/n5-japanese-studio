@@ -1,3 +1,5 @@
+@use './tokens';
+@use './base';
 @use './foundation/premium';
 @use './foundation/app-shell';
 @use './foundation/visual-grammar';
@@ -31,6 +33,8 @@
 @use './system/mobile';
 @use './system/phone';
 @use './system/polish';
+@use './system/accessibility';
+@use './components';
 @use './layout';
 @use './modules/animated-home';
 @use './foundation/nihonova-adaptation';
