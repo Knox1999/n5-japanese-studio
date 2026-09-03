@@ -22,7 +22,7 @@ export default function HistoryView({history,onReviewMistakes,onStartMock}:{hist
   return <div className="history-view-v65 space-y-5">
     <section className="study-header tone-history">
       <div>
-        <div className="section-kicker">Performance History</div>
+        <div className="section-kicker">{text('পারফরম্যান্স হিস্ট্রি','Performance History')}</div>
         <h1>{text('কাজে লাগে এমন অগ্রগতি','Progress you can actually use')}</h1>
         <p className={language==='bn'?'font-bn':''}>{text('Account workspace-এ sync হওয়া real mock attempt থেকে trend, best score, recent answers ও ভুলের review দেখুন।','Use your synced mock attempts to review trends, recent answers and every mistake.')}</p>
       </div>
@@ -39,7 +39,7 @@ export default function HistoryView({history,onReviewMistakes,onStartMock}:{hist
     {!history.length
       ?<div className="empty-state history-empty-v65"><Trophy/><b className={language==='bn'?'font-bn':''}>{text('এখনো কোনো mock history নেই','No mock history yet')}</b><p className={language==='bn'?'font-bn':''}>{text('একটি Quick, Mini অথবা Full mock শেষ করলে এখানে performance trend তৈরি হবে।','Complete a Quick, Mini or Full mock to build your performance trend here.')}</p></div>
       :<section className="history-list-v65">
-        <header><div><span>ATTEMPT TIMELINE</span><h2 className={language==='bn'?'font-bn':''}>{text('সাম্প্রতিক ফলাফল','Recent results')}</h2></div><small>{history.length} saved attempt{history.length===1?'':'s'}</small></header>
+        <header><div><span>{text('অ্যাটেম্পট টাইমলাইন','ATTEMPT TIMELINE')}</span><h2 className={language==='bn'?'font-bn':''}>{text('সাম্প্রতিক ফলাফল','Recent results')}</h2></div><small>{text(`${history.length}টি সংরক্ষিত attempt`,`${history.length} saved attempt${history.length===1?'':'s'}`)}</small></header>
         <div>
           {history.map((x,i)=>{
             const label=x.label||(x.scope==='n5-full'?'JLPT N5 Full Simulation':x.scope==='n5-mini'?'JLPT N5 Mini Mock':`Lesson ${String(x.lesson).padStart(2,'0')}`);

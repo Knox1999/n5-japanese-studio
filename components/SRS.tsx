@@ -144,7 +144,7 @@ export default function SRS({data,meta,srs,progress,onSrsChange,onProgressChange
   return <div className="space-y-5">
     <section className="study-header tone-srs">
       <div>
-        <div className="section-kicker">Adaptive spaced repetition</div>
+        <div className="section-kicker">{text('অভিযোজিত স্পেসড রিপিটিশন','Adaptive spaced repetition')}</div>
         <h1 className={language==='bn'?'font-bn':''}>{text('স্মার্ট রিভিউ','Memory Review')}</h1>
         <p className={language==='bn'?'font-bn':''}>{text('Current lesson review এবং পুরো course-এর Global Due Queue—দুইভাবেই review করতে পারবেন।','Review the current lesson or use one Global Due Queue for the entire course.')}</p>
       </div><Brain className="header-big-icon"/>

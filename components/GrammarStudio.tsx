@@ -88,11 +88,12 @@ function tokenTone(text:string){
 }
 
 function VisualFormula({rule}:{rule:Rule}){
+  const {text}=useLanguage();
   const steps=rule.steps??[];
   return <div className={`grammar-visual grammar-visual-${rule.visual}`}>
     <div className="grammar-visual-label">
       {rule.visual==='table'?<Table2/>:rule.visual==='branch'?<Network/>:<Sparkles/>}
-      <span>VISUAL FORMULA</span>
+      <span>{text('ভিজ্যুয়াল ফর্মুলা','VISUAL FORMULA')}</span>
     </div>
     <div className="grammar-formula-board" aria-label={rule.pattern}>
       {rule.parts.map((part,i)=><div className="grammar-formula-unit" key={`${part}-${i}`}>
@@ -105,8 +106,9 @@ function VisualFormula({rule}:{rule:Rule}){
 }
 
 function MatrixBoard({matrix}:{matrix:Matrix}){
+  const {text}=useLanguage();
   return <section className="grammar-matrix">
-    <div className="grammar-matrix-title"><Table2/><div><span>MASTER TABLE</span><h2>{matrix.title}</h2></div></div>
+    <div className="grammar-matrix-title"><Table2/><div><span>{text('মাস্টার টেবিল','MASTER TABLE')}</span><h2>{matrix.title}</h2></div></div>
     <div className="grammar-matrix-scroll">
       <table>
         <thead><tr>{matrix.headers.map(h=><th key={h}>{h}</th>)}</tr></thead>
@@ -175,8 +177,8 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
 
     <section className="grammar-command-bar">
       <div className="grammar-command-stats">
-        <div className="grammar-command-stat"><NotebookTabs/><span>RULES</span><b>{ruleStats.rules}</b></div>
-        <div className="grammar-command-stat"><BookOpenCheck/><span>EXAMPLES</span><b>{ruleStats.examples}</b></div>
+        <div className="grammar-command-stat"><NotebookTabs/><span>{text('নিয়ম','RULES')}</span><b>{ruleStats.rules}</b></div>
+        <div className="grammar-command-stat"><BookOpenCheck/><span>{text('উদাহরণ','EXAMPLES')}</span><b>{ruleStats.examples}</b></div>
         {practice&&quizTotals.total>0&&<div className="grammar-command-stat"><CheckCircle2/><span>{text('কুইজ স্কোর','QUIZ SCORE')}</span><b>{quizTotals.correct}/{quizTotals.total}</b></div>}
       </div>
       <div className="grammar-command-actions">
@@ -213,13 +215,13 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
             <span>{text('কী বোঝায়','Meaning')}</span>
             <p className={`font-bn ${practice?'practice-conceal':''}`}>{r.meaningBn}</p>
           </div>
-          {r.noteBn&&<div className="grammar-note-panel"><span>NOTE</span><p className={`font-bn ${practice?'practice-conceal':''}`}>{r.noteBn}</p></div>}
+          {r.noteBn&&<div className="grammar-note-panel"><span>{text('নোট','NOTE')}</span><p className={`font-bn ${practice?'practice-conceal':''}`}>{r.noteBn}</p></div>}
         </div>
 
         {r.warningBn&&<div className="grammar-warning"><AlertTriangle/><div><b>{text('ব্যতিক্রম / সাবধান','Exception / caution')}</b><p className={`font-bn ${practice?'practice-conceal':''}`}>{r.warningBn}</p></div></div>}
 
         <section className="grammar-examples">
-          <div className="grammar-examples-head"><div><span>PRACTICE SENTENCES</span><h3>{text('৫টি Example Sentence','5 example sentences')}</h3></div><small>{text('Japanese audio শুনতে 🔊 চাপুন','Tap 🔊 for Japanese audio')}</small></div>
+          <div className="grammar-examples-head"><div><span>{text('অনুশীলন বাক্য','PRACTICE SENTENCES')}</span><h3>{text('৫টি Example Sentence','5 example sentences')}</h3></div><small>{text('Japanese audio শুনতে 🔊 চাপুন','Tap 🔊 for Japanese audio')}</small></div>
           <div className="grammar-example-grid">
             {r.examples.map((e,j)=><article key={j} className="grammar-example-card">
               <span className="grammar-example-no">{j+1}</span>

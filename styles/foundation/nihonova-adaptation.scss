@@ -108,10 +108,15 @@ body{background-color:var(--nha-bg)!important;color:var(--nha-text)!important}
 .future-main input:focus,.future-main textarea:focus,.future-main select:focus{border-color:rgba(255,179,93,.45)!important;box-shadow:0 0 0 4px rgba(255,179,93,.1)!important;outline:none!important}
 .future-main button{transition:transform .2s var(--nha-ease),border-color .2s ease,background .2s ease,color .2s ease,box-shadow .2s var(--nha-ease)}
 .future-main button:not(:disabled):active{transform:translateY(1px) scale(.99)}
+/* One shared button system: single source of truth for height/padding/radius/weight/focus, replacing the drifting 3-layer definition. */
+.premium-btn{min-height:44px!important;padding:0 18px!important;border-radius:12px!important;font-weight:800!important;box-shadow:none!important}
+.premium-btn:focus-visible{outline:2px solid var(--nha-gold)!important;outline-offset:2px!important}
+.premium-btn svg{width:16px!important;height:16px!important;flex:0 0 auto!important}
 .premium-btn-primary,.home-motion-primary,.account-submit{border-color:rgba(255,120,105,.65)!important;background:linear-gradient(135deg,#c92a22,#e5372d 60%,#ff6a4a)!important;color:#fff!important;box-shadow:0 10px 28px rgba(197,42,34,.28)!important}
 .premium-btn-primary:hover,.home-motion-primary:hover,.account-submit:hover{transform:translateY(-2px)!important;box-shadow:0 15px 36px rgba(197,42,34,.36)!important}
 .premium-btn-secondary,.home-motion-secondary{border-color:var(--nha-border)!important;background:rgba(255,255,255,.04)!important;color:#f0f4f9!important;box-shadow:none!important}
 .premium-btn-secondary:hover,.home-motion-secondary:hover{transform:translateY(-2px)!important;border-color:rgba(255,179,93,.32)!important;background:rgba(255,255,255,.068)!important}
+.premium-btn-primary:focus-visible,.premium-btn-secondary:focus-visible,.home-motion-primary:focus-visible,.home-motion-secondary:focus-visible,.account-submit:focus-visible{outline:2px solid var(--nha-gold)!important;outline-offset:2px!important}
 .audio-action,.mini-audio,.icon-btn,.mock-audio-button{border-color:rgba(255,179,93,.25)!important;background:rgba(255,179,93,.075)!important;color:#ffc278!important}
 .audio-action:hover,.mini-audio:hover,.icon-btn:hover,.mock-audio-button:hover{border-color:rgba(255,179,93,.45)!important;background:rgba(255,179,93,.12)!important;transform:translateY(-1px)!important;box-shadow:0 8px 22px rgba(0,0,0,.18)!important}
 
