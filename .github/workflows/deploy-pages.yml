@@ -135,6 +135,34 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      # Re-export at the root path (no /n5-japanese-studio/ basePath) for Vercel,
+      # reusing the same already-generated public/data, public/audio and
+      # public/strokes on disk — GITHUB_ACTIONS is forced false here only to
+      # defeat the basePath auto-detection in next.config.mjs, which otherwise
+      # treats every Actions run as a GitHub Pages build.
+      - name: Re-export static site for Vercel (root path)
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GITHUB_ACTIONS: 'false'
+          GITHUB_PAGES: 'false'
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+        run: |
+          rm -rf out .next
+          npx next build
+          python scripts/build_sw.py out
+          touch out/.nojekyll
+
+      - name: Upload Vercel static export
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-static-export-vercel
+          path: ./out
+          if-no-files-found: error
+          retention-days: 1
+
   deploy:
     name: deploy-github-pages
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -166,3 +194,25 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4.0.5
+
+  deploy-vercel:
+    name: deploy-vercel
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Vercel static export
+        uses: actions/download-artifact@v4
+        with:
+          name: verified-static-export-vercel
+          path: ./out
+
+      - name: Deploy prebuilt export to Vercel
+        if: ${{ vars.VERCEL_PROJECT_ID != '' && vars.VERCEL_ORG_ID != '' && secrets.VERCEL_TOKEN != '' }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          mkdir -p .vercel
+          printf '{"projectId":"%s","orgId":"%s"}' "${{ vars.VERCEL_PROJECT_ID }}" "${{ vars.VERCEL_ORG_ID }}" > .vercel/project.json
+          npx vercel@latest deploy ./out --prod --token="$VERCEL_TOKEN" --yes

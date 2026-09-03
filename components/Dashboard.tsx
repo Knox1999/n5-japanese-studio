@@ -319,7 +319,7 @@ export default function Dashboard({meta,lesson,progress,srs,history,mistakes,onN
         <span className="level-badge"><Crown size={20}/><b>{level.level.level}</b></span>
         <div className="level-copy">
           <b className={language==='bn'?'font-bn':''}>{language==='bn'?level.level.bn:level.level.en}<small className="font-jp"> · {level.level.jp}</small></b>
-          <div className="level-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={level.pct}><i style={{width:`${level.pct}%`}}/></div>
+          <div className="level-bar" role="progressbar" aria-label={text('পরবর্তী level পর্যন্ত অগ্রগতি','Progress to next level')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={level.pct}><i style={{width:`${level.pct}%`}}/></div>
           <span>{level.next?text(`পরবর্তী level-এ আর ${level.xpForNext} XP দরকার`,`${level.xpForNext} XP to next level`):text('সর্বোচ্চ level অর্জিত!','Max level reached!')}</span>
         </div>
       </div>
