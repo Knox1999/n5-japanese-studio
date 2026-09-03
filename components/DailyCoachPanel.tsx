@@ -39,7 +39,7 @@ export default function DailyCoachPanel({ plan, recommendations, unresolvedMista
     <section className="daily-coach" aria-labelledby="daily-coach-title" aria-describedby="daily-coach-description">
       <div className="daily-coach__grid">
         <div className="daily-coach__intro">
-          <div className="daily-coach__eyebrow"><Sparkles size={14}/> Daily Study Coach</div>
+          <div className="daily-coach__eyebrow"><Sparkles size={14}/> {text('ডেইলি স্টাডি কোচ','Daily Study Coach')}</div>
           <h2 id="daily-coach-title" className={language==='bn'?'font-bn':''}>{text('এখন কী পড়বেন?','What should you study now?')}</h2>
           <p id="daily-coach-description" className={language==='bn'?'font-bn':''}>{text('সময় বাছুন। Coach আপনার due review, lesson progress এবং mistake history থেকে পরের কাজ সাজিয়ে দেবে।','Choose your available time. The coach prioritizes your due reviews, lesson progress and mistake history.')}</p>
 

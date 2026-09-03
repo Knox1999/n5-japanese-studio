@@ -111,14 +111,14 @@ export function buildLessonJourney(data: LessonPayload): LessonJourney {
 
   // Keep the established stage IDs so existing journeyProgress remains valid,
   // while ordering the flow around a beginner-friendly learn → hear → recall → use loop.
-  if (hasListening) stages.push(stage('listening','listening','Listen → follow → shadow','Listen → follow → shadow','listening',5));
+  if (hasListening) stages.push(stage('listening','listening','শুনুন → অনুসরণ করুন → শ্যাডো করুন','Listen → follow → shadow','listening',5));
   stages.push(stage('practice','practice','Smart Recall দিয়ে মনে করুন','Recall with Smart Review','srs',4));
   if (data.content.grammar?.length) stages.push(stage('grammar','grammar','Grammar pattern বুঝুন','Understand the grammar pattern','grammar',5));
   if (hasDialogue) stages.push(stage('conversation','conversation','Context-এ বলুন','Use it in context','conversation',4));
-  if (data.content.reading || data.content.reading_extended) stages.push(stage('reading','reading','Reading comprehension','Reading comprehension','reading',4));
-  if (data.kanji?.length) stages.push(stage('kanji','kanji','Kanji reinforcement','Reinforce the kanji','kanji',4,true));
-  stages.push(stage('quiz','quiz','Lesson check','Check the lesson','mock',5));
-  stages.push(stage('repair','repair','Mistake review','Review mistakes','srs',3,true));
+  if (data.content.reading || data.content.reading_extended) stages.push(stage('reading','reading','Reading অনুশীলন করুন','Reading comprehension','reading',4));
+  if (data.kanji?.length) stages.push(stage('kanji','kanji','Kanji ঝালিয়ে নিন','Reinforce the kanji','kanji',4,true));
+  stages.push(stage('quiz','quiz','লেসন চেক করুন','Check the lesson','mock',5));
+  stages.push(stage('repair','repair','ভুল রিভিউ করুন','Review mistakes','srs',3,true));
 
   return {
     lessonId: String(data.lesson),
@@ -147,7 +147,7 @@ export function buildDailyRecommendations(input: CoachInput): DailyRecommendatio
   if (input.dueSrs > 0) result.push({ id: 'due-srs', kind: 'srs', title: 'Due review আগে শেষ করুন', titleEn:'Finish due reviews first', reason: `${input.dueSrs}টি card এখন review-এর জন্য ready।`, reasonEn:`${input.dueSrs} cards are ready for review.`, minutes: Math.min(Math.max(3, Math.ceil(input.dueSrs / 4)), Math.max(3, Math.floor(minutes * .35))), priority: 100 });
   if (queue.length > 0) result.push({ id: 'repair', kind: 'repair', title: 'সাম্প্রতিক ভুলগুলো ঠিক করুন', titleEn:'Repair recent mistakes', reason: `${queue.length}টি unresolved mistake আছে${weak ? ` · সবচেয়ে দুর্বল: ${weak}` : ''}।`, reasonEn:`You have ${queue.length} unresolved mistakes${weak?` · weakest area: ${weak}`:''}.`, minutes: Math.max(3, Math.floor(minutes * .3)), priority: 92 });
   if (input.lessonPercent < 80) result.push({ id: 'continue-lesson', kind: 'lesson', title: `Lesson ${String(input.lesson).padStart(2, '0')} চালিয়ে যান`, titleEn:`Continue Lesson ${String(input.lesson).padStart(2,'0')}`, reason: `বর্তমান lesson mastery ${input.lessonPercent}%।`, reasonEn:`Current lesson mastery is ${input.lessonPercent}%.`, minutes: Math.max(5, Math.floor(minutes * .45)), priority: 82 });
-  if ((input.lastMockScore ?? 100) < 70) result.push({ id: 'mock-recovery', kind: 'mock', title: 'Mock test recovery review', titleEn:'Mock-test recovery review', reason: `সর্বশেষ mock score ${input.lastMockScore}%—দুর্বল অংশ review করুন।`, reasonEn:`Your latest mock score is ${input.lastMockScore}%. Review the weaker sections.`, minutes: Math.max(5, Math.floor(minutes * .3)), priority: 72 });
+  if ((input.lastMockScore ?? 100) < 70) result.push({ id: 'mock-recovery', kind: 'mock', title: 'Mock test recovery review করুন', titleEn:'Mock-test recovery review', reason: `সর্বশেষ mock score ${input.lastMockScore}%—দুর্বল অংশ review করুন।`, reasonEn:`Your latest mock score is ${input.lastMockScore}%. Review the weaker sections.`, minutes: Math.max(5, Math.floor(minutes * .3)), priority: 72 });
   if (!result.length) result.push({ id: 'next-lesson', kind: 'lesson', title: 'পরবর্তী শেখার ধাপ শুরু করুন', titleEn:'Start the next learning step', reason: 'Due review বা unresolved mistake নেই।', reasonEn:'No due reviews or unresolved mistakes remain.', minutes, priority: 60 });
 
   let budget = minutes;

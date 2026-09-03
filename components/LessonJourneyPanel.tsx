@@ -23,7 +23,7 @@ export default function LessonJourneyPanel({ journey, completed, onOpen, onToggl
     <section className="lesson-journey" aria-labelledby="lesson-journey-title">
       <div className="lesson-journey__grid">
         <div className="lesson-journey__summary">
-          <div className="lesson-journey__eyebrow"><Map size={14}/> Guided Lesson Journey</div>
+          <div className="lesson-journey__eyebrow"><Map size={14}/> {text('গাইডেড লেসন জার্নি','Guided Lesson Journey')}</div>
           <h2 id="lesson-journey-title" className={language==='bn'?'font-bn':''}>{text(`Lesson ${String(journey.lessonId).padStart(2,'0')} · এক ধাপ করে এগোন`,`Lesson ${String(journey.lessonId).padStart(2,'0')} · progress one step at a time`)}</h2>
           <p className={language==='bn'?'font-bn':''}>{language==='bn'?journey.objective:journey.objectiveEn||journey.objective}</p>
 
