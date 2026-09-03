@@ -188,5 +188,101 @@ grant select on public.admin_user_directory to authenticated;
 comment on view public.admin_user_directory is
 'Admin reporting source for Google Sheets sync. Contains account metadata and progress summary, never passwords.';
 
+-- AI Japanese Tutor: per-user daily request cap. Rows are written only by
+-- increment_tutor_usage() (security definer), called from the `tutor` edge
+-- function after it has verified the caller's JWT. No client ever writes here.
+create table if not exists public.tutor_usage (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  usage_day date not null default current_date,
+  request_count int not null default 0,
+  primary key (user_id, usage_day)
+);
+alter table public.tutor_usage enable row level security;
+
+drop policy if exists "tutor usage own read" on public.tutor_usage;
+create policy "tutor usage own read" on public.tutor_usage
+for select to authenticated
+using ((select auth.uid())=user_id);
+
+grant select on public.tutor_usage to authenticated;
+revoke insert,update,delete on public.tutor_usage from authenticated;
+
+create or replace function public.increment_tutor_usage(target_user_id uuid,daily_limit int)
+returns int
+language plpgsql
+security definer
+set search_path=public,private
+as $$
+declare
+  next_count int;
+begin
+  if target_user_id<>auth.uid() then
+    raise exception 'user mismatch';
+  end if;
+
+  insert into public.tutor_usage(user_id,usage_day,request_count)
+  values(target_user_id,current_date,1)
+  on conflict (user_id,usage_day)
+  do update set request_count=public.tutor_usage.request_count+1
+  returning request_count into next_count;
+
+  if next_count>daily_limit then
+    raise exception 'daily tutor limit reached' using errcode='42501';
+  end if;
+  return next_count;
+end;
+$$;
+revoke all on function public.increment_tutor_usage(uuid,int) from public;
+revoke all on function public.increment_tutor_usage(uuid,int) from anon;
+grant execute on function public.increment_tutor_usage(uuid,int) to authenticated;
+
+-- Transactional email (Resend): per-user daily send cap, same shape as
+-- tutor_usage. Rows are written only by increment_email_usage() (security
+-- definer), called from the `send-email` edge function after JWT verification.
+create table if not exists public.email_usage (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  usage_day date not null default current_date,
+  request_count int not null default 0,
+  primary key (user_id, usage_day)
+);
+alter table public.email_usage enable row level security;
+
+drop policy if exists "email usage own read" on public.email_usage;
+create policy "email usage own read" on public.email_usage
+for select to authenticated
+using ((select auth.uid())=user_id);
+
+grant select on public.email_usage to authenticated;
+revoke insert,update,delete on public.email_usage from authenticated;
+
+create or replace function public.increment_email_usage(target_user_id uuid,daily_limit int)
+returns int
+language plpgsql
+security definer
+set search_path=public,private
+as $$
+declare
+  next_count int;
+begin
+  if target_user_id<>auth.uid() then
+    raise exception 'user mismatch';
+  end if;
+
+  insert into public.email_usage(user_id,usage_day,request_count)
+  values(target_user_id,current_date,1)
+  on conflict (user_id,usage_day)
+  do update set request_count=public.email_usage.request_count+1
+  returning request_count into next_count;
+
+  if next_count>daily_limit then
+    raise exception 'daily email limit reached' using errcode='42501';
+  end if;
+  return next_count;
+end;
+$$;
+revoke all on function public.increment_email_usage(uuid,int) from public;
+revoke all on function public.increment_email_usage(uuid,int) from anon;
+grant execute on function public.increment_email_usage(uuid,int) to authenticated;
+
 drop function if exists public.handle_new_user();
 drop function if exists public.is_admin();

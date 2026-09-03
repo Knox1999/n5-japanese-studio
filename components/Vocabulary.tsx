@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  AlertTriangle, BookOpenCheck, Check, ChevronRight, Headphones, Layers3,
-  Search, Sparkles, Volume2, X
+  Award, AlertTriangle, BookOpenCheck, Check, ChevronLeft, ChevronRight, Headphones, Layers3,
+  Layers, ListChecks, RotateCcw, Search, Shuffle, Sparkles, Volume2, X
 } from 'lucide-react';
 import type { LessonPayload, VocabItem } from '@/lib/types';
 import type { ProgressMap } from '@/lib/storage';
@@ -26,6 +26,13 @@ const VERB_FILTERS:Array<[VerbFilter,string]>=[
   ['all-verbs','সব Verb'],['group-1','Group 1'],['group-2','Group 2'],['group-3','Group 3'],['exceptions','ব্যতিক্রম']
 ];
 
+type StudyMode='list'|'flashcards'|'practice';
+const STUDY_MODES:Array<[StudyMode,string,string,typeof Layers]>=[
+  ['list','তালিকা','List',ListChecks],
+  ['flashcards','ফ্ল্যাশকার্ড','Flashcards',Layers],
+  ['practice','প্র্যাকটিস','Practice',Award],
+];
+
 export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;progress:ProgressMap;onToggle:(id:number)=>void}){
   const {language,text}=useLanguage();
   const [query,setQuery]=useState('');
@@ -34,6 +41,7 @@ export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;
   const [filter,setFilter]=useState<PrimaryFilter>('all');
   const [verbFilter,setVerbFilter]=useState<VerbFilter>('all-verbs');
   const [formsWord,setFormsWord]=useState<VocabItem|null>(null);
+  const [studyMode,setStudyMode]=useState<StudyMode>('list');
 
   const rows=useMemo(()=>data.vocabulary.map(v=>({v,m:learningMeta(v)})),[data.vocabulary]);
   const counts=useMemo(()=>rows.reduce((acc,{m})=>{
@@ -71,6 +79,10 @@ export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;
   const setVerbMode=(id:VerbFilter)=>{
     setVerbFilter(id);setLimit(30);
     track('verb_group_filter',{lesson_number:data.lesson,filter_name:id,count:id==='all-verbs'?(counts.verb||0):(counts[id]||0)});
+  };
+  const setStudy=(id:StudyMode)=>{
+    setStudyMode(id);
+    track('vocabulary_study_mode',{lesson_number:data.lesson,mode:id,word_count:filtered.length});
   };
 
   return <div className="space-y-5 pb-8 vocabulary-view-v48 vocabulary-view-v54">
@@ -114,15 +126,25 @@ export default function Vocabulary({data,progress,onToggle}:{data:LessonPayload;
       </div>
     </div>
 
-    <div className="grid gap-3 lg:grid-cols-2">
-      {filtered.slice(0,limit).map((v,i)=><VocabCard
-        key={v.id} v={v} mastered={!!progress[String(v.id)]} hideMeaning={hideMeaning}
-        onToggle={onToggle} index={i} verbMode={filter==='verb'} onOpenForms={setFormsWord}
-      />)}
+    <div className="vocab-study-modes-v1" role="tablist" aria-label={text('স্টাডি মোড','Study mode')}>
+      {STUDY_MODES.map(([id,bn,en,Icon])=><button key={id} role="tab" aria-selected={studyMode===id} className={studyMode===id?'active':''} onClick={()=>setStudy(id)}><Icon size={16}/><span>{text(bn,en)}</span></button>)}
     </div>
 
-    {limit<filtered.length&&<button className="premium-btn premium-btn-secondary mx-auto flex" onClick={()=>setLimit(x=>x+30)}>{text(`আরও ${Math.min(30,filtered.length-limit)}টি দেখান`,`Show ${Math.min(30,filtered.length-limit)} more`)}</button>}
-    {!filtered.length&&<div className="empty-state vocab-empty-v54"><Sparkles/><b>{text('এই Lesson-এ এই category নেই','This category is empty in this lesson')}</b><p className={language==='bn'?'font-bn':''}>{text('বর্তমান lesson-এর source vocabulary-তে এই type নেই। অন্য category বা lesson বেছে নিন।','The source vocabulary for this lesson has no items of this type. Choose another category or lesson.')}</p><button className="premium-btn premium-btn-primary" onClick={()=>setPrimary('all')}>{text('সব শব্দ দেখুন','Show all words')}</button></div>}
+    {!filtered.length?<div className="empty-state vocab-empty-v54"><Sparkles/><b>{text('এই Lesson-এ এই category নেই','This category is empty in this lesson')}</b><p className={language==='bn'?'font-bn':''}>{text('বর্তমান lesson-এর source vocabulary-তে এই type নেই। অন্য category বা lesson বেছে নিন।','The source vocabulary for this lesson has no items of this type. Choose another category or lesson.')}</p><button className="premium-btn premium-btn-primary" onClick={()=>setPrimary('all')}>{text('সব শব্দ দেখুন','Show all words')}</button></div>:<>
+
+    {studyMode==='list'&&<>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {filtered.slice(0,limit).map((v,i)=><VocabCard
+          key={v.id} v={v} mastered={!!progress[String(v.id)]} hideMeaning={hideMeaning}
+          onToggle={onToggle} index={i} verbMode={filter==='verb'} onOpenForms={setFormsWord}
+        />)}
+      </div>
+      {limit<filtered.length&&<button className="premium-btn premium-btn-secondary mx-auto flex" onClick={()=>setLimit(x=>x+30)}>{text(`আরও ${Math.min(30,filtered.length-limit)}টি দেখান`,`Show ${Math.min(30,filtered.length-limit)} more`)}</button>}
+    </>}
+
+    {studyMode==='flashcards'&&<VocabFlashcards items={filtered} progress={progress} onToggle={onToggle} lesson={data.lesson}/>}
+    {studyMode==='practice'&&<VocabPractice items={filtered} progress={progress} onToggle={onToggle} lesson={data.lesson}/>}
+    </>}
 
     {formsWord&&<VerbFormsLab v={formsWord} onClose={()=>setFormsWord(null)}/>}
   </div>
@@ -158,6 +180,127 @@ function VocabCard({v,mastered,hideMeaning,onToggle,index,verbMode,onOpenForms}:
       {verbMode&&meta.kind==='verb'&&<button className="open-forms-button" onClick={()=>{onOpenForms(v);track('verb_forms_open',{lesson_number:v.lesson,word_id:v.id,verb_group:meta.groupId})}}><BookOpenCheck/> Forms <ChevronRight/></button>}
     </div>
   </motion.article>
+}
+
+function shuffledIndexes(n:number){
+  const order=Array.from({length:n},(_,i)=>i);
+  for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}
+  return order;
+}
+
+function VocabFlashcards({items,progress,onToggle,lesson}:{items:VocabItem[];progress:ProgressMap;onToggle:(id:number)=>void;lesson:number}){
+  const {language,text}=useLanguage();
+  const [order,setOrder]=useState<number[]>(()=>items.map((_,i)=>i));
+  const [pos,setPos]=useState(0);
+  const [flipped,setFlipped]=useState(false);
+
+  useEffect(()=>{setOrder(items.map((_,i)=>i));setPos(0);setFlipped(false)},[items]);
+
+  const safePos=Math.min(pos,Math.max(0,order.length-1));
+  const v=items[order[safePos]];
+  if(!v)return null;
+  const meta=learningMeta(v);
+  const mastered=!!progress[String(v.id)];
+  const jp=v.kanji||v.japanese;
+  const ex=v.example?.jp||v.example?.japanese||'';
+
+  const go=(delta:number)=>{setFlipped(false);setPos(p=>Math.max(0,Math.min(order.length-1,p+delta)))};
+  const shuffle=()=>{setOrder(shuffledIndexes(items.length));setPos(0);setFlipped(false);track('vocabulary_flashcards_shuffle',{lesson_number:lesson,count:items.length})};
+
+  return <div className="srs-shell vocab-flashcards-v1">
+    <div className="srs-counter-row">
+      <span>{text('কার্ড','Card')} <b>{safePos+1}</b>/{order.length}</span>
+      <button type="button" className="premium-btn premium-btn-secondary vocab-shuffle-btn" onClick={shuffle}><Shuffle size={15}/>{text('শাফল','Shuffle')}</button>
+      <span>{text('আয়ত্ত','Mastered')} <b>{items.filter(x=>progress[String(x.id)]).length}</b>/{items.length}</span>
+    </div>
+
+    <article className="srs-card-premium vocab-flashcard" role="button" tabIndex={0} aria-pressed={flipped}
+      onClick={()=>setFlipped(x=>!x)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setFlipped(x=>!x)}}}>
+      <div className="phase-pill">{meta.label}</div>
+      <h2 className="font-jp" lang="ja">{jp}</h2>
+      {v.kanji&&v.kanji!==v.japanese&&<div className="kana-reading font-jp" lang="ja">{v.japanese}</div>}
+      <button type="button" className="audio-action" onClick={e=>{e.stopPropagation();playText(v.tts_text||v.japanese,1,'word',{},{lesson_number:lesson,word_id:v.id})}}><Volume2 size={16}/>{text('শুনুন','Listen')}</button>
+      {!flipped?<button type="button" className="reveal-button">{text('অর্থ দেখতে ট্যাপ করুন','Tap to reveal meaning')}</button>:
+      <div className="revealed-answer" onClick={e=>e.stopPropagation()}>
+        <b className={language==='bn'?'font-bn':''}>{language==='bn'?v.bangla_meaning:v.english_meaning}</b>
+        <span className="font-bn">{language==='bn'?v.english_meaning:v.bangla_meaning}</span>
+        <small className="font-bn">{text('উচ্চারণ','Pronunciation')}: {v.pronunciation_bn}</small>
+        {ex&&<p className="font-jp" lang="ja">{ex}</p>}
+      </div>}
+    </article>
+
+    <div className="vocab-flashcard-nav">
+      <button type="button" className="icon-btn" onClick={()=>go(-1)} disabled={safePos<=0} aria-label={text('আগের কার্ড','Previous card')}><ChevronLeft/></button>
+      <button type="button" className={`mastery-button ${mastered?'done':''}`} onClick={()=>{onToggle(v.id);track('vocabulary_mastered',{lesson_number:lesson,word_id:v.id,mastered:!mastered})}}><Check size={18}/>{mastered?text('আয়ত্ত','Mastered'):text('আয়ত্ত করুন','Mark mastered')}</button>
+      <button type="button" className="icon-btn" onClick={()=>go(1)} disabled={safePos>=order.length-1} aria-label={text('পরের কার্ড','Next card')}><ChevronRight/></button>
+    </div>
+  </div>;
+}
+
+type PracticeResult={id:number;correct:boolean};
+function VocabPractice({items,progress,onToggle,lesson}:{items:VocabItem[];progress:ProgressMap;onToggle:(id:number)=>void;lesson:number}){
+  const {language,text}=useLanguage();
+  const [queue,setQueue]=useState<number[]>([]);
+  const [revealed,setRevealed]=useState(false);
+  const [results,setResults]=useState<PracticeResult[]>([]);
+  const [finished,setFinished]=useState(false);
+
+  useEffect(()=>{
+    setQueue(items.map(x=>x.id).length?shuffledIndexes(items.length).map(i=>items[i].id):[]);
+    setResults([]);setRevealed(false);setFinished(false);
+  },[items]);
+
+  const restart=()=>{setQueue(shuffledIndexes(items.length).map(i=>items[i].id));setResults([]);setRevealed(false);setFinished(false);track('vocabulary_practice_restart',{lesson_number:lesson})};
+
+  if(finished){
+    const correct=results.filter(r=>r.correct).length;
+    return <div className="srs-shell vocab-practice-v1">
+      <article className="srs-card-premium vocab-practice-summary">
+        <Award size={34}/>
+        <h2>{text('সেশন সম্পন্ন!','Session complete!')}</h2>
+        <p className={language==='bn'?'font-bn':''}>{text(`${results.length}টির মধ্যে ${correct}টি সঠিক`,`${correct} of ${results.length} correct`)}</p>
+        <button type="button" className="premium-btn premium-btn-primary" onClick={restart}><RotateCcw size={16}/>{text('আবার প্র্যাকটিস করুন','Practice again')}</button>
+      </article>
+    </div>;
+  }
+
+  const v=items.find(x=>x.id===queue[0]);
+  if(!v)return null;
+  const meta=learningMeta(v);
+  const jp=v.kanji||v.japanese;
+
+  const answer=(correct:boolean)=>{
+    const nextResults=[...results,{id:v.id,correct}];
+    if(correct&&!progress[String(v.id)])onToggle(v.id);
+    track('vocabulary_practice_answer',{lesson_number:lesson,word_id:v.id,correct});
+    let rest=queue.slice(1);
+    if(!correct)rest=[...rest.slice(0,2),v.id,...rest.slice(2)];
+    setResults(nextResults);setRevealed(false);
+    if(!rest.length){
+      setQueue([]);setFinished(true);
+      track('vocabulary_practice_complete',{lesson_number:lesson,total:nextResults.length,correct:nextResults.filter(r=>r.correct).length});
+    }else setQueue(rest);
+  };
+
+  return <div className="srs-shell vocab-practice-v1">
+    <div className="srs-counter-row"><span>{text('বাকি','Remaining')} <b>{queue.length}</b></span><span>{text('সঠিক','Correct')} <b>{results.filter(r=>r.correct).length}</b>/{results.length}</span></div>
+    <article className="srs-card-premium">
+      <div className="phase-pill">{meta.label}</div>
+      <h2 className="font-jp" lang="ja">{jp}</h2>
+      <button type="button" className="audio-action" onClick={()=>playText(v.tts_text||v.japanese,1,'word',{},{lesson_number:lesson,word_id:v.id})}><Volume2 size={16}/>{text('শুনুন','Listen')}</button>
+      {!revealed?<button type="button" className="reveal-button" onClick={()=>setRevealed(true)}>{text('উত্তর দেখুন','Show answer')}</button>:<>
+        <div className="revealed-answer">
+          <b className={language==='bn'?'font-bn':''}>{language==='bn'?v.bangla_meaning:v.english_meaning}</b>
+          <span className="font-bn">{language==='bn'?v.english_meaning:v.bangla_meaning}</span>
+          <small className="font-bn">{text('উচ্চারণ','Pronunciation')}: {v.pronunciation_bn}</small>
+        </div>
+        <div className="rating-grid vocab-practice-actions">
+          <button type="button" className="rating again" onClick={()=>answer(false)}>{text('আবার শিখব','Still learning')}</button>
+          <button type="button" className="rating good" onClick={()=>answer(true)}>{text('জানি','Got it')}</button>
+        </div>
+      </>}
+    </article>
+  </div>;
 }
 
 function VerbFormsLab({v,onClose}:{v:VocabItem;onClose:()=>void}){

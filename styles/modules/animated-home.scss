@@ -172,6 +172,51 @@
 .home-motion .home-compact-stats article{transition:transform .18s var(--nv-motion-ease),border-color .18s ease,background .18s ease}
 .home-motion .home-compact-stats article:hover{transform:translateY(-2px);border-color:rgba(109,221,226,.22)!important;background:rgba(109,221,226,.04)!important}
 
+.student-dashboard-panel{display:grid;gap:16px;padding:22px;border:1px solid rgba(211,228,242,.11);border-radius:24px;background:rgba(8,22,37,.7)}
+.student-dashboard-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.student-dashboard-head h2{margin:0;color:#f3f7fa;font-size:1.05rem;white-space:nowrap}
+.student-profile-row{display:flex;align-items:center;gap:12px;min-width:0}
+.student-avatar{display:grid;place-items:center;width:48px;height:48px;flex:0 0 48px;border-radius:14px;background:linear-gradient(135deg,rgba(240,68,62,.28),rgba(78,186,199,.2));color:#fff;font-size:1.15rem;font-weight:800}
+.student-profile-row>div{min-width:0;display:grid;gap:2px}
+.student-profile-row b{overflow:hidden;color:#fff;font-size:.95rem;text-overflow:ellipsis;white-space:nowrap}
+.student-profile-row small{overflow:hidden;color:rgba(211,228,242,.55);font-size:.72rem;text-overflow:ellipsis;white-space:nowrap}
+.student-profile-row .student-since{color:rgba(211,228,242,.4)}
+.student-reminder-btn{display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding:0 12px;min-height:32px;flex:0 0 auto;border:1px solid rgba(78,186,199,.28);border-radius:999px;background:rgba(78,186,199,.09);color:#7fd4de;font-size:.7rem;font-weight:800;white-space:nowrap;cursor:pointer}
+.student-reminder-btn:hover{background:rgba(78,186,199,.16);border-color:rgba(78,186,199,.42)}
+.student-reminder-btn:disabled{opacity:.6;cursor:default}
+.level-banner{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid rgba(224,189,120,.18);border-radius:16px;background:linear-gradient(135deg,rgba(224,189,120,.08),rgba(255,255,255,.02))}
+.level-badge{display:grid;place-items:center;gap:1px;width:52px;height:52px;flex:0 0 52px;border-radius:14px;background:linear-gradient(135deg,#e0bd78,#b8863f);color:#241a06}
+.level-badge b{font-size:.95rem;line-height:1}
+.level-copy{min-width:0;flex:1 1 auto;display:grid;gap:5px}
+.level-copy>b{color:#fff;font-size:.92rem}
+.level-copy>b small{color:rgba(211,228,242,.5);font-weight:600}
+.level-bar{height:6px;overflow:hidden;border-radius:99px;background:rgba(255,255,255,.08)}
+.level-bar>i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#e0bd78,#f0b25a)}
+.level-copy>span{color:rgba(211,228,242,.55);font-size:.72rem}
+.student-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.student-stat-grid .metric-icon{background:rgba(240,68,62,.1);color:#f2867f}
+.student-achievements{display:grid;gap:8px}
+.student-achievements>.section-kicker{display:flex;align-items:center;gap:6px;color:rgba(211,228,242,.46);font-size:.7rem;font-weight:800;letter-spacing:.1em}
+.student-achievements>.section-kicker b{color:#e0bd78;font-size:.75rem;letter-spacing:0}
+.achievement-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.achievement-badge{display:grid;gap:4px;padding:12px;border-radius:13px;text-align:left}
+.achievement-badge.unlocked{border:1px solid rgba(224,189,120,.24);background:linear-gradient(150deg,rgba(224,189,120,.09),rgba(255,255,255,.015))}
+.achievement-badge.unlocked .achievement-icon{color:#e0bd78}
+.achievement-badge.unlocked b{color:#fff;font-size:.78rem}
+.achievement-badge.unlocked small{color:#c7a565;font-size:.68rem;font-weight:700}
+.achievement-badge.locked{border:1px dashed rgba(211,228,242,.14);background:rgba(255,255,255,.014);opacity:.66}
+.achievement-badge.locked .achievement-icon{color:rgba(211,228,242,.4)}
+.achievement-badge.locked b{color:rgba(211,228,242,.62);font-size:.78rem}
+.achievement-badge.locked small{overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;color:rgba(211,228,242,.4);font-size:.66rem;line-height:1.4}
+.achievement-icon{display:flex}
+.student-weak-areas{display:grid;gap:8px}
+.student-weak-areas>.section-kicker{color:rgba(211,228,242,.46);font-size:.7rem;font-weight:800;letter-spacing:.1em}
+.student-weak-areas>p{margin:0;color:rgba(211,228,242,.55);font-size:.82rem}
+.weak-area-chips{display:flex;flex-wrap:wrap;gap:8px}
+.weak-area-chips button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:44px;padding:8px 12px;border:1px solid rgba(240,68,62,.22);border-radius:12px;background:rgba(240,68,62,.06);color:#fff;text-align:left;cursor:pointer;transition:transform .18s var(--nv-motion-ease,ease),border-color .18s ease,background .18s ease}
+.weak-area-chips button:hover{transform:translateY(-2px);border-color:rgba(240,68,62,.4);background:rgba(240,68,62,.1)}
+.weak-area-chips button small{color:rgba(211,228,242,.55);font-size:.68rem}
+
 /* Header micro-motion stays restrained so the working surface remains primary. */
 .nv-final-header{border-bottom-color:rgba(211,228,242,.1)!important;background:rgba(4,9,17,.88)!important;box-shadow:0 14px 38px rgba(0,0,0,.2)!important}
 .nv-final-header::after{background:linear-gradient(90deg,transparent,rgba(229,55,45,.55),rgba(255,189,92,.32),rgba(109,221,226,.22),transparent)!important}
@@ -196,6 +241,11 @@
   .home-motion-tools button{min-height:45px}
   .home-motion-orb,.home-motion-copy h1>span{animation:none}
   .home-motion-progress-card{backdrop-filter:none}
+  .student-dashboard-panel{padding:16px;border-radius:19px}
+  .student-dashboard-head{flex-direction:column-reverse}
+  .student-stat-grid{grid-template-columns:1fr 1fr}
+  .level-banner{flex-wrap:wrap}
+  .achievement-grid{grid-template-columns:1fr 1fr}
 }
 @media(max-width:420px){
   .home-motion-hero{padding-inline:14px}.home-motion-copy h1{font-size:clamp(2.35rem,12.4vw,3.15rem)!important}.home-motion-rotate{flex-wrap:wrap;row-gap:2px}.home-motion-rotate>span:first-child{font-size:1.05rem}.home-motion-word-frame{max-width:100%}.home-motion-word{font-size:1.42rem}.home-motion-word small{display:none}.home-motion-tools button small{display:none}.home-motion-facts{display:grid;grid-template-columns:1fr 1fr}.home-motion-facts span:last-child{grid-column:1/-1}.home-motion-dial-wrap{grid-template-columns:92px minmax(0,1fr)}.home-motion-dial{width:92px;height:92px}.home-motion-dial>div{width:72px;height:72px}.home-motion-dial strong{font-size:1.45rem}.home-motion-progress-card>header div b{font-size:.62rem}.home-motion-card-stats span{font-size:7px}

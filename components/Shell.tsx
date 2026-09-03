@@ -16,6 +16,8 @@ import {
   ChevronDown,
   ClipboardCheck,
   DatabaseBackup,
+  Gamepad2,
+  GraduationCap,
   Headphones,
   History,
   Languages,
@@ -68,6 +70,7 @@ type ShellProps = {
 
 const NAV: NavItem[] = [
   { view:'dashboard', labelBn:'হোম', labelEn:'Home', shortBn:'হোম', shortEn:'Home', icon:LayoutDashboard },
+  { view:'kana', labelBn:'কানা একাডেমি', labelEn:'Kana Academy', shortBn:'কানা', shortEn:'Kana', icon:GraduationCap },
   { view:'vocabulary', labelBn:'শব্দভান্ডার', labelEn:'Vocabulary', shortBn:'শব্দ', shortEn:'Words', icon:BookOpen },
   { view:'srs', labelBn:'স্মার্ট রিভিউ', labelEn:'Smart Recall', shortBn:'রিভিউ', shortEn:'Recall', icon:Brain },
   { view:'spelling', labelBn:'অ্যাকটিভ আউটপুট', labelEn:'Spelling', shortBn:'লিখুন', shortEn:'Write', icon:PenLine },
@@ -77,6 +80,7 @@ const NAV: NavItem[] = [
   { view:'grammar', labelBn:'গ্রামার', labelEn:'Grammar', shortBn:'গ্রামার', shortEn:'Grammar', icon:Languages },
   { view:'kanji', labelBn:'কাঞ্জি', labelEn:'Kanji', shortBn:'কাঞ্জি', shortEn:'Kanji', icon:TreePine },
   { view:'mock', labelBn:'মক টেস্ট', labelEn:'JLPT Mock', shortBn:'মক', shortEn:'Mock', icon:ClipboardCheck },
+  { view:'arcade', labelBn:'প্র্যাকটিস আর্কেড', labelEn:'Practice Arcade', shortBn:'গেম', shortEn:'Games', icon:Gamepad2 },
   { view:'history', labelBn:'অগ্রগতি', labelEn:'History', shortBn:'অগ্রগতি', shortEn:'History', icon:History },
 ];
 
@@ -96,11 +100,11 @@ const MOBILE_PRIMARY: ViewName[] = [
 const DRAWER_GROUPS = [
   {
     labelBn:'শিখুন',labelEn:'Learn',
-    items:['dashboard','vocabulary','reading','grammar','kanji'] as ViewName[],
+    items:['dashboard','kana','vocabulary','reading','grammar','kanji'] as ViewName[],
   },
   {
     labelBn:'অনুশীলন',labelEn:'Practice',
-    items:['srs','spelling','conversation','listening','mock'] as ViewName[],
+    items:['srs','spelling','conversation','listening','mock','arcade'] as ViewName[],
   },
   {
     labelBn:'অগ্রগতি',labelEn:'Progress',

@@ -1,8 +1,9 @@
 'use client';
 
 import Script from 'next/script';
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ShieldCheck, X } from 'lucide-react';
+import { initErrorMonitoring } from '@/lib/errorMonitoring';
 
 const STORAGE_KEY='nv_analytics_consent_v1';
 type Consent='unknown'|'accepted'|'declined';
@@ -37,6 +38,7 @@ export default function AnalyticsConsent({gaId}:{gaId:string}){
   const language=useSyncExternalStore(subscribe,getLanguage,()=> 'bn');
   const [settingsOpen,setSettingsOpen]=useState(false);
   const text=(bn:string,en:string)=>language==='bn'?bn:en;
+  useEffect(()=>{initErrorMonitoring()},[]);
 
   return <>
     {consent==='accepted'&&<><Script src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} strategy="lazyOnload"/>

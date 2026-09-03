@@ -27,6 +27,7 @@ import {
   readCloudProgress,
 } from '@/lib/cloudProgress';
 import { createBackup, STUDY_STATE_EVENT } from '@/lib/storage';
+import { sendWelcomeEmail } from '@/lib/email';
 import { useLanguage } from '@/lib/language';
 
 type Mode='signin'|'signup'|'reset'|'recovery';
@@ -214,7 +215,7 @@ export default function AccountGate(){
       }
       if(mode==='signup'){
         const created=await signUp(email.trim(),password,displayName.trim());
-        if(created){await completeLogin(created)}
+        if(created){await completeLogin(created);sendWelcomeEmail().catch(()=>{})}
         else setMessage('Account তৈরি হয়েছে। Email confirmation চালু থাকলে inbox থেকে confirm করে তারপর login করুন।');
         return;
       }

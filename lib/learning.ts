@@ -84,6 +84,19 @@ export function weakestSkill(records: MistakeRecord[]): LearningSkill | null {
   return [...totals.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 }
 
+export type WeakArea = { skill: LearningSkill; score: number; count: number };
+export function weakSkills(records: MistakeRecord[], limit = 3): WeakArea[] {
+  const totals = new Map<LearningSkill, { score: number; count: number }>();
+  getRepairQueue(records, 200).forEach(record => {
+    const prev = totals.get(record.skill) || { score: 0, count: 0 };
+    totals.set(record.skill, { score: prev.score + scoreMistake(record), count: prev.count + 1 });
+  });
+  return [...totals.entries()]
+    .sort((a, b) => b[1].score - a[1].score)
+    .slice(0, limit)
+    .map(([skill, v]) => ({ skill, score: v.score, count: v.count }));
+}
+
 function stage(id:string, kind:LessonStage['kind'], title:string, titleEn:string, targetView:ViewName, estimatedMinutes:number, optional=false):LessonStage {
   return { id, kind, title, titleEn, targetView, estimatedMinutes, optional };
 }

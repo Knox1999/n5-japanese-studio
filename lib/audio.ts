@@ -192,6 +192,18 @@ export async function audioUrlForText(text:string,voiceRole:AudioVoiceRole='defa
   return `${BASE}/audio/${hash}.mp3`;
 }
 
+const prefetchedAudioUrls=new Set<string>();
+
+/** Warms the HTTP cache for a clip ahead of time so playback starts instantly
+ *  once requested. Never triggers playback and never throws. */
+export async function prefetchAudio(text:string,voiceRole:AudioVoiceRole='default'){
+  if(typeof window==='undefined'||typeof fetch==='undefined'||!normalizeDisplay(text))return;
+  const url=await audioUrlForText(text,voiceRole);
+  if(prefetchedAudioUrls.has(url))return;
+  prefetchedAudioUrls.add(url);
+  try{await fetch(url,{cache:'force-cache'})}catch{prefetchedAudioUrls.delete(url)}
+}
+
 const MALE_HINTS=[/keita/i,/otoya/i,/ichiro/i,/hattori/i,/naoki/i,/daichi/i,/male/i,/男性/];
 const FEMALE_HINTS=[/nanami/i,/kyoko/i,/ayumi/i,/haruka/i,/aoi/i,/shiori/i,/mayu/i,/female/i,/女性/];
 
@@ -308,14 +320,23 @@ async function tryStaticAudio(
       if(activeStartTimer!==null){window.clearTimeout(activeStartTimer);activeStartTimer=null}
       cb.onStart?.();
       track('audio_start',{audio_type:type,start_latency_ms:Math.round(performance.now()-queuedAt),voice_engine:'static-neural-mp3',voice_local:false,retry_count:0});
+      let lastProgressEmitAt=0;
       const tick=()=>{
         if(settled||generation!==playbackGeneration||activeAudio!==audio||audio.paused||audio.ended)return;
         const ratio=Number.isFinite(audio.duration)&&audio.duration>0?Math.min(.99,audio.currentTime/audio.duration):0;
-        cb.onProgress?.(ratio);
         const charIndex=Math.min(Math.max(0,prepared.display.length-1),Math.floor(ratio*prepared.display.length));
-        if(charIndex!==lastBoundary){
-          lastBoundary=charIndex;
-          cb.onBoundary?.({charIndex,charLength:1,totalChars:prepared.display.length,progress:ratio,name:'audio-time'});
+        const boundaryChanged=charIndex!==lastBoundary;
+        const now=performance.now();
+        // Cap UI updates to ~20fps: rAF still polls every frame for audio.currentTime
+        // accuracy, but React re-renders (progress bar, word highlight) only need to
+        // happen a few times a second, not 60x/sec, to stay smooth without jank.
+        if(boundaryChanged||now-lastProgressEmitAt>=50){
+          lastProgressEmitAt=now;
+          cb.onProgress?.(ratio);
+          if(boundaryChanged){
+            lastBoundary=charIndex;
+            cb.onBoundary?.({charIndex,charLength:1,totalChars:prepared.display.length,progress:ratio,name:'audio-time'});
+          }
         }
         activeProgressFrame=window.requestAnimationFrame(tick);
       };

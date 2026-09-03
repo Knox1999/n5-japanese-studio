@@ -149,3 +149,29 @@
   .vocabulary-view-v54 .verb-mode-tabs,.vocabulary-view-v54 .word-filter-row{grid-template-columns:1fr!important}
   .vocabulary-view-v54 .word-guide-card>div small{display:none!important}
 }
+
+/* Study mode tabs (List / Flashcards / Practice) */
+.vocabulary-view-v54 .vocab-study-modes-v1{display:flex!important;gap:6px!important;padding:5px!important;border:1px solid var(--v62-line)!important;border-radius:14px!important;background:rgba(255,255,255,.02)!important}
+.vocabulary-view-v54 .vocab-study-modes-v1 button{flex:1!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;min-height:42px!important;border:1px solid transparent!important;border-radius:10px!important;color:#9fb5c2!important;background:transparent!important;font-size:.8rem!important;font-weight:800!important}
+.vocabulary-view-v54 .vocab-study-modes-v1 button.active{border-color:rgba(240,68,62,.3)!important;color:#fff!important;background:linear-gradient(135deg,rgba(240,68,62,.14),rgba(224,189,120,.06))!important}
+
+/* Flashcards & Practice — narrower centered study shell, reusing SRS card language */
+[data-view="vocabulary"] .srs-shell{max-width:640px!important;margin:0 auto!important;grid-template-columns:1fr!important}
+[data-view="vocabulary"] .srs-shell>*{width:100%!important}
+[data-view="vocabulary"] .srs-counter-row{padding:10px 14px!important;border:1px solid var(--v62-line)!important;border-radius:14px!important;background:rgba(255,255,255,.02)!important}
+[data-view="vocabulary"] .vocab-shuffle-btn{height:36px!important;padding:0 12px!important;font-size:.72rem!important}
+[data-view="vocabulary"] .srs-card-premium{text-align:center!important;justify-items:center!important}
+[data-view="vocabulary"] .vocab-flashcard{cursor:pointer!important;user-select:none!important}
+[data-view="vocabulary"] .vocab-flashcard .phase-pill{justify-self:center!important}
+[data-view="vocabulary"] .reveal-button,[data-view="vocabulary"] .revealed-answer{width:100%!important}
+[data-view="vocabulary"] .revealed-answer{text-align:left!important}
+[data-view="vocabulary"] .vocab-flashcard-nav{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;margin-top:14px!important}
+[data-view="vocabulary"] .vocab-flashcard-nav .mastery-button{flex:1!important}
+[data-view="vocabulary"] .vocab-practice-actions{grid-template-columns:1fr 1fr!important;width:100%!important}
+[data-view="vocabulary"] .vocab-practice-summary{gap:10px!important}
+[data-view="vocabulary"] .vocab-practice-summary svg{color:#e0bd78!important}
+
+@media(max-width:760px){
+  .vocabulary-view-v54 .vocab-study-modes-v1 button span{display:none!important}
+  [data-view="vocabulary"] .srs-card-premium h2{font-size:3.1rem!important}
+}

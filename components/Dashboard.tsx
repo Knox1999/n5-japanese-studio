@@ -6,13 +6,22 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import {
   ArrowRight, BookOpen, Brain, CheckCircle2, ChevronDown, Headphones,
   Languages, MessageCircle, PenLine, TreePine, BookOpenText, ClipboardCheck,
-  AudioLines, Sparkles, Target, Sunrise, Sun, Moon, type LucideIcon,
+  AudioLines, Sparkles, Target, Sunrise, Sun, Moon, Flame, Trophy, Layers, UserRound,
+  Crown, Gamepad2, GraduationCap, Lock, Mail, Medal, type LucideIcon,
 } from 'lucide-react';
 
-import type { MockAttempt, SrsCardState, StudioMeta, ViewName } from '@/lib/types';
+import type { MistakeRecord, MockAttempt, SrsCardState, StudioMeta, ViewName } from '@/lib/types';
 import type { ProgressMap, SrsMap } from '@/lib/storage';
 import { latestActivity, readStudyActivity, type StudyActivityState } from '@/lib/studyActivity';
+import { weakSkills } from '@/lib/learning';
+import { ensureFreshSession, getAccountProfile, type AccountProfile } from '@/lib/account';
+import { sendStudyReminder } from '@/lib/email';
+import { computeXp, levelProgress, splitAchievements, type AchievementContext, type AchievementIcon } from '@/lib/gamification';
 import { useLanguage } from '@/lib/language';
+
+const ACHIEVEMENT_ICON:Record<AchievementIcon,LucideIcon>={
+  seedling:Sparkles,book:BookOpen,trophy:Trophy,flame:Flame,target:Target,brain:Brain,medal:Medal,crown:Crown,
+};
 
 type DashboardProps = {
   meta: StudioMeta;
@@ -20,14 +29,39 @@ type DashboardProps = {
   progress: ProgressMap;
   srs: SrsMap;
   history: MockAttempt[];
+  mistakes: MistakeRecord[];
   onNavigate: (view: ViewName) => void;
   onLesson: (lesson: number, view?: ViewName) => void;
   coach?: ReactNode;
   journey?: ReactNode;
 };
 
+const SKILL_LABEL:Record<string,[string,string]>={
+  vocabulary:['শব্দভান্ডার','Vocabulary'],srs:['স্মার্ট রিভিউ','Smart Recall'],kana:['কানা','Kana'],
+  kanji:['কাঞ্জি','Kanji'],grammar:['গ্রামার','Grammar'],listening:['লিসেনিং','Listening'],
+  particles:['পার্টিকেল','Particles'],reading:['রিডিং','Reading'],spelling:['স্পেলিং','Spelling'],
+  conversation:['কথোপকথন','Conversation'],mock:['মক টেস্ট','Mock test'],game:['আর্কেড','Arcade'],
+};
+
+function dateKey(value:string|number|Date){const d=new Date(value);return Number.isFinite(d.getTime())?d.toISOString().slice(0,10):''}
+function computeStreak(activityDays:Set<string>){
+  if(!activityDays.size)return 0;
+  const today=new Date();
+  let cursor=dateKey(today);
+  if(!activityDays.has(cursor)){
+    const yesterday=new Date(today);yesterday.setDate(yesterday.getDate()-1);
+    cursor=dateKey(yesterday);
+    if(!activityDays.has(cursor))return 0;
+  }
+  let streak=0;
+  const day=new Date(cursor);
+  while(activityDays.has(dateKey(day))){streak+=1;day.setDate(day.getDate()-1)}
+  return streak;
+}
+
 type Module = { view:ViewName; title:string; bangla:string; icon:LucideIcon };
 const MODULES:Module[]=[
+  {view:'kana',title:'Kana Academy',bangla:'কানা একাডেমি',icon:GraduationCap},
   {view:'vocabulary',title:'Vocabulary',bangla:'শব্দভান্ডার',icon:BookOpen},
   {view:'srs',title:'Smart Recall',bangla:'রিভিউ',icon:Brain},
   {view:'listening',title:'Listening',bangla:'শোনা',icon:Headphones},
@@ -37,6 +71,7 @@ const MODULES:Module[]=[
   {view:'grammar',title:'Grammar',bangla:'গ্রামার',icon:Languages},
   {view:'kanji',title:'Kanji',bangla:'কাঞ্জি',icon:TreePine},
   {view:'mock',title:'JLPT Mock',bangla:'মক টেস্ট',icon:ClipboardCheck},
+  {view:'arcade',title:'Practice Arcade',bangla:'প্র্যাকটিস আর্কেড',icon:Gamepad2},
 ];
 const VIEW_LABEL:Partial<Record<ViewName,string>>={vocabulary:'Vocabulary',srs:'Smart Recall',listening:'Listening',conversation:'Conversation',spelling:'Active Output',reading:'Reading',grammar:'Grammar',kanji:'Kanji',kana:'Kana',arcade:'Arcade',mock:'Mock Test'};
 const basePath=process.env.NEXT_PUBLIC_BASE_PATH||'';
@@ -112,13 +147,16 @@ function RotatingSkill({language}:{language:'bn'|'en'}){
   </div>;
 }
 
-export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,onLesson,coach,journey}:DashboardProps){
+export default function Dashboard({meta,lesson,progress,srs,history,mistakes,onNavigate,onLesson,coach,journey}:DashboardProps){
   const {language,text}=useLanguage();
   const [activity,setActivity]=useState<StudyActivityState>(()=>({version:1,entries:{}}));
+  const [profile,setProfile]=useState<AccountProfile|null>(null);
+  const [reminderState,setReminderState]=useState<'idle'|'sending'|'sent'>('idle');
   const heroRef=useRef<HTMLElement>(null);
   const reduceMotion=useReducedMotion();
   const heroInView=useInView(heroRef,{amount:.05});
   useEffect(()=>{const refresh=()=>setActivity(readStudyActivity());refresh();window.addEventListener('nv:study-activity',refresh);window.addEventListener('storage',refresh);return()=>{window.removeEventListener('nv:study-activity',refresh);window.removeEventListener('storage',refresh)}},[]);
+  useEffect(()=>{let dead=false;(async()=>{try{const session=await ensureFreshSession();if(!session||dead)return;const row=await getAccountProfile(session);if(!dead)setProfile(row)}catch{}})();return()=>{dead=true}},[]);
 
   const current=meta.lessons.find(x=>x.lesson===lesson)??meta.lessons[0];
   const currentMastered=mastered(progress,current?.ids||[]);
@@ -129,6 +167,25 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
   const best=history.length?Math.max(...history.map(x=>Number(x.score||0))):0;
   const recent=latestActivity(activity,lesson);
   const lessonMap=useMemo(()=>meta.lessons.map(item=>{const count=mastered(progress,item.ids||[]);const pct=Math.round(count/Math.max(1,item.count||1)*100);return{lesson:item.lesson,title:item.title,pct,complete:pct>=80,active:item.lesson===lesson}}),[lesson,meta.lessons,progress]);
+  const completedLessons=useMemo(()=>lessonMap.filter(x=>x.complete).length,[lessonMap]);
+  const activityDays=useMemo(()=>{
+    const days=new Set<string>();
+    Object.values(activity.entries).forEach(row=>{if(row.lastAt)days.add(dateKey(row.lastAt))});
+    history.forEach(h=>{if(h.date)days.add(dateKey(h.date))});
+    return days;
+  },[activity,history]);
+  const streak=useMemo(()=>computeStreak(activityDays),[activityDays]);
+  const repairedMistakes=useMemo(()=>mistakes.filter(m=>m.repaired).length,[mistakes]);
+  const srsRepetitions=useMemo(()=>Object.values(srs).reduce((n,s)=>n+Number(s.repetitions||0),0),[srs]);
+  const arcadeCompletions=useMemo(()=>Object.values(activity.entries).filter(e=>e.view==='arcade').reduce((n,e)=>n+e.completions,0),[activity]);
+  const achievementCtx=useMemo<AchievementContext>(()=>({
+    totalMastered,vocabularyTotal:meta.vocabulary_count,completedLessons,totalLessons:meta.lessons.length,
+    streak,bestMockScore:best,mockAttempts:history.length,srsRepetitions,repairedMistakes,
+  }),[totalMastered,meta.vocabulary_count,completedLessons,meta.lessons.length,streak,best,history.length,srsRepetitions,repairedMistakes]);
+  const xp=useMemo(()=>computeXp({...achievementCtx,totalMastered,completedLessons,history,srs,repairedMistakes,arcadeCompletions}),[achievementCtx,totalMastered,completedLessons,history,srs,repairedMistakes,arcadeCompletions]);
+  const level=useMemo(()=>levelProgress(xp),[xp]);
+  const achievements=useMemo(()=>splitAchievements(achievementCtx),[achievementCtx]);
+  const weakAreas=useMemo(()=>weakSkills(mistakes,3),[mistakes]);
   const dialStyle={'--home-motion-progress':`${Math.max(0,Math.min(100,overall))*3.6}deg`} as CSSProperties;
   const greeting=useMemo(()=>timeGreeting(new Date().getHours()),[]);
   const scrollToCoach=()=>{
@@ -230,6 +287,74 @@ export default function Dashboard({meta,lesson,progress,srs,history,onNavigate,o
         </div>
         {recent&&<small className="home-last-activity">{text('শেষ activity','Last activity')}: {VIEW_LABEL[recent.view]||recent.view} · {relativeTime(recent.lastAt,language)}</small>}
       </aside>
+    </motion.section>
+
+    <motion.section
+      className="student-dashboard-panel"
+      aria-labelledby="student-dashboard-title"
+      initial={reduceMotion?false:{opacity:0,y:18}}
+      whileInView={{opacity:1,y:0}}
+      viewport={{once:true,amount:.15}}
+      transition={{duration:.5,ease:[.2,.8,.2,1]}}
+    >
+      <header className="student-dashboard-head">
+        <div className="student-profile-row">
+          <span className="student-avatar" aria-hidden="true">{profile?.display_name?.trim()?.[0]?.toUpperCase()||<UserRound size={18}/>}</span>
+          <div>
+            <b>{profile?.display_name||text('শিক্ষার্থী','Learner')}</b>
+            {profile?.email&&<small>{profile.email}</small>}
+            {profile?.joined_at&&<small className="student-since">{text('যোগদান','Member since')} {new Date(profile.joined_at).toLocaleDateString(language==='bn'?'bn-BD':'en-US',{year:'numeric',month:'short'})}</small>}
+          </div>
+          {profile&&<button
+            type="button"
+            className="student-reminder-btn"
+            disabled={reminderState!=='idle'}
+            onClick={async()=>{setReminderState('sending');const ok=await sendStudyReminder();setReminderState(ok?'sent':'idle')}}
+          ><Mail size={14}/>{reminderState==='sent'?text('পাঠানো হয়েছে','Sent'):text('Study reminder পাঠান','Email me a reminder')}</button>}
+        </div>
+        <h2 id="student-dashboard-title" className={language==='bn'?'font-bn':''}>{text('আপনার শেখার ড্যাশবোর্ড','Your learning dashboard')}</h2>
+      </header>
+
+      <div className="level-banner">
+        <span className="level-badge"><Crown size={20}/><b>{level.level.level}</b></span>
+        <div className="level-copy">
+          <b className={language==='bn'?'font-bn':''}>{language==='bn'?level.level.bn:level.level.en}<small className="font-jp"> · {level.level.jp}</small></b>
+          <div className="level-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={level.pct}><i style={{width:`${level.pct}%`}}/></div>
+          <span>{level.next?text(`পরবর্তী level-এ আর ${level.xpForNext} XP দরকার`,`${level.xpForNext} XP to next level`):text('সর্বোচ্চ level অর্জিত!','Max level reached!')}</span>
+        </div>
+      </div>
+
+      <div className="student-stat-grid">
+        <article className="metric-card"><span className="metric-icon"><Target size={18}/></span><span className="metric-label">{text('JLPT N5 অগ্রগতি','JLPT N5 progress')}</span><b className="metric-value">{overall}%</b></article>
+        <article className="metric-card"><span className="metric-icon"><Layers size={18}/></span><span className="metric-label">{text('সম্পন্ন lesson','Completed lessons')}</span><b className="metric-value">{completedLessons}/{meta.lessons.length}</b></article>
+        <article className="metric-card"><span className="metric-icon"><Trophy size={18}/></span><span className="metric-label">XP</span><b className="metric-value">{xp.toLocaleString()}</b></article>
+        <article className="metric-card"><span className="metric-icon"><Flame size={18}/></span><span className="metric-label">{text('স্ট্রিক','Streak')}</span><b className="metric-value">{streak} {text('দিন','d')}</b></article>
+      </div>
+
+      <div className="student-weak-areas">
+        <span className="section-kicker">{text('দুর্বল ক্ষেত্র','Weak areas')}</span>
+        {weakAreas.length?<div className="weak-area-chips">{weakAreas.map(w=><button key={w.skill} type="button" onClick={()=>onNavigate(w.skill as ViewName)}>
+          <b className={language==='bn'?'font-bn':''}>{language==='bn'?(SKILL_LABEL[w.skill]?.[0]||w.skill):(SKILL_LABEL[w.skill]?.[1]||w.skill)}</b>
+          <small>{w.count} {text('টি ভুল','mistakes')}</small>
+        </button>)}</div>:
+        <p className={language==='bn'?'font-bn':''}>{text('এখনো কোনো দুর্বল ক্ষেত্র নেই—দারুণ চলছে!','No weak areas yet—keep it up!')}</p>}
+      </div>
+
+      <div className="student-achievements">
+        <span className="section-kicker">{text('অ্যাচিভমেন্ট','Achievements')} <b>{achievements.unlocked.length}/{achievements.unlocked.length+achievements.locked.length}</b></span>
+        <div className="achievement-grid">
+          {achievements.unlocked.map(a=>{const Icon=ACHIEVEMENT_ICON[a.icon];return <article key={a.id} className="achievement-badge unlocked" title={language==='bn'?a.descBn:a.descEn}>
+            <span className="achievement-icon"><Icon size={18}/></span>
+            <b className={language==='bn'?'font-bn':''}>{language==='bn'?a.bn:a.en}</b>
+            <small>+{a.xpReward} XP</small>
+          </article>})}
+          {achievements.locked.map(a=><article key={a.id} className="achievement-badge locked" title={language==='bn'?a.descBn:a.descEn}>
+            <span className="achievement-icon"><Lock size={16}/></span>
+            <b className={language==='bn'?'font-bn':''}>{language==='bn'?a.bn:a.en}</b>
+            <small>{language==='bn'?a.descBn:a.descEn}</small>
+          </article>)}
+        </div>
+      </div>
     </motion.section>
 
     {coach&&<motion.div

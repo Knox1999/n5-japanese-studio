@@ -7,11 +7,11 @@ import { track } from '@/lib/analytics';
 import { useLanguage } from '@/lib/language';
 
 type ScriptMode='hiragana'|'katakana';
-type KanaItem={h:string;r:string;group:string};
+export type KanaItem={h:string;r:string;group:string};
 type Attempt={itemId:string;userAnswer:string;correctAnswer:string;correct:boolean;questionType:string};
 type Props={onAttempt?:(attempt:Attempt)=>void};
 
-const BASE:KanaItem[]=[
+export const KANA_BASE:KanaItem[]=[
   ['あ','a','Vowels'],['い','i','Vowels'],['う','u','Vowels'],['え','e','Vowels'],['お','o','Vowels'],
   ['か','ka','K row'],['き','ki','K row'],['く','ku','K row'],['け','ke','K row'],['こ','ko','K row'],
   ['さ','sa','S row'],['し','shi','S row'],['す','su','S row'],['せ','se','S row'],['そ','so','S row'],
@@ -42,7 +42,7 @@ const BASE:KanaItem[]=[
 ].map(([h,r,group])=>({h,r,group}));
 
 const GROUPS=['Vowels','K row','S row','T row','N row','H row','M row','Y row','R row','W / N','Dakuten','Handakuten','Combinations','Small っ'];
-const hiraToKata=(s:string)=>s.replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60));
+export const hiraToKata=(s:string)=>s.replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60));
 const shuffle=<T,>(rows:T[])=>{const x=[...rows];for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}return x};
 
 function TracePad({character,clearLabel}:{character:string;clearLabel:string}){
@@ -65,7 +65,7 @@ export default function KanaAcademy({onAttempt}:Props){
   const [done,setDone]=useState<Record<string,boolean>>({});
 
   useEffect(()=>{try{setDone(JSON.parse(localStorage.getItem('nihongo_kana_academy_v1')||'{}'))}catch{}},[]);
-  const items=useMemo(()=>BASE.map(x=>({...x,char:script==='hiragana'?x.h:hiraToKata(x.h)})),[script]);
+  const items=useMemo(()=>KANA_BASE.map(x=>({...x,char:script==='hiragana'?x.h:hiraToKata(x.h)})),[script]);
   const groupItems=items.filter(x=>x.group===group);
   const card=groupItems[Math.min(selected,Math.max(0,groupItems.length-1))]||items[0];
   const quiz=useMemo(()=>{const rows=shuffle(items);return rows[quizSeed%Math.max(1,rows.length)]||items[0]},[items,quizSeed]);

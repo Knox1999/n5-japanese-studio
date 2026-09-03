@@ -264,6 +264,7 @@ export default function StudioApp(){
        progress={progress}
        srs={srs}
        history={historyRows}
+       mistakes={learning.mistakes}
        onNavigate={changeView}
        onLesson={changeLesson}
        coach={<DailyCoachPanel plan={learning.studyPlan} recommendations={recommendations} unresolvedMistakes={repairCount} onMinutes={setDailyMinutes} onNavigate={changeView}/>}

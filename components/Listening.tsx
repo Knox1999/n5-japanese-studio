@@ -6,7 +6,7 @@ import {
   Mic2, Play, Repeat2, SkipBack, SkipForward, Square, UserRound, Waves
 } from 'lucide-react';
 import type { LessonPayload, VocabItem } from '@/lib/types';
-import { playText, stopAudio, type AudioBoundary, type AudioVoiceRole, type PlaybackResult } from '@/lib/audio';
+import { playText, prefetchAudio, stopAudio, type AudioBoundary, type AudioVoiceRole, type PlaybackResult } from '@/lib/audio';
 import { track } from '@/lib/analytics';
 import { useLanguage } from '@/lib/language';
 
@@ -42,15 +42,26 @@ function buildListeningLines(data:LessonPayload):ListeningLine[]{
   return rows.map(x=>({...x,bn:x.bn||'এই line-এর আলাদা বাংলা অর্থ lesson data-তে নেই। Context দেখে practice করুন।'}));
 }
 
+// Segmentation runs on every playback progress/boundary tick (up to ~20x/sec while
+// audio plays), so results are cached per exact line text to avoid re-running
+// Intl.Segmenter or the regex fallback on the hot path.
+const segmentCache=new Map<string,SegmentRange[]>();
 function segmentJapanese(text:string):SegmentRange[]{
   if(!text)return[];
+  const cached=segmentCache.get(text);
+  if(cached)return cached;
+  let result:SegmentRange[]|null=null;
   try{
     const Segmenter=(Intl as typeof Intl & {Segmenter?:new(locales?:string|string[],options?:{granularity?:string})=>{segment:(input:string)=>Iterable<{segment:string;index:number;isWordLike?:boolean}>}}).Segmenter;
-    if(Segmenter){const rows=[...new Segmenter('ja',{granularity:'word'}).segment(text)];if(rows.length)return rows.map((row,index)=>({text:row.segment,start:row.index,end:index+1<rows.length?rows[index+1].index:text.length,wordLike:row.isWordLike!==false&&!/^\s+$/.test(row.segment)&&!(/^[、。！？,.!?]$/.test(row.segment))}))}
+    if(Segmenter){const rows=[...new Segmenter('ja',{granularity:'word'}).segment(text)];if(rows.length)result=rows.map((row,index)=>({text:row.segment,start:row.index,end:index+1<rows.length?rows[index+1].index:text.length,wordLike:row.isWordLike!==false&&!/^\s+$/.test(row.segment)&&!(/^[、。！？,.!?]$/.test(row.segment))}))}
   }catch{}
-  const ranges:SegmentRange[]=[];const regex=/[一-龯々〆ヵヶ]+|[ぁ-ゖー]+|[ァ-ヺー]+|[A-Za-z0-9]+|\s+|[^\s]/g;let match:RegExpExecArray|null;
-  while((match=regex.exec(text)))ranges.push({text:match[0],start:match.index,end:match.index+match[0].length,wordLike:!/^\s+$/.test(match[0])&&!/^[、。！？,.!?]$/.test(match[0])});
-  return ranges.length?ranges:[{text,start:0,end:text.length,wordLike:true}];
+  if(!result){
+    const ranges:SegmentRange[]=[];const regex=/[一-龯々〆ヵヶ]+|[ぁ-ゖー]+|[ァ-ヺー]+|[A-Za-z0-9]+|\s+|[^\s]/g;let match:RegExpExecArray|null;
+    while((match=regex.exec(text)))ranges.push({text:match[0],start:match.index,end:match.index+match[0].length,wordLike:!/^\s+$/.test(match[0])&&!/^[、。！？,.!?]$/.test(match[0])});
+    result=ranges.length?ranges:[{text,start:0,end:text.length,wordLike:true}];
+  }
+  segmentCache.set(text,result);
+  return result;
 }
 
 function wordRanges(text:string){return segmentJapanese(text).filter(x=>x.wordLike)}
@@ -118,6 +129,8 @@ export default function Listening({data}:{data:LessonPayload}){
   const speakLine=async(line:ListeningLine,index:number,token:number,sessionMode:string):Promise<PlaybackResult>=>{
     lastBoundaryAt.current=0;highlightWordIndex.current=0;highestProgress.current=0;
     setActiveRange(rangeFromProgress(line.jp,0,0).range);
+    const next=lines[index+1];
+    if(next)void prefetchAudio(next.jp,next.voiceRole);
     return playText(line.jp,rate,'listening',{
       onBoundary:(boundary:AudioBoundary)=>{
         if(token!==run.current)return;
@@ -141,8 +154,14 @@ export default function Listening({data}:{data:LessonPayload}){
 
   const playSequence=async()=>{stopAudio();run.current+=1;const token=run.current;setMode('session');setPlaying(true);setProgress(0);resetSync();const sequence=filter==='All'?lines.map((_,i)=>i):visible.map(x=>x.index);let completedRun=true;for(const index of sequence){if(token!==run.current){completedRun=false;break}setActive(index);setProgress(0);resetSync();const result=await speakLine(lines[index],index,token,'full_shadowing');if(result!=='ended'){completedRun=false;break}if(token===run.current)setCompleted(x=>({...x,[index]:true}));await wait(900)}if(token===run.current){setPlaying(false);setProgress(completedRun?1:0);resetSync();setMode('listen')}track(completedRun?'shadowing_complete':'shadowing_cancelled',{lesson_number:data.lesson,segment_count:sequence.length})};
 
-  const selectOnly=(index:number)=>{stopAudio();run.current++;setPlaying(false);setProgress(0);resetSync();setMode('listen');setActive(Math.max(0,Math.min(lines.length-1,index)))};
+  const selectOnly=(index:number)=>{stopAudio();run.current++;setPlaying(false);setProgress(0);resetSync();setMode('listen');const safe=Math.max(0,Math.min(lines.length-1,index));setActive(safe);const target=lines[safe];if(target)void prefetchAudio(target.jp,target.voiceRole)};
   useEffect(()=>()=>{run.current+=1;stopAudio()},[]);
+  // Warm the HTTP cache for the first couple of clips so the very first "Play"
+  // has near-zero loading delay instead of paying the initial fetch cost.
+  useEffect(()=>{
+    if(lines[0])void prefetchAudio(lines[0].jp,lines[0].voiceRole);
+    if(lines[1])void prefetchAudio(lines[1].jp,lines[1].voiceRole);
+  },[lines]);
   const persona=currentLine?.voiceRole==='male'?'A · MALE':currentLine?.voiceRole==='female'?'B · FEMALE':'NARRATOR';
 
   return <div className="space-y-5 pb-8 shadowing-view-v57 listening-v82 listening-v89">

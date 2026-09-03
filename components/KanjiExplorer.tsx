@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, ChevronRight, Loader2, Play, Search, Sparkles, TreePine } from 'lucide-react';
+import { Award, ChevronDown, ChevronRight, Lightbulb, Loader2, Play, Search, Sparkles, TreePine, Volume2 } from 'lucide-react';
 import type { KLCMemory, KLCNodeRaw, KLCTree, LessonPayload } from '@/lib/types';
 import { BASE, loadKLC } from '@/lib/data';
-import { trackError } from '@/lib/analytics';
+import { playText } from '@/lib/audio';
+import { track, trackError } from '@/lib/analytics';
 import { useLanguage } from '@/lib/language';
 
 type Edge=[number,number,string,string,string,number|null,string];
@@ -87,9 +88,70 @@ function StrokeOrder({kanji}:{kanji:string}){
 
 function RecursiveNode({no,depth,maxDepth,byNo,byParent,onOpen,seen=new Set<number>()}:{no:number;depth:number;maxDepth:number;byNo:Map<number,KLCNodeRaw>;byParent:Map<number,Edge[]>;onOpen:(n:number)=>void;seen?:Set<number>}){const raw=byNo.get(no);if(!raw)return null;const n=nodeObj(raw);const cyc=seen.has(no);const next=new Set(seen);next.add(no);const edges=(byParent.get(no)||[]).slice().sort((a,b)=>a[1]-b[1]);return <div className={`recursive-node depth-${Math.min(depth,4)}`}><button className="tree-root-card" onClick={()=>onOpen(no)}><span className="font-jp">{n.kanji}</span><div><b>KLC {n.no}</b><small>{n.meaning}</small></div></button>{!cyc&&depth<maxDepth&&edges.length>0&&<div className="tree-children">{edges.map((e,i)=>{const child=e[5];const recurse=e[4]==='KLC'&&child&&e[6]!=='LATER_KLC_MNEMONIC_REF';return <div className={`tree-child ${e[6]==='LATER_KLC_MNEMONIC_REF'?'later-ref':''}`} key={`${e[0]}-${e[1]}-${i}`}><span className="tree-rail"/><button className={`tree-leaf-card ${child?'clickable':''}`} onClick={()=>child&&onOpen(child)}><span className="font-jp">{e[2]}</span><div><b>{e[3]||'component'}</b><small>{typeLabel(e[4])} · {relationLabel(e[6])}</small></div></button>{recurse&&<RecursiveNode no={child as number} depth={depth+1} maxDepth={maxDepth} byNo={byNo} byParent={byParent} onOpen={onOpen} seen={next}/>}</div>})}</div>}</div>}
 
+function shuffle<T>(input:T[]){
+  const arr=[...input];
+  for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}
+  return arr;
+}
+
+type KanjiQuizQ={id:string;kanji:string;kind:'meaning'|'reading';prompt:string;correct:string;options:string[]};
+function buildKanjiQuiz(lessonNodes:KLCNodeRaw[],allNodes:KLCNodeRaw[]):KanjiQuizQ[]{
+  const meaningPool=Array.from(new Set(allNodes.map(n=>n[2]).filter(Boolean)));
+  const readingPool=Array.from(new Set(allNodes.flatMap(n=>[n[3],n[4]]).filter(Boolean)));
+  const questions:KanjiQuizQ[]=[];
+  lessonNodes.forEach(n=>{
+    const meaning=n[2],reading=n[3]||n[4];
+    if(meaning){
+      const distractors=shuffle(meaningPool.filter(m=>m&&m!==meaning)).slice(0,3);
+      if(distractors.length===3)questions.push({id:`${n[0]}-meaning`,kanji:n[1],kind:'meaning',prompt:'What does this kanji mean?',correct:meaning,options:shuffle([meaning,...distractors])});
+    }
+    if(reading){
+      const distractors=shuffle(readingPool.filter(r=>r&&r!==reading)).slice(0,3);
+      if(distractors.length===3)questions.push({id:`${n[0]}-reading`,kanji:n[1],kind:'reading',prompt:'Which reading is correct?',correct:reading,options:shuffle([reading,...distractors])});
+    }
+  });
+  return shuffle(questions).slice(0,16);
+}
+
+function KanjiPractice({lessonNodes,allNodes,lessonNumber}:{lessonNodes:KLCNodeRaw[];allNodes:KLCNodeRaw[];lessonNumber:number}){
+  const {text}=useLanguage();
+  const questions=useMemo(()=>buildKanjiQuiz(lessonNodes,allNodes),[lessonNodes,allNodes]);
+  const [answers,setAnswers]=useState<Record<string,string>>({});
+  useEffect(()=>{setAnswers({})},[questions]);
+
+  if(!questions.length)return <div className="atomic-note">{text('এই lesson-এর Kanji দিয়ে quiz তৈরির জন্য পর্যাপ্ত ডেটা নেই।','Not enough kanji data in this lesson to build a quiz.')}</div>;
+
+  const answeredCount=questions.filter(q=>answers[q.id]).length;
+  const correctCount=questions.filter(q=>answers[q.id]===q.correct).length;
+  const pick=(q:KanjiQuizQ,option:string)=>{
+    if(answers[q.id])return;
+    setAnswers(prev=>({...prev,[q.id]:option}));
+    track('kanji_quiz_answer',{lesson_number:lessonNumber,kanji:q.kanji,kind:q.kind,correct:option===q.correct});
+  };
+
+  return <div className="kanji-quiz">
+    <div className="kanji-quiz-head">
+      <span><Award size={14}/>{text('অর্থ ও reading চিনে নিন','Recognize meaning and reading')}</span>
+      {answeredCount>0&&<b>{correctCount}/{answeredCount}</b>}
+      {answeredCount===questions.length&&<button type="button" onClick={()=>setAnswers({})}>{text('আবার চেষ্টা করুন','Retry')}</button>}
+    </div>
+    <div className="kanji-quiz-grid">
+      {questions.map(q=>{const picked=answers[q.id];return <div className="mock-question kanji-quiz-question" key={q.id}>
+        <div className="kanji-quiz-glyph font-jp">{q.kanji}</div>
+        <h2>{text(q.kind==='meaning'?'এই Kanji-র অর্থ কী?':'সঠিক reading কোনটি?',q.prompt)}</h2>
+        <div className="mock-options">
+          {q.options.map(opt=><button type="button" key={opt} disabled={!!picked}
+            className={`${picked===opt?'selected':''} ${picked?(opt===q.correct?'correct':picked===opt?'wrong':''):''} ${q.kind==='reading'?'font-jp':'font-bn'}`}
+            onClick={()=>pick(q,opt)}>{opt}</button>)}
+        </div>
+      </div>})}
+    </div>
+  </div>;
+}
+
 export default function KanjiExplorer({data}:{data:LessonPayload}){
  const {language,text}=useLanguage();
- const [tree,setTree]=useState<KLCTree|null>(null),[memory,setMemory]=useState<KLCMemory>({}),[query,setQuery]=useState(''),[selected,setSelected]=useState(1),[limit,setLimit]=useState(96),[depth,setDepth]=useState(3),[browserOpen,setBrowserOpen]=useState(false);
+ const [tree,setTree]=useState<KLCTree|null>(null),[memory,setMemory]=useState<KLCMemory>({}),[query,setQuery]=useState(''),[selected,setSelected]=useState(1),[limit,setLimit]=useState(96),[depth,setDepth]=useState(3),[browserOpen,setBrowserOpen]=useState(false),[practiceOpen,setPracticeOpen]=useState(false);
  const dragState=useRef({down:false,moved:false,startX:0,startScroll:0});
  useEffect(()=>{let dead=false;loadKLC().then(([t,m])=>{if(dead)return;setTree(t);setMemory(m);const chars=[...new Set(data.vocabulary.flatMap(v=>(v.kanji||'').match(/[\u3400-\u9fff]/g)||[]))];const first=t.nodes.find(n=>chars.includes(n[1]))||t.nodes[0];setSelected(first?.[0]||1)}).catch(e=>trackError('resource',e));return()=>{dead=true}},[data.lesson,data.vocabulary]);
  const nodes=useMemo(()=>tree?.nodes||[],[tree]);const byNo=useMemo(()=>new Map<number,KLCNodeRaw>(nodes.map(n=>[n[0],n])),[nodes]);const byChar=useMemo(()=>new Map<string,KLCNodeRaw>(nodes.map(n=>[n[1],n])),[nodes]);const byParent=useMemo(()=>{const m=new Map<number,Edge[]>();for(const e of (tree?.edges||[]) as Edge[]){if(!m.has(e[0]))m.set(e[0],[]);m.get(e[0])!.push(e)}return m},[tree]);const reverse=useMemo(()=>{const m=new Map<number,Set<number>>();for(const e of (tree?.edges||[]) as Edge[]){if(e[5]){if(!m.has(e[5]))m.set(e[5],new Set());m.get(e[5])!.add(e[0])}}return m},[tree]);
@@ -126,9 +188,15 @@ export default function KanjiExplorer({data}:{data:LessonPayload}){
    e.preventDefault();
    el.scrollLeft+=e.deltaY;
  }} onMouseDown={startDrag} onMouseMove={duringDrag} onMouseUp={endDrag} onMouseLeave={endDrag} onClickCapture={clickAfterDrag}>{lessonNodes.map(n=><button key={n[0]} className={n[0]===selected?'active':''} onClick={()=>open(n[0])}><span>{n[1]}</span><small>{n[2]}</small></button>)}{missing.map(ch=><button key={ch} disabled><span>{ch}</span><small>Not in KLC 2300</small></button>)}</div></section>
+ <button className={`premium-btn ${practiceOpen?'premium-btn-primary':'premium-btn-secondary'} kanji-practice-toggle`} onClick={()=>{setPracticeOpen(v=>!v);track('kanji_practice_mode',{lesson_number:data.lesson,enabled:!practiceOpen})}}><Lightbulb size={16}/> {practiceOpen?text('প্র্যাকটিস বন্ধ করুন','Close practice'):text(`এই lesson-এর Kanji প্র্যাকটিস করুন`,'Practice this lesson’s kanji')}</button>
+ {practiceOpen&&<section className="premium-panel kanji-practice-panel"><KanjiPractice lessonNodes={lessonNodes} allNodes={nodes} lessonNumber={data.lesson}/></section>}
  <button className="kanji-browser-toggle premium-btn premium-btn-secondary" onClick={()=>setBrowserOpen(v=>!v)}>{browserOpen?<ChevronDown/>:<ChevronRight/>} {browserOpen?text('Advanced explorer বন্ধ করুন','Close advanced explorer'):text('Advanced 2,300-Kanji explorer খুলুন','Open advanced 2,300-kanji explorer')}</button>
  <div className="kanji-layout"><AnimatePresence initial={false}>{browserOpen&&<motion.aside initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-8}} className="kanji-browser"><label className="search-field"><Search size={17}/><input value={query} onChange={e=>{setQuery(e.target.value);setLimit(96)}} placeholder="Kanji / KLC no / meaning / reading…" aria-label={text('সব Kanji-তে খুঁজুন','Search all kanji')}/></label><div className="kanji-result-grid">{results.map(n=><button key={n[0]} className={n[0]===selected?'active':''} onClick={()=>open(n[0])} aria-label={`KLC ${n[0]} · ${n[1]} · ${n[2]}`}><span>{n[1]}</span><small>#{n[0]}</small></button>)}</div>{limit<nodes.length&&<button className="premium-btn premium-btn-secondary w-full" onClick={()=>setLimit(x=>x+96)}>{text('আরও দেখুন','Load more')}</button>}</motion.aside>}</AnimatePresence>
- <main className="kanji-detail"><motion.article key={node.no} initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="kanji-identity"><div className="kanji-glyph">{node.kanji}</div><div><span className="section-kicker">KANJI STUDY CARD · KLC #{node.no}</span><h2>{node.meaning}</h2>{mem[0]&&<p className="font-bn text-lg font-bold text-sakura">{mem[0]}</p>}<div className="reading-pills"><span>音 {node.onyomi||'—'}</span><span>訓 {node.kunyomi||'—'}</span><span>Reviewed structure</span></div></div></motion.article>
+ <main className="kanji-detail"><motion.article key={node.no} initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="kanji-identity"><div className="kanji-glyph">{node.kanji}</div><div><span className="section-kicker">KANJI STUDY CARD · KLC #{node.no}</span><h2>{node.meaning}</h2>{mem[0]&&<p className="font-bn text-lg font-bold text-sakura">{mem[0]}</p>}<div className="reading-pills">
+   <span>音 {node.onyomi||'—'}{node.onyomi&&<button type="button" aria-label={text('অনয়োমি শুনুন','Play onyomi')} onClick={()=>{playText(node.onyomi,1,'kanji_reading',{},{lesson_number:data.lesson,kanji:node.kanji,reading_type:'onyomi'});track('kanji_reading_play',{lesson_number:data.lesson,kanji:node.kanji,reading_type:'onyomi'})}}><Volume2 size={12}/></button>}</span>
+   <span>訓 {node.kunyomi||'—'}{node.kunyomi&&<button type="button" aria-label={text('কুন্যোমি শুনুন','Play kunyomi')} onClick={()=>{playText(node.kunyomi,1,'kanji_reading',{},{lesson_number:data.lesson,kanji:node.kanji,reading_type:'kunyomi'});track('kanji_reading_play',{lesson_number:data.lesson,kanji:node.kanji,reading_type:'kunyomi'})}}><Volume2 size={12}/></button>}</span>
+   <span>Reviewed structure</span>
+ </div></div></motion.article>
  <section className="premium-panel"><div className="section-kicker">Exact one-level construction</div><h2 className="section-title">{node.oneLevel||node.kanji}</h2>{edges.length?<div className="component-card-grid">{edges.map((e,i)=><button key={`${e[1]}-${i}`} onClick={()=>e[5]&&open(e[5])} className={e[6]==='LATER_KLC_MNEMONIC_REF'?'later-ref':''}><span className="position">{e[1]}</span><strong className="font-jp">{e[2]}</strong><div><b>{e[3]}</b><small>{typeLabel(e[4])}</small><em>{relationLabel(e[6])}</em></div></button>)}</div>:<div className="atomic-note">{text('Atomic / root record — immediate component edge নেই।','Atomic / root record — no immediate component edge.')}</div>}{mem[1]&&<div className="memory-story font-bn"><b>{text('মনে রাখার ১-লাইন গল্প','One-line memory story')}</b><p>{mem[1]}</p><small>{text('Visual memory aid — true etymology নয়','Visual memory aid — not historical etymology')}</small></div>}</section>
  <section className="premium-panel recursive-tree-panel"><div className="tree-panel-head"><div><div className="section-kicker">Recursive KLC Construction</div><h2 className="section-title">True expandable component tree</h2><p className="section-subtitle">{text('Explicit KLC→KLC links recursively expand; RAD/primitive components leaf node হিসেবে থাকে।','Explicit KLC→KLC links expand recursively; RAD/primitive components remain leaf nodes.')}</p></div><label>Depth<select value={depth} onChange={e=>setDepth(Number(e.target.value))}>{[1,2,3,4].map(x=><option key={x}>{x}</option>)}</select></label></div><div className="recursive-tree-scroll"><RecursiveNode no={selected} depth={0} maxDepth={depth} byNo={byNo} byParent={byParent} onOpen={open}/></div></section>
  <div className="klc-info-grid-v42"><section className="premium-panel"><div className="section-kicker">SMALLEST VISUAL PARTS</div><div className="klc-token-row-v42">{splitTokens(node.leaf).map(x=><span key={x}>{x}</span>)}</div><div className="section-kicker mt-4">RADICAL / PRIMITIVE PARTS</div><div className="klc-token-row-v42 rad">{splitTokens(node.leafRad).map(x=><span key={x}>{x}</span>)}</div></section><section className="premium-panel"><div className="section-kicker">RELATED KANJI</div><h2 className="section-title">{text('এই অংশ দিয়ে তৈরি Kanji','Kanji built with this component')}</h2><div className="builds-grid">{builds.length?builds.map(n=><button key={n[0]} onClick={()=>open(n[0])}><span>{n[1]}</span><small>Card {n[0]}</small><b>{n[2]}</b></button>):<p className="section-subtitle">{text('এই অংশের কোনো পরবর্তী Kanji link নেই।','No later kanji links use this component.')}</p>}</div></section></div>

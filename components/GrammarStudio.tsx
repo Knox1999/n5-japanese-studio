@@ -26,6 +26,59 @@ type GrammarLesson={
 };
 type GrammarVisualPayload={version:string;title:string;description:string;lessons:Record<string,GrammarLesson>};
 
+function shuffle<T>(input:T[]){
+  const arr=[...input];
+  for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}
+  return arr;
+}
+
+type QuizQuestion={id:string;jp:string;correct:string;options:string[]};
+function buildQuizQuestions(rule:Rule,allRules:Rule[]):QuizQuestion[]{
+  const pool=allRules.flatMap(r=>r.examples.map(e=>e.bn)).filter(Boolean);
+  return rule.examples.slice(0,3).map((e,i)=>{
+    const distractors=shuffle(Array.from(new Set(pool.filter(bn=>bn&&bn!==e.bn)))).slice(0,3);
+    return {id:`${rule.id}-q${i}`,jp:e.jp,correct:e.bn,options:shuffle([e.bn,...distractors])};
+  });
+}
+
+function RuleQuiz({rule,allRules,lessonNumber,onProgress}:{rule:Rule;allRules:Rule[];lessonNumber:number;onProgress:(ruleId:string,correct:number,total:number)=>void}){
+  const {text}=useLanguage();
+  const questions=useMemo(()=>buildQuizQuestions(rule,allRules),[rule,allRules]);
+  const [answers,setAnswers]=useState<Record<string,string>>({});
+
+  useEffect(()=>{setAnswers({})},[questions]);
+  useEffect(()=>{
+    const answered=questions.filter(q=>answers[q.id]);
+    onProgress(rule.id,answered.filter(q=>answers[q.id]===q.correct).length,answered.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[answers,questions]);
+
+  if(!questions.length)return null;
+  const answeredCount=questions.filter(q=>answers[q.id]).length;
+
+  const pick=(q:QuizQuestion,option:string)=>{
+    if(answers[q.id])return;
+    setAnswers(prev=>({...prev,[q.id]:option}));
+    track('grammar_quiz_answer',{lesson_number:lessonNumber,rule_id:rule.id,question_id:q.id,correct:option===q.correct});
+  };
+
+  return <div className="grammar-quiz">
+    <div className="grammar-quiz-head">
+      <span><Lightbulb size={14}/>{text('বাক্যটির সঠিক অর্থ বাছাই করুন','Pick the matching meaning')}</span>
+      {answeredCount>0&&<b>{questions.filter(q=>answers[q.id]===q.correct).length}/{answeredCount}</b>}
+      {answeredCount===questions.length&&<button type="button" onClick={()=>setAnswers({})}>{text('আবার চেষ্টা করুন','Retry')}</button>}
+    </div>
+    {questions.map(q=>{const picked=answers[q.id];return <div className="mock-question grammar-quiz-question" key={q.id}>
+      <h2 className="font-jp" lang="ja">{q.jp}</h2>
+      <div className="mock-options">
+        {q.options.map(opt=><button type="button" key={opt} disabled={!!picked}
+          className={`${picked===opt?'selected':''} ${picked?(opt===q.correct?'correct':picked===opt?'wrong':''):''}`}
+          onClick={()=>pick(q,opt)}><b className="font-bn">{opt}</b></button>)}
+      </div>
+    </div>})}
+  </div>;
+}
+
 function tokenTone(text:string){
   if(/^(は|が|を|に|で|へ|と|も|の|から|まで|より|て|で|か|な|とき|ことが)$/.test(text))return 'particle';
   if(/です|ます|ない|た|て|る|なります|できます|ください|いいです|いけません|おもいます|いいます/.test(text))return 'form';
@@ -69,6 +122,10 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
   const [error,setError]=useState('');
   const [hideBn,setHideBn]=useState(false);
   const [practice,setPractice]=useState(false);
+  const [quizStats,setQuizStats]=useState<Record<string,{correct:number;total:number}>>({});
+  const onQuizProgress=(ruleId:string,correct:number,total:number)=>setQuizStats(prev=>prev[ruleId]?.correct===correct&&prev[ruleId]?.total===total?prev:{...prev,[ruleId]:{correct,total}});
+  const quizTotals=useMemo(()=>Object.values(quizStats).reduce((acc,s)=>({correct:acc.correct+s.correct,total:acc.total+s.total}),{correct:0,total:0}),[quizStats]);
+  useEffect(()=>{setQuizStats({})},[data.lesson]);
 
   useEffect(()=>{
     let dead=false;
@@ -117,8 +174,11 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
     </section>
 
     <section className="grammar-command-bar">
-      <div className="grammar-command-stat"><NotebookTabs/><span>RULES</span><b>{ruleStats.rules}</b></div>
-      <div className="grammar-command-stat"><BookOpenCheck/><span>EXAMPLES</span><b>{ruleStats.examples}</b></div>
+      <div className="grammar-command-stats">
+        <div className="grammar-command-stat"><NotebookTabs/><span>RULES</span><b>{ruleStats.rules}</b></div>
+        <div className="grammar-command-stat"><BookOpenCheck/><span>EXAMPLES</span><b>{ruleStats.examples}</b></div>
+        {practice&&quizTotals.total>0&&<div className="grammar-command-stat"><CheckCircle2/><span>{text('কুইজ স্কোর','QUIZ SCORE')}</span><b>{quizTotals.correct}/{quizTotals.total}</b></div>}
+      </div>
       <div className="grammar-command-actions">
         <button className={hideBn?'active':''} onClick={()=>{setHideBn(x=>!x);track('grammar_display_toggle',{lesson_number:data.lesson,toggle:'bangla',hidden:!hideBn})}}>
           {hideBn?<Eye/>:<EyeOff/>}{hideBn?text('বাংলা দেখান','Show Bangla'):text('বাংলা লুকান','Hide Bangla')}
@@ -174,6 +234,8 @@ export default function GrammarStudio({data}:{data:LessonPayload}){
             </article>)}
           </div>
         </section>
+
+        {practice&&<RuleQuiz rule={r} allRules={lesson.rules} lessonNumber={data.lesson} onProgress={onQuizProgress}/>}
       </article>)}
     </div>
 

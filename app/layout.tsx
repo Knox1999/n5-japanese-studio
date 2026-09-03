@@ -6,7 +6,7 @@ import AnalyticsConsent from '@/components/AnalyticsConsent';
 import './globals.css';
 import '@/styles/public.scss';
 
-const SITE = 'https://knox1999.github.io/n5-japanese-studio/';
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://knox1999.github.io/n5-japanese-studio/';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
@@ -86,6 +86,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       'A Japanese N5 learning application for vocabulary, recall, listening, shadowing, reading, conversation, grammar, Kanji and mock practice.',
   };
   const schemaJson = JSON.stringify(schema).replace(/</g, '\\u003c');
+  const posthogHost=process.env.NEXT_PUBLIC_POSTHOG_HOST||'https://us.i.posthog.com';
+  const sentryHost=(()=>{try{return process.env.NEXT_PUBLIC_SENTRY_DSN?new URL(process.env.NEXT_PUBLIC_SENTRY_DSN).host:''}catch{return ''}})();
   const csp=[
     "default-src 'self'",
     `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV==='development'?" 'unsafe-eval'":''} https://www.googletagmanager.com`,
@@ -93,7 +95,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     "img-src 'self' data: blob: https://www.google-analytics.com",
     "font-src 'self' data:",
     "media-src 'self' blob:",
-    "connect-src 'self' https://rfrflfaqvzlhuibickvk.supabase.co https://www.google-analytics.com https://region1.google-analytics.com",
+    `connect-src 'self' https://rfrflfaqvzlhuibickvk.supabase.co https://www.google-analytics.com https://region1.google-analytics.com${process.env.NEXT_PUBLIC_POSTHOG_KEY?` ${posthogHost}`:''}${sentryHost?` https://${sentryHost}`:''}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

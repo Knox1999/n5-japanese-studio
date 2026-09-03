@@ -1,0 +1,40 @@
+/* AI Japanese Tutor — shared dialog, opened from any view (currently Grammar). */
+
+.grammar-ask-tutor{
+  display:inline-flex;align-items:center;gap:6px;
+  min-height:32px;padding:0 12px;margin-left:auto;
+  border:1px solid rgba(154,129,245,.28);border-radius:999px;
+  background:rgba(154,129,245,.09);color:#c2b5fa;
+  font-size:.7rem;font-weight:800;white-space:nowrap;cursor:pointer;
+}
+.grammar-ask-tutor:hover{background:rgba(154,129,245,.16);border-color:rgba(154,129,245,.42)}
+
+.tutor-panel-dialog{width:min(560px,100%)!important}
+.tutor-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:20px 20px 0}
+.tutor-panel-head span{display:block;color:#c2b5fa;font-size:9px;font-weight:900;letter-spacing:.14em}
+.tutor-panel-head h2{margin:5px 0 0;color:#f3f7fa;font-size:1.15rem}
+.tutor-panel-head>button{display:grid;place-items:center;width:34px;height:34px;flex:0 0 auto;border:1px solid rgba(182,211,229,.14);border-radius:10px;background:rgba(255,255,255,.03);color:#9fb3c1}
+
+.tutor-consent{display:grid;justify-items:center;gap:12px;padding:22px 20px 26px;text-align:center;color:#c9d5df}
+.tutor-consent svg{color:#c2b5fa}
+.tutor-consent p{margin:0;max-width:42ch;font-size:.85rem;line-height:1.7;color:#aebccb}
+.tutor-consent>div{display:flex;gap:8px;margin-top:4px}
+
+.tutor-question-form{display:flex;gap:8px;padding:16px 20px 0}
+.tutor-question-form input{flex:1;min-width:0;height:46px;padding:0 14px;border:1px solid rgba(182,211,229,.15);border-radius:12px;background:#080f1b;color:#f3f7fb;font-size:.85rem}
+.tutor-question-form input::placeholder{color:#68798e}
+.tutor-question-form input:focus{outline:none;border-color:rgba(154,129,245,.45);box-shadow:0 0 0 3px rgba(154,129,245,.1)}
+.tutor-question-form button{display:grid;place-items:center;width:46px;height:46px;flex:0 0 auto;border:0;border-radius:12px;background:linear-gradient(135deg,#8f6ff0,#6a4fd6);color:#fff}
+.tutor-question-form button:disabled{opacity:.5}
+
+.tutor-error{margin:10px 20px 0;padding:10px 12px;border:1px solid rgba(239,91,85,.28);border-radius:10px;background:rgba(239,91,85,.08);color:#ef9aa5;font-size:.78rem}
+.tutor-answer{display:flex;gap:10px;margin:16px 20px 0;padding:14px;border:1px solid rgba(154,129,245,.18);border-radius:14px;background:rgba(154,129,245,.06);color:#e8e2fb}
+.tutor-answer svg{flex:0 0 auto;margin-top:2px;color:#c2b5fa}
+.tutor-answer p{margin:0;font-size:.88rem;line-height:1.75}
+.tutor-disclaimer{display:block;margin:10px 20px 20px;color:#5d7183;font-size:.68rem;line-height:1.5}
+
+@media(max-width:520px){
+  .tutor-panel-head,.tutor-question-form{padding-inline:14px}
+  .tutor-answer,.tutor-error{margin-inline:14px}
+  .tutor-disclaimer{margin:10px 14px 16px}
+}

@@ -33,8 +33,10 @@
   --nv-radius-xl:1.75rem;
   --nv-shadow-sm:0 8px 24px rgba(0,0,0,.16);
   --nv-shadow-md:0 18px 48px rgba(0,0,0,.22);
+  --nv-shadow-lift:0 20px 46px rgba(0,0,0,.3),0 0 0 1px rgba(255,179,93,.1);
   --nv-transition-fast:140ms ease;
   --nv-transition:220ms cubic-bezier(.2,.8,.2,1);
+  --nv-ease-premium:cubic-bezier(.16,1,.3,1);
   --nv-z-header:40;
   --nv-z-dock:50;
   --nv-z-overlay:80;
