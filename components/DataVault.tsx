@@ -97,7 +97,7 @@ export default function DataVault(){
       style={{position:'relative',zIndex:2,width:'min(620px, 100%)',maxHeight:'min(760px, calc(100dvh - 24px))',overflow:'auto',margin:0}}
     >
       <div className="vault-head">
-        <div><span>LOCAL DATA VAULT</span><h2 id="vault-title" className={language==='bn'?'font-bn':''}>{text('অগ্রগতির ব্যাকআপ ও রিস্টোর','Backup & Restore Progress')}</h2></div>
+        <div><span>{text('লোকাল ডেটা ভল্ট','LOCAL DATA VAULT')}</span><h2 id="vault-title" className={language==='bn'?'font-bn':''}>{text('অগ্রগতির ব্যাকআপ ও রিস্টোর','Backup & Restore Progress')}</h2></div>
         <button ref={closeRef} onClick={()=>setOpen(false)} aria-label={text('বন্ধ করুন','Close')}><X/></button>
       </div>
       <p className={language==='bn'?'font-bn':''}>{text('আপনার mastery, SRS, lesson এবং mock history browser-এ দ্রুত কাজ করে এবং login থাকলে account cloud backup-এর সাথে sync হয়। আলাদা JSON backup রাখলে যেকোনো সময় নিজে restore করতে পারবেন।','Your mastery, SRS, lesson and mock history work locally for speed and sync to your account backup when you are logged in. Keep a separate JSON copy whenever you want.')}</p>

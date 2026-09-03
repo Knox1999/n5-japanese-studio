@@ -687,7 +687,7 @@ export default function MockTest({
       <div className="jlpt-mock-home">
         <section className="study-header tone-mock">
           <div>
-            <div className="section-kicker">JLPT N5 · PRACTICE SYSTEM</div>
+            <div className="section-kicker">JLPT N5 · {text('প্র্যাকটিস সিস্টেম','PRACTICE SYSTEM')}</div>
             <h1 className={language==='bn'?'font-bn':''}>{text('লক্ষ্য ও সময় অনুযায়ী মক বেছে নিন','Choose a mock for your goal and available time')}</h1>
             <p className={language==='bn'?'font-bn':''}>
               {text('Quick Check, Lesson Mock, Mini Mock অথবা ৯০-মিনিটের Full Mock—প্রতিটি mode original N5 lesson data থেকে তৈরি হয়।','Choose a Quick Check, Lesson Mock, Mini Mock or 90-minute Full Mock. Every mode is built from the original N5 lesson data.')}
@@ -712,12 +712,12 @@ export default function MockTest({
                 <Icon size={22}/>
                 <h3>{m.title}</h3>
                 <small className={language==='bn'?'font-bn':''}>{language==='bn'?m.titleBn:m.label}</small>
-                <b><Clock3 size={17}/> {Object.values(m.minutes).reduce((a,b)=>a+b,0)} min target</b>
+                <b><Clock3 size={17}/> {text(`লক্ষ্য ${Object.values(m.minutes).reduce((a,b)=>a+b,0)} মিনিট`,`${Object.values(m.minutes).reduce((a,b)=>a+b,0)} min target`)}</b>
                 <p className={language==='bn'?'font-bn':''}>{language==='bn'?m.descriptionBn:m.descriptionEn}</p>
                 <div className="mock-mode-breakdown">
-                  <span>{m.counts.vocabulary}<small>Vocab</small></span>
-                  <span>{m.counts['grammar-reading']}<small>Grammar/Reading</small></span>
-                  <span>{m.counts.listening}<small>Listening</small></span>
+                  <span>{m.counts.vocabulary}<small>{text('শব্দ','Vocab')}</small></span>
+                  <span>{m.counts['grammar-reading']}<small>{text('গ্রামার/রিডিং','Grammar/Reading')}</small></span>
+                  <span>{m.counts.listening}<small>{text('লিসেনিং','Listening')}</small></span>
                 </div>
                 <strong>{m.total} {text('প্রশ্ন','questions')}</strong>
                 <button
@@ -746,25 +746,25 @@ export default function MockTest({
 
         <section className="mock-official-guide" aria-labelledby="mock-official-title">
           <div>
-            <span><ShieldCheck size={16}/> OFFICIAL N5 REFERENCE</span>
+            <span><ShieldCheck size={16}/> {text('অফিসিয়াল N5 রেফারেন্স','OFFICIAL N5 REFERENCE')}</span>
             <h2 id="mock-official-title" className={language==='bn'?'font-bn':''}>{text('Official structure ধরে practice, কিন্তু score নিয়ে পরিষ্কার ব্যাখ্যা','Practice the official structure with honest scoring')}</h2>
             <p className={language==='bn'?'font-bn':''}>{text('N5-এ Vocabulary ২০ মিনিট, Grammar/Reading ৪০ মিনিট এবং Listening ৩০ মিনিট। Official pass mark মোট 80/180; Language Knowledge/Reading-এ 38/120 এবং Listening-এ 19/60 minimum দরকার। এই app raw percentage দেখায়—official scaled score দাবি করে না।','N5 uses 20 minutes for Vocabulary, 40 for Grammar/Reading and 30 for Listening. The official pass mark is 80/180 overall, with minimums of 38/120 for Language Knowledge/Reading and 19/60 for Listening. This app reports a raw practice percentage, not an official scaled score.')}</p>
           </div>
           <div className="mock-official-stats">
-            <article><strong>20</strong><span>Vocabulary</span></article>
-            <article><strong>40</strong><span>Grammar · Reading</span></article>
-            <article><strong>30</strong><span>Listening</span></article>
+            <article><strong>20</strong><span>{text('ভোকাবুলারি','Vocabulary')}</span></article>
+            <article><strong>40</strong><span>{text('গ্রামার · রিডিং','Grammar · Reading')}</span></article>
+            <article><strong>30</strong><span>{text('লিসেনিং','Listening')}</span></article>
           </div>
         </section>
 
         <section className="mock-resource-library" aria-labelledby="mock-resource-title">
           <header>
-            <div><span>FREE ONLINE DIRECTORY · REVIEWED {JLPT_RESOURCE_REVIEWED}</span><h2 id="mock-resource-title" className={language==='bn'?'font-bn':''}>{text('আরও free JLPT N5 mock ও practice resource','More free JLPT N5 mocks and practice resources')}</h2></div>
+            <div><span>{text('ফ্রি অনলাইন ডিরেক্টরি','FREE ONLINE DIRECTORY')} · {text('রিভিউ করা হয়েছে','REVIEWED')} {JLPT_RESOURCE_REVIEWED}</span><h2 id="mock-resource-title" className={language==='bn'?'font-bn':''}>{text('আরও free JLPT N5 mock ও practice resource','More free JLPT N5 mocks and practice resources')}</h2></div>
             <p className={language==='bn'?'font-bn':''}>{text('Copyrighted প্রশ্ন কপি করা হয়নি—link খুললে original provider-এর resource ব্যবহার করবেন।','Copyrighted questions are not copied here; each link opens the original provider’s resource.')}</p>
           </header>
           <div>
             {JLPT_N5_RESOURCES.map(resource=><a key={resource.id} href={resource.url} target="_blank" rel="noreferrer noopener">
-              <span>{resource.kind==='official'?'OFFICIAL':resource.kind==='full-mock'?'FULL MOCK':'PRACTICE BANK'}</span>
+              <span>{resource.kind==='official'?text('অফিসিয়াল','OFFICIAL'):resource.kind==='full-mock'?text('ফুল মক','FULL MOCK'):text('প্র্যাকটিস ব্যাংক','PRACTICE BANK')}</span>
               <small>{resource.provider}</small>
               <h3>{resource.name}</h3>
               <p className={language==='bn'?'font-bn':''}>{language==='bn'?resource.summaryBn:resource.summaryEn}</p>
@@ -790,7 +790,7 @@ export default function MockTest({
           <small className="font-jp">{section.jp}</small>
         </div>
         <div>
-          <small>SECTION</small>
+          <small>{text('সেকশন','SECTION')}</small>
           <b>{sectionIndex}/{sectionTotal}</b>
         </div>
         <div className={secondsLeft<=120?'warning':''}>
