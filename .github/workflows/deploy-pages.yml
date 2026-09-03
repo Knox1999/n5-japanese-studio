@@ -212,4 +212,12 @@ jobs:
         run: |
           mkdir -p .vercel
           printf '{"projectId":"%s","orgId":"%s"}' "${{ vars.VERCEL_PROJECT_ID }}" "${{ vars.VERCEL_ORG_ID }}" > .vercel/project.json
-          npx vercel@latest deploy ./out --prod --token="$VERCEL_TOKEN" --yes
+          set +e
+          OUTPUT=$(npx vercel@latest deploy ./out --prod --token="$VERCEL_TOKEN" --yes 2>&1)
+          CODE=$?
+          echo "$OUTPUT"
+          if [ $CODE -ne 0 ]; then
+            SNIPPET=$(echo "$OUTPUT" | tail -c 800 | tr '\n' ' ')
+            echo "::error::Vercel deploy failed (exit $CODE): $SNIPPET"
+            exit $CODE
+          fi
